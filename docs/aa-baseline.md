@@ -6,10 +6,10 @@
 ## 현재 적용
 
 - Java 25 / Gradle 9.7.1 Wrapper / Spring BOM 고정
-- 동일 이미지에 외부 환경변수, ConfigMap, Secret을 주입하는 Build Once Deploy Many
+- 동일 이미지로 컨테이너를 실행하고, Compose `environment` 또는 Kubernetes ConfigMap/Secret 참조로 환경변수를 전달하는 Build Once Deploy Many
 - `local`, `dev`, `test`, `staging`, `prod` 중 정확히 하나의 lifecycle profile 요구
 - lifecycle profile과 Docker/Kubernetes 배포 플랫폼 분리
-- `app.security` 설정의 타입 바인딩과 시작 시 validation
+- `@ConfigurationProperties`로 Gateway `SecurityProperties`와 Backend `JwtProperties`에 타입 바인딩하고, `@Validated`·검증 제약·record 생성자로 시작 시 값 검증 ([역할 구분](package-structure.md#설정-객체와-애너테이션))
 - configuration processor 메타데이터와 Actuator Build Info
 - Gateway와 Redis connect/response/command/acquire timeout
 - 고정 크기 Gateway connection pool
@@ -63,4 +63,4 @@
 - 데이터가 없는 학습용 Redis이므로 persistence를 사용하지 않는다.
 - Tomcat/Netty 수치는 소규모 샘플의 보호 상한이며 부하 테스트 결과로 조정한다.
 - DB가 없으므로 Hikari, Entity, Repository, `@Transactional`을 만들지 않는다.
-- 환경변수와 ConfigMap 변경은 자동 갱신하지 않으며 명시적인 rollout으로 반영한다.
+- 현재 환경변수 주입 방식에서 ConfigMap/Secret 변경은 Pod 교체로 반영한다. Compose `.env`/`environment` 변경은 `docker compose up -d`로 컨테이너를 재생성하며 단순 restart로 갱신되지 않는다.

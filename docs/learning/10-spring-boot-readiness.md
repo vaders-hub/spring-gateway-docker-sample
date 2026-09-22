@@ -14,7 +14,7 @@
 | 항목 | 현재 준비된 구성 | 보완할 검증/구현 |
 |---|---|---|
 | Stateless | JWT, Security 세션 저장/요청 캐시 비활성화, Redis에 요청 제한 상태 공유 | 같은 JWT로 Pod 교체 전후 인증, 복제본별 인증 일관성 |
-| 설정 외부화 | 환경변수, ConfigMap/Secret, ConfigurationProperties 검증, RuntimeProfileGuard | 값 누락·잘못된 profile 기동 실패, 동일 이미지의 환경별 실행 |
+| 설정 외부화 | 환경변수 주입, `@ConfigurationProperties` 설정 객체의 값 검증, `RuntimeProfileGuard`의 환경 검사 | 값 누락·잘못된 profile 기동 실패, 동일 이미지의 환경별 실행 |
 | Health probe | startup/liveness/readiness, Gateway readiness에 Redis 포함 | 의존성 장애 시 Ready 제외와 재시작 여부 대조 |
 | 표준 출력 로그 | SLF4J 콘솔 출력, staging/prod ECS 형식, requestId | 로그 연결·민감값 제외, 수집기와 보존 정책은 후속 |
 | Graceful shutdown | graceful, 단계별 20초, Compose 25초, k8s preStop 5초/종료 유예 30초 | 제어 가능한 지연 fixture 추가 후 처리 중 요청 완료 검증 |
@@ -96,11 +96,17 @@ rollout 실패 시 [4단계 복구 절차](04-operations-and-recovery.md)를 적
 
 | 읽을 파일 | 확인할 연결 | 실습과 증거 |
 |---|---|---|
-| [Gateway 공통 설정](../../gateway/src/main/resources/application.yml), [Backend 공통 설정](../../backend/src/main/resources/application.yml) | 환경변수 → 속성 → Bean/기능 | 4단계의 비밀이 아닌 burst 값 변경 전후 비교 |
+| [Gateway 공통 설정](../../gateway/src/main/resources/application.yml), [Backend 공통 설정](../../backend/src/main/resources/application.yml) | `RATE_LIMIT_BURST_CAPACITY` → YAML의 route 인자 → Gateway `RequestRateLimiter`/`RedisRateLimiter` 설정 | 4단계의 비밀이 아닌 burst 값 변경 전후 비교 |
 | [속성 검증](../../gateway/src/main/java/com/example/gateway/config/properties/SecurityProperties.java), [profile guard](../../gateway/src/main/java/com/example/gateway/config/runtime/RuntimeProfileGuard.java) | 유효하지 않은 설정 → 기동 실패 | 4단계 profile 실패/복구; 필수값 누락 테스트는 격리된 테스트 환경에서 추가 |
 | [Gateway 배포](../../k8s/base/gateway.yaml) | startup → readiness/liveness → EndpointSlice | Redis 중단 시 Ready=false, liveness 유지와 재시작 횟수 비교 |
 | [요청 로그](../../gateway/src/main/java/com/example/gateway/common/web/RequestIdWebFilter.java), [Backend 로그](../../backend/src/main/java/com/example/backend/common/web/RequestIdFilter.java) | 같은 requestId의 Gateway/Backend 처리 | 2단계 로그/HTTP·route 지표 비교 |
 | [운영 로그 형식](../../gateway/src/main/resources/application-prod.yml) | SLF4J → stdout → 컨테이너 로그 | ECS 설정 존재 확인; 실제 운영 profile 실행과 수집기는 별도 검증 |
+
+`@ConfigurationProperties`는 바인딩 애너테이션이고 `SecurityProperties`/`JwtProperties`가 설정 객체입니다.
+값의 조건은 `@Validated`와 검증 제약 및 record 생성자에서 검사합니다.
+위 burst 값은 프로젝트의 `SecurityProperties`가 아닌 Gateway route 설정 경로를 따릅니다.
+설정 객체의 추적은 [1단계 JWT_TTL 예제](01-setup-and-compose.md#설정-추적-예-jwt_ttl),
+역할 구분은 [설정 객체와 애너테이션](../package-structure.md#설정-객체와-애너테이션)을 참고합니다.
 
 `application.yml`과 기본값이 이미지에 포함되는 것은 정상입니다. 환경별 비밀값/주소를 이미지에
 고정하지 않는 것이 목적이며, 현재 환경변수로 덮어쓸 수 있는 경로를 유지합니다.
@@ -203,7 +209,7 @@ Service 경로에서 접속이 안 되는 결과와 Pod 직접 접근의 HTTP 50
 | 주제 | 설정/코드 근거 | 조정할 기준 | 상태 |
 |---|---|---|---|
 | 인증/세션 | 두 SecurityConfig, JwtConfig | 토큰 수명·발급자·키 교체·권한 | 기본 구현, 10-1 실습 대기 |
-| 설정 검증 | ConfigurationProperties, RuntimeProfileGuard | 필수값·허용 범위·환경별 금지값 | 기본 구현, 확장 속성별 검증 추가 |
+| 설정 검증 | `SecurityProperties`/`JwtProperties`의 값 검증, `RuntimeProfileGuard`의 환경 검사 | 필수값·허용 범위·환경별 금지값 | 기본 구현, 확장 속성별 검증 추가 |
 | 가용성 | Actuator group, k8s probes | 의존성 정책·기동시간·실패 임계값 | 기본 구현, 4단계 장애 실습 |
 | 종료 | shutdown timeout, preStop, 종료 유예 | 최대 처리시간·종료 단계·작업 유형 | 기본 구현, 10-3 fixture/검증 미구현 |
 | 로그/관측 | SLF4J, ECS, metrics, requestId | 민감값·label 수·보존량·수집 장애 | 부분 구현, 중앙 수집/trace 저장소 후속 |

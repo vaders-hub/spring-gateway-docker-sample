@@ -38,9 +38,16 @@ API Gateway의 route throttling과 Redis의 subject별 제한을 같은 정책�
 ## 6-2. 현재 Spring 설정을 학습하는 순서
 
 1. `application.yml` 공통값과 `application-{profile}.yml` 차이를 읽습니다.
-2. Compose environment → kind ConfigMap/Secret → ConfigurationProperties로 이어지는
-   값을 추적합니다. Spring 자체가 `.env` 파일을 자동 읽는다고 가정하지 않습니다.
-3. `config/properties`의 검증과 `config/runtime`의 환경 보호를 확인합니다.
+2. 배포 방식별로 컨테이너 환경변수까지의 경로를 나누어 추적합니다. Compose에서는
+   `.env` → Compose `environment` → 컨테이너 환경변수이고, kind에서는
+   ConfigMap/Secret → Deployment의 `envFrom`/`env` → 컨테이너 환경변수입니다.
+   두 경로는 순차 단계가 아닙니다. kind용 Secret 생성 스크립트가 `.env`의 일부 키를 읽지만,
+   Compose 설정 전체를 ConfigMap/Secret으로 자동 복사하지는 않습니다.
+   이후 Spring `Environment`에서 `application.yml`/profile 설정과 환경변수를 함께 조회하고,
+   `@ConfigurationProperties`가 붙은 `SecurityProperties`/`JwtProperties` 등에 바인딩합니다.
+   Spring 자체가 `.env` 파일을 자동 읽는다고 가정하지 않습니다.
+3. `@EnableConfigurationProperties`의 Bean 등록, 설정 record의 `@Validated`·제약·생성자 검증,
+   `RuntimeProfileGuard`의 독립적인 환경 검사를 구분합니다. [설정 객체와 애너테이션](../package-structure.md#설정-객체와-애너테이션)을 참고합니다.
 4. `config/security`의 JWT/CORS/인가 정책과 controller/service/dto 경계를 읽습니다.
 5. `common/error`, 요청 ID, probe, 종료 시간을 검토합니다.
 
@@ -146,7 +153,7 @@ LocalStack/EKS Anywhere 같은 추가 도구도 현재 목표에는 필수가 �
 
 - [ ] kind의 Kubernetes 공통 개념과 EKS의 IAM/VPC/ALB/EBS 등 별도 검증 대상을 대응시켜 설명한다.
 - [ ] Gateway API·Spring Cloud Gateway·AWS API Gateway의 책임을 구분하며 로컬 실행이 AWS 리소스를 만든 것은 아님을 설명한다.
-- [ ] 환경변수 → application.yml/profile → ConfigurationProperties 검증 → Bean 생성 → RuntimeProfileGuard 경계를 추적했다.
+- [ ] 환경변수와 `application.yml`/profile 설정을 Spring `Environment`에서 조회하고 `@ConfigurationProperties`로 설정 객체에 바인딩하는 경로를 추적했다. 설정 객체의 값 검증과 `RuntimeProfileGuard`의 독립적인 환경 검사를 구분한다.
 - [ ] Controller의 HTTP/검증 책임, Service의 업무 책임, DTO와 향후 Entity/Repository/Mapper의 책임을 구분한다.
 - [ ] 현재 HS256 공유키 검증과 향후 OIDC/JWK 도입의 차이를 설명한다. issuer 문자열 변경만으로 외부 IdP 연동이 되지 않는다.
 - [ ] Oracle/JPA/MyBatis/migration/혼합 트랜잭션은 후속 구현임을 구분하고, 실제 DB rollback 검증이 필요한 이유를 설명한다.

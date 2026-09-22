@@ -155,13 +155,35 @@ lab_api POST /api/echo '{"name":"","value":-1}' status
 - [ ] Client → Gateway:8080 → Backend:8081 경로와 Gateway → Redis:6379 요청 제한 경로를 그릴 수 있다.
 - [ ] `ports`의 호스트 공개와 `expose`의 내부 포트 표시를 구분하고, 컨테이너 간 주소가 `localhost` 대신 서비스 이름인 이유를 설명한다.
 - [ ] Dockerfile의 Gradle 빌드 단계와 JRE 실행 단계를 구분하고, `bootJar` 성공과 테스트 통과가 다른 확인임을 설명한다.
-- [ ] `.env` → Compose environment → application.yml → ConfigurationProperties로 설정 한 개가 전달되는 과정을 추적했다.
+- [ ] 설정 하나가 `.env` → Compose 환경변수 → `application.yml`의 `${...}` 참조 → `@ConfigurationProperties`가 붙은 `SecurityProperties` 객체로 바인딩되어 사용되는 과정을 추적했다.
 - [ ] `AuthController → TokenService`의 데모 JWT 발급과 `SecurityConfig/JwtConfig`의 검증을 구분하고, issuer·audience·만료·scope 역할을 설명한다.
 - [ ] `RequestHeadersFilter`가 인증 Principal로 사용자 헤더를 덮어쓰며 Backend는 헤더 대신 재검증한 JWT Principal을 사용하는 이유를 설명한다.
 - [ ] `principalKeyResolver → RequestRateLimiter → StripPrefix=1 → Backend Controller → Service → DTO`를 실제 파일에서 찾았다.
 - [ ] 200·401·400·429가 발생한 위치를 구분한다. 400은 인증/제한을 통과한 뒤 DTO 검증에서, 429는 Backend 도달 전에 발생한다.
 - [ ] readiness에 Redis가 포함되는 이유와 liveness에서 외부 의존성을 제외한 이유를 설명한다.
 - [ ] `RequestIdWebFilter/RequestIdFilter`의 요청 ID를 양쪽 로그 및 응답과 연결하고, 요청 ID가 인증이나 분산 trace 자체는 아님을 설명한다.
+
+### 설정 추적 예: JWT_TTL
+
+다른 설정 소스에서 같은 값을 덮어쓰지 않는 기본 로컬 구성을 기준으로 추적합니다.
+
+| 단계 | 실제 파일과 처리 |
+|---|---|
+| 값 정의 | [생성 스크립트](../../scripts/new-local-env.sh)가 `.env`에 `JWT_TTL=1h`를 기록 |
+| 컨테이너에 전달 | [Compose](../../docker-compose.yml)의 `environment`에서 `JWT_TTL: ${JWT_TTL:-1h}`를 해석해 컨테이너 환경변수로 전달 |
+| Spring에서 값 해석 | [Gateway application.yml](../../gateway/src/main/resources/application.yml)의 `app.security.jwt.ttl: ${JWT_TTL:1h}`를 Spring `Environment`의 값으로 해석 |
+| 객체에 바인딩 | [SecurityProperties](../../gateway/src/main/java/com/example/gateway/config/properties/SecurityProperties.java)의 `@ConfigurationProperties(prefix = "app.security")`에 따라 `jwt.ttl`을 `Duration` 타입으로 변환 |
+| 등록과 사용 | [SecurityConfig](../../gateway/src/main/java/com/example/gateway/config/security/SecurityConfig.java)의 `@EnableConfigurationProperties`로 설정 Bean을 등록하고, [TokenService](../../gateway/src/main/java/com/example/gateway/auth/service/TokenService.java)가 `properties.jwt().ttl().toSeconds()`로 3600초를 얻어 토큰 만료 시각 계산 |
+
+`@ConfigurationProperties`는 애너테이션이고 `SecurityProperties`는 실제 설정 객체의 타입입니다.
+Spring이 `.env`를 직접 읽거나 `application.yml` 파일 내용을 수정하는 것은 아닙니다.
+Compose가 `.env` 등을 이용해 변수를 치환하고, Spring은 전달받은 환경변수와 설정 파일을
+`Environment`에서 조회해 값을 해석합니다. 같은 이름의 셸 환경변수가 있으면 Compose에서 `.env`보다 우선합니다.
+`${JWT_TTL:-1h}`는 Compose 문법, `${JWT_TTL:1h}`는 Spring 문법이며 둘 다 이 예에서는 기본값을 지정합니다.
+바인딩과 검증의 역할 구분은 [설정 객체와 애너테이션](../package-structure.md#설정-객체와-애너테이션)을 참고합니다.
+
+참고: [Compose 변수 치환](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/),
+[Spring 외부화 설정](https://docs.spring.io/spring-boot/reference/features/external-config.html)
 
 **학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
 

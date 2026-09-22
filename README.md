@@ -158,19 +158,26 @@ backend/src/main/java/com/example/backend/dto/
 - deployment platform: `DEPLOYMENT_PLATFORM`으로 Docker Compose/Kubernetes 구분
 - 기본값: 각 모듈의 `application.yml`
 - 환경 차이: `application-{profile}.yml` 또는 배포 환경변수
-- secret: `.env`, Kubernetes Secret 또는 운영 Secret Manager에서 주입
+- secret: Compose는 `.env`의 값을 `environment`로, Kubernetes는 Secret의 지정 키를 Deployment의 `env`로 주입. 운영 Secret Manager 연동은 후속 과제
 - staging/prod CORS origin: `CORS_ALLOWED_ORIGINS` 필수 주입
 
 주요 설정 우선순위는 명령행, JVM 시스템 속성, OS 환경변수, 외부 설정 파일,
 JAR 내부 설정 파일 순입니다. staging/prod profile은 JSON 구조화 로그를 사용합니다.
-환경변수나 ConfigMap을 변경한 경우 실행 중인 프로세스에는 자동 반영되지 않으므로
-Pod 또는 컨테이너를 재시작해야 합니다.
+Spring이 `.env`를 직접 읽는 것은 아닙니다. 환경변수와 YAML 설정을 Spring `Environment`에서
+조회하고 `@ConfigurationProperties`가 붙은 설정 객체 등에 바인딩합니다.
+[JWT_TTL 추적 예제](docs/learning/01-setup-and-compose.md#설정-추적-예-jwt_ttl)와
+[설정 객체의 역할](docs/package-structure.md#설정-객체와-애너테이션)을 참고하세요.
+현재 환경변수 방식에서는 ConfigMap/Secret을 변경해도 기존 프로세스에 자동 반영되지 않아
+Pod를 교체해야 합니다. Compose의 `.env`/`environment` 변경은 `docker compose up -d`로
+해당 컨테이너를 재생성해 반영합니다. `docker compose restart`만으로 환경변수가 갱신되지는 않습니다.
+[Compose restart의 범위](https://docs.docker.com/reference/cli/docker/compose/restart/)
 
 ## AA 운영 기준으로 반영된 기본선
 
-- Secret: 소스와 Kubernetes YAML에 값을 두지 않고 `.env` 또는 Secret으로 주입
-- 설정 검증: `app.security`를 `@ConfigurationProperties`로 바인딩하고 필수값,
-  secret 길이, 암호 길이와 TTL을 시작 시 검증
+- Secret: 실제 비밀값을 소스와 Kubernetes YAML에 두지 않고 Compose `environment` 또는 Deployment의 Secret 참조로 전달
+- 설정 검증: `@ConfigurationProperties`로 Gateway의 `app.security`를 `SecurityProperties`에,
+  Backend의 `app.security.jwt`를 `JwtProperties`에 바인딩. `@Validated`·검증 제약·record 생성자로
+  필수값과 secret 길이를 검사하고, Gateway에서는 데모 암호 길이·TTL·CORS 조건도 검증
 - 환경 분리: `local`, `dev`, `test`, `staging`, `prod` 중 정확히 하나의 active profile 요구
 - 내부 보안: Backend의 JWT 재검증과 Kubernetes NetworkPolicy
 - Timeout: Backend connect 2초/response 5초, Redis connect 2초/command 1초

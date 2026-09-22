@@ -6,7 +6,7 @@ application YAML은 각 모듈의 src/main/resources에 유지합니다.
 
 | 패키지 | 책임 |
 |---|---|
-| config/properties | ConfigurationProperties, validation, 민감값 toString 마스킹 |
+| config/properties | `@ConfigurationProperties`가 붙은 설정 record, 값 검증, 민감값 `toString` 마스킹 |
 | config/security | SecurityConfig(인가 체인), JwtConfig(키/decoder/encoder), Gateway CorsConfig |
 | config/runtime | lifecycle profile과 운영 환경의 위험 설정 검증 |
 | config/gateway | Gateway 사용자별 rate-limit key resolver |
@@ -30,6 +30,31 @@ Service 인터페이스와 Impl은 구현 교체 등 실제 필요가 있을 때
 공통화는 각 서비스 내부에서 수행합니다. Gateway는 WebFlux, Backend는 Servlet
 기반이며 서로 독립적으로 빌드하므로 공통 Java 모듈을 새로 만들지 않았습니다.
 두 서비스가 공유하는 HTTP 응답 계약은 api-contract.md로 관리합니다.
+
+## 설정 객체와 애너테이션
+
+`@ConfigurationProperties`는 설정 접두사와 Java 타입을 연결하는 애너테이션입니다.
+`ConfigurationProperties`라는 프로젝트 설정 파일이나 객체로 값이 전달되는 것은 아닙니다.
+
+| 구분 | 현재 코드의 역할 |
+|---|---|
+| 설정 원본 | Compose의 `environment` 또는 Kubernetes Deployment의 `envFrom`/`env`가 컨테이너 환경변수를 전달 |
+| `application.yml` / `application-{profile}.yml` | 공통값과 profile별 값을 정의하며 `${...}`로 외부 값을 참조 |
+| Spring `Environment` | 환경변수·설정 파일 등 여러 설정 소스를 우선순위에 따라 조회하고 플레이스홀더 해석에 사용 |
+| `@ConfigurationProperties` | 접두사 아래의 값을 설정 객체에 타입 변환하여 바인딩 |
+| `@EnableConfigurationProperties` | 각 모듈의 `SecurityConfig`에서 설정 타입을 Spring Bean으로 등록 |
+| `@Validated`, `@Valid`, 검증 제약 및 record 생성자 | 필수값·길이·TTL·CORS 등 해당 설정의 조건을 검증. `@ConfigurationProperties`만으로 모든 조건이 검증되지는 않음 |
+| `RuntimeProfileGuard` | 별도 Bean의 `@PostConstruct`에서 `Environment`를 직접 조회해 profile과 금지 설정 조합을 검사 |
+
+실제 바인딩 대상은 Gateway의 [SecurityProperties](../gateway/src/main/java/com/example/gateway/config/properties/SecurityProperties.java)
+(`app.security`), Backend의 [JwtProperties](../backend/src/main/java/com/example/backend/config/properties/JwtProperties.java)
+(`app.security.jwt`), 각 모듈의 `ObservabilityProperties` (`app.observability`)입니다.
+Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties`에는 TTL 필드가 없습니다.
+`RuntimeProfileGuard`는 이 설정 객체들의 검증을 이어받는 마지막 단계가 아니라 독립된 시작 시 검사입니다.
+
+모든 설정이 프로젝트의 `SecurityProperties`를 거치지는 않습니다. `server.*`, `spring.*` 등은
+프레임워크가 각 설정에 맞게 처리하며, Gateway route의 rate-limit 인자도 Gateway가 처리합니다.
+구체적인 값의 흐름은 [1단계 JWT_TTL 예제](learning/01-setup-and-compose.md#설정-추적-예-jwt_ttl)를 참고합니다.
 
 ## 동작 보완
 
