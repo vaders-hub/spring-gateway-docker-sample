@@ -1,14 +1,10 @@
 package com.example.backend.common.error;
 
+import com.example.backend.common.api.ApiResponses;
 import com.example.backend.common.web.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Locale;
-import java.util.Map;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -26,38 +22,30 @@ public final class SecurityProblemWriter {
 
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, exception) ->
-                write(request, response, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED);
+                write(request, response, ErrorCode.UNAUTHORIZED);
     }
 
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, exception) ->
-                write(request, response, HttpStatus.FORBIDDEN, ErrorCode.ACCESS_DENIED);
+                write(request, response, ErrorCode.ACCESS_DENIED);
     }
 
     private void write(
             HttpServletRequest request, HttpServletResponse response,
-            HttpStatus status, ErrorCode errorCode) throws IOException {
+            ErrorCode errorCode) throws IOException {
         if (response.isCommitted()) {
             return;
         }
         Object requestId = request.getAttribute(RequestContext.REQUEST_ID);
-        // Boot의 JsonMapper로 직렬화하여 헤더/값을 직접 JSON 문자열에 이어붙이지 않는다.
-        byte[] body = jsonMapper.writeValueAsBytes(Map.of(
-                "type", "urn:problem:" + errorCode.name().toLowerCase(Locale.ROOT).replace('_', '-'),
-                "title", status.getReasonPhrase(),
-                "status", status.value(),
-                "detail", status == HttpStatus.UNAUTHORIZED
-                        ? "Authentication is required."
-                        : "Access to this resource is denied.",
-                "errorCode", errorCode.name(),
-                "requestId", requestId == null ? "unknown" : requestId.toString()));
-        response.setStatus(status.value());
-        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        var entity = ApiResponses.fail(errorCode, requestId == null ? null : requestId.toString());
+        // Boot의 JsonMapper가 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화한다.
+        byte[] body = jsonMapper.writeValueAsBytes(entity.getBody());
+        response.setStatus(entity.getStatusCode().value());
         response.setCharacterEncoding("UTF-8");
-        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
-        if (status == HttpStatus.UNAUTHORIZED) {
-            response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
-        }
+        entity.getHeaders().forEach((name, values) -> {
+            response.setHeader(name, values.getFirst());
+            values.stream().skip(1).forEach(value -> response.addHeader(name, value));
+        });
         response.getOutputStream().write(body);
     }
 }

@@ -4,11 +4,12 @@ import com.example.gateway.auth.dto.TokenRequest;
 import com.example.gateway.auth.dto.TokenResponse;
 import com.example.gateway.auth.service.TokenService;
 import com.example.gateway.common.api.ApiResponse;
+import com.example.gateway.common.api.ApiResponses;
+import com.example.gateway.common.api.SuccessCode;
 import com.example.gateway.common.web.RequestContext;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,10 +40,7 @@ public class AuthController {
             ServerWebExchange exchange) {
         String requestId = exchange.getRequest().getHeaders()
                 .getFirst(RequestContext.REQUEST_ID_HEADER);
-        // 토큰 응답은 브라우저/프록시 캐시에 남기지 않도록 no-store/no-cache를 지정한다.
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .header("Pragma", "no-cache")
-                .body(ApiResponse.success(tokenService.issue(request), requestId));
+        // TOKEN_ISSUED가 토큰 응답의 no-store/no-cache 헤더를 함께 지정한다.
+        return ApiResponses.success(SuccessCode.TOKEN_ISSUED, tokenService.issue(request), requestId);
     }
 }

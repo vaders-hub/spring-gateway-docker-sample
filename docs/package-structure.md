@@ -13,7 +13,7 @@ application YAML은 각 모듈의 src/main/resources에 유지합니다.
 | filter | Gateway 라우팅 단계의 인증 사용자 헤더 전달 |
 | common/web | 라우팅 전 Request ID 정규화와 요청 로그, HTTP 헤더 상수 |
 | common/error | ControllerAdvice, 오류 코드, Security JSON 오류 writer |
-| common/api | 성공 응답 envelope |
+| common/api | `ApiResponse` 본문, `SuccessCode` 정책, `ApiResponses.success`/`fail` HTTP 응답 생성 |
 | auth/controller, auth/service, auth/dto | Gateway 인증 HTTP 경계, 토큰 발급 use case, DTO |
 | controller, service, dto | Backend HTTP 경계, use case, DTO |
 
@@ -59,6 +59,7 @@ Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties
 ## 동작 보완
 
 - 잘못된 Bearer 토큰과 인증 누락 모두 동일 SecurityProblemWriter를 사용합니다.
+- `ApiResponses.success`/`fail`과 `SuccessCode`/`ErrorCode`로 HTTP 상태·헤더·기본 오류 메시지를 공통화합니다.
 - 오류 JSON은 Boot 4의 자동 구성 JsonMapper를 주입받아 직렬화합니다.
 - ControllerAdvice는 Spring ErrorResponse의 4xx 상태와 Allow 같은 응답 헤더를 보존합니다.
 - 예상하지 못한 오류는 requestId와 예외 타입을 남기며, 비밀값이 들어갈 수 있는 원문

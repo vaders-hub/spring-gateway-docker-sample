@@ -1,9 +1,9 @@
 package com.example.gateway.common.error;
 
 import com.example.gateway.auth.service.InvalidCredentialsException;
+import com.example.gateway.common.api.ApiResponses;
 import com.example.gateway.common.web.RequestContext;
 import java.net.URI;
-import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +11,6 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -33,24 +32,14 @@ class GlobalExceptionHandler {
     ResponseEntity<ProblemDetail> handleInvalidCredentials(
             InvalidCredentialsException exception,
             ServerWebExchange exchange) {
-        return problem(
-                HttpStatus.UNAUTHORIZED,
-                "Unauthorized",
-                "The supplied credentials are invalid.",
-                ErrorCode.INVALID_CREDENTIALS,
-                exchange);
+        return problem(ErrorCode.INVALID_CREDENTIALS, exchange);
     }
 
     @ExceptionHandler(WebExchangeBindException.class)
     ResponseEntity<ProblemDetail> handleValidation(
             WebExchangeBindException exception,
             ServerWebExchange exchange) {
-        ResponseEntity<ProblemDetail> response = problem(
-                HttpStatus.BAD_REQUEST,
-                "Invalid request",
-                "One or more request fields are invalid.",
-                ErrorCode.INVALID_REQUEST,
-                exchange);
+        ResponseEntity<ProblemDetail> response = problem(ErrorCode.INVALID_REQUEST, exchange);
         response.getBody().setProperty("errors", exception.getFieldErrors().stream()
                 .map(error -> Map.of(
                         "field", error.getField(),
@@ -65,12 +54,9 @@ class GlobalExceptionHandler {
     ResponseEntity<ProblemDetail> handleUnreadableRequest(
             ServerWebInputException exception,
             ServerWebExchange exchange) {
-        return problem(
-                HttpStatus.BAD_REQUEST,
-                "Invalid request",
-                "The request body is missing or malformed.",
-                ErrorCode.INVALID_REQUEST,
-                exchange);
+        var response = problem(ErrorCode.INVALID_REQUEST, exchange);
+        response.getBody().setDetail("The request body is missing or malformed.");
+        return response;
     }
 
     @ExceptionHandler(Exception.class)
@@ -78,20 +64,22 @@ class GlobalExceptionHandler {
             Exception exception,
             ServerWebExchange exchange) {
         if (exception instanceof AccessDeniedException) {
-            return problem(HttpStatus.FORBIDDEN, "Forbidden", "Access to this resource is denied.",
-                    ErrorCode.ACCESS_DENIED, exchange);
+            return problem(ErrorCode.ACCESS_DENIED, exchange);
         }
         // 405 등 프레임워크의 4xx와 Allow 같은 응답 헤더를 보존해 잘못된 500 변환을 피한다.
         if (exception instanceof ErrorResponse error && error.getStatusCode().is4xxClientError()) {
             HttpStatusCode status = error.getStatusCode();
             HttpStatus knownStatus = HttpStatus.resolve(status.value());
-            ResponseEntity<ProblemDetail> response = problem(status,
-                    knownStatus == null ? "Request rejected" : knownStatus.getReasonPhrase(),
-                    "The request could not be processed.", ErrorCode.INVALID_REQUEST, exchange);
+            ResponseEntity<ProblemDetail> response = problem(ErrorCode.INVALID_REQUEST, exchange);
+            ProblemDetail body = response.getBody();
+            // 공통 코드의 기본 400보다 프레임워크가 결정한 실제 4xx 상태를 우선한다.
+            body.setStatus(status.value());
+            body.setTitle(knownStatus == null ? "Request rejected" : knownStatus.getReasonPhrase());
+            body.setDetail("The request could not be processed.");
             return ResponseEntity.status(status)
                     .headers(error.getHeaders())
-                    .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-                    .body(response.getBody());
+                    .headers(response.getHeaders())
+                    .body(body);
         }
         String requestId = requestId(exchange);
         // 예상치 못한 오류는 requestId와 예외 타입으로 추적한다. 민감값이 섞일 수 있는 원문은 출력하지 않는다.
@@ -100,29 +88,13 @@ class GlobalExceptionHandler {
                 .addKeyValue("requestId", requestId)
                 .addKeyValue("path", exchange.getRequest().getPath().value())
                 .log("unhandled_request_error");
-        return problem(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Internal server error",
-                "An unexpected error occurred.",
-                ErrorCode.INTERNAL_ERROR,
-                exchange);
+        return problem(ErrorCode.INTERNAL_ERROR, exchange);
     }
 
-    private ResponseEntity<ProblemDetail> problem(
-            HttpStatusCode status,
-            String title,
-            String detail,
-            ErrorCode errorCode,
-            ServerWebExchange exchange) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
-        problem.setTitle(title);
-        problem.setType(URI.create("urn:problem:" + errorCode.name().toLowerCase(Locale.ROOT).replace('_', '-')));
-        problem.setInstance(URI.create(exchange.getRequest().getPath().value()));
-        problem.setProperty("errorCode", errorCode.name());
-        problem.setProperty("requestId", requestId(exchange));
-        return ResponseEntity.status(status)
-                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-                .body(problem);
+    private ResponseEntity<ProblemDetail> problem(ErrorCode code, ServerWebExchange exchange) {
+        var response = ApiResponses.fail(code, requestId(exchange));
+        response.getBody().setInstance(URI.create(exchange.getRequest().getPath().value()));
+        return response;
     }
 
     private String requestId(ServerWebExchange exchange) {

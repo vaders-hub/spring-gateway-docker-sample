@@ -43,6 +43,42 @@
 
 예외 메시지, stack trace, JWT, 비밀번호, 내부 클래스명은 응답에 포함하지 않습니다.
 
+## 공통 응답 생성
+
+각 모듈의 `common/api/ApiResponses`는 `success`와 `fail` 두 메서드만 제공합니다.
+`ApiResponse`는 성공 JSON 본문을 표현하는 record이며, HTTP 상태·헤더는 `ApiResponses`가 결정합니다.
+
+```java
+// 일반 성공: 200 + 기존 data/meta 본문
+return ApiResponses.success(SuccessCode.OK, result, requestId);
+
+// 토큰 발급: 200 + Cache-Control: no-store, Pragma: no-cache
+return ApiResponses.success(SuccessCode.TOKEN_ISSUED, token, requestId);
+
+// 예외 처리기 또는 Security writer: 코드에 해당하는 HTTP 상태 + ProblemDetail
+return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
+```
+
+| 정의 | 담는 정책 | 사용 범위 |
+|---|---|---|
+| `SuccessCode` | HTTP 상태, 캐시 저장 금지 여부 | `OK`(200), `CREATED`(201), `TOKEN_ISSUED`(200, no-store) |
+| `ErrorCode` | HTTP 상태, 공개 가능한 기본 title/detail | 기존 오류 코드 유지; 모든 공통 오류에 no-store, 401에 Bearer challenge |
+
+성공 코드는 내부 응답 정책 선택용이며 JSON에 새 `code`/`message` 필드를 추가하지 않습니다.
+문자열을 비교하는 대신 enum을 받아 성공 코드가 `fail`에 전달되는 실수를 컴파일 단계에서 막습니다.
+`CREATED`는 생성 API 확장용으로 제공하며 현재 사용하는 API는 없습니다. 리소스 생성 API를
+추가하면 `Location` 같은 요청별 헤더는 해당 Controller에서 추가합니다.
+
+`GlobalExceptionHandler`는 공통 오류에 요청 경로(`instance`), 필드별 검증 오류(`errors`),
+잘못된 JSON의 안전한 메시지를 덧붙입니다. 프레임워크의 405 등은 코드의 기본 400 대신
+원래 HTTP 상태를 본문의 `status`에도 반영하며 `Allow` 등 원래 헤더를 보존합니다.
+Service는 응답 팩터리를 호출하지 않고 업무 결과를 반환하거나 예외를 던집니다.
+
+인증/인가 오류는 Controller 전에 발생하므로 `SecurityProblemWriter`를 유지합니다.
+writer는 `ApiResponses.fail`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
+Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화합니다.
+Gateway의 rate-limit/프록시 오류와 Envoy 응답까지 이 팩터리로 자동 통일되는 것은 아닙니다.
+
 ## JWT와 메서드별 권한
 
 Gateway와 Backend는 서명, issuer, audience, 만료를 검증합니다.
@@ -68,7 +104,7 @@ Gateway 기본 rate-limit 429, 프록시 오류, Envoy 오류가 모두 위 Prob
 
 ## 계층 경계
 
-- `controller`: HTTP mapping, validation 시작, success envelope 조립
+- `controller`: HTTP mapping, validation 시작, `ApiResponses.success` 호출
 - `service`: use case와 업무 로직
 - `dto`: 외부 요청/응답 계약
 - `common`: 요청 추적, 공통 응답과 오류 처리

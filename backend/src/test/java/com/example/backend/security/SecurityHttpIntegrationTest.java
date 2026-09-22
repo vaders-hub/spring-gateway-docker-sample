@@ -64,14 +64,21 @@ class SecurityHttpIntegrationTest {
 
     @Test
     void insufficientScopeReturnsForbidden() throws Exception {
-        assertProblem(request("GET", PATH, token("other.scope", AUDIENCE, ISSUER, SECRET, 300), null),
-                403, "ACCESS_DENIED");
+        var response = request("GET", PATH, token("other.scope", AUDIENCE, ISSUER, SECRET, 300), null);
+        assertProblem(response, 403, "ACCESS_DENIED");
+        assertThat(response.headers().firstValue("WWW-Authenticate")).isEmpty();
     }
 
     @Test
     void signedReadTokenSucceeds() throws Exception {
-        assertThat(request("GET", PATH, token("api.read", AUDIENCE, ISSUER, SECRET, 300), null).statusCode())
-                .isEqualTo(200);
+        var response = request("GET", PATH, token("api.read", AUDIENCE, ISSUER, SECRET, 300), null);
+        assertThat(response.statusCode()).isEqualTo(200);
+        Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
+        assertThat(body.size()).isEqualTo(2);
+        assertThat(body.get("data")).isInstanceOf(Map.class);
+        Map<?, ?> meta = (Map<?, ?>) body.get("meta");
+        assertThat(meta.get("requestId")).isEqualTo("security-http-test");
+        assertThat(meta.get("timestamp")).isNotNull();
     }
 
     @Test
@@ -113,8 +120,21 @@ class SecurityHttpIntegrationTest {
 
     @Test
     void invalidDtoReturnsCommonProblem() throws Exception {
-        assertProblem(request("POST", "/echo", token("api.write", AUDIENCE, ISSUER, SECRET, 300),
-                jsonMapper.writeValueAsString(Map.of("name", "", "value", -1))), 400, "INVALID_REQUEST");
+        var response = request("POST", "/echo", token("api.write", AUDIENCE, ISSUER, SECRET, 300),
+                jsonMapper.writeValueAsString(Map.of("name", "", "value", -1)));
+        assertProblem(response, 400, "INVALID_REQUEST");
+        Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
+        assertThat(body.get("instance")).isEqualTo("/echo");
+        assertThat((List<?>) body.get("errors")).hasSize(2);
+    }
+
+    @Test
+    void malformedBodyKeepsSafeDetailAndRequestPath() throws Exception {
+        var response = request("POST", "/echo", token("api.write", AUDIENCE, ISSUER, SECRET, 300), "{");
+        assertProblem(response, 400, "INVALID_REQUEST");
+        Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
+        assertThat(body.get("detail")).isEqualTo("The request body is missing or malformed.");
+        assertThat(body.get("instance")).isEqualTo("/echo");
     }
 
     private HttpResponse<String> request(String method, String path, String token, String body) throws Exception {
@@ -140,6 +160,9 @@ class SecurityHttpIntegrationTest {
                 .startsWith("application/problem+json");
         Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
         assertThat(body.get("errorCode")).isEqualTo(code);
+        assertThat(body.get("status")).isEqualTo(status);
+        assertThat(body.containsKey("properties")).isFalse();
+        assertThat(response.headers().firstValue("Cache-Control")).contains("no-store");
         assertThat(body.get("requestId")).isEqualTo("security-http-test");
         assertThat(response.body()).doesNotContain(SECRET, DEMO_PASSWORD);
     }

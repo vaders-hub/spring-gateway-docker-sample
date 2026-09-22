@@ -74,8 +74,9 @@ class SecurityHttpIntegrationTest {
 
     @Test
     void insufficientScopeReturnsForbidden() throws Exception {
-        assertProblem(request("GET", PATH, token("other.scope", AUDIENCE, ISSUER, SECRET, 300), null),
-                403, "ACCESS_DENIED");
+        var response = request("GET", PATH, token("other.scope", AUDIENCE, ISSUER, SECRET, 300), null);
+        assertProblem(response, 403, "ACCESS_DENIED");
+        assertThat(response.headers().firstValue("WWW-Authenticate")).isEmpty();
     }
 
     @Test
@@ -127,11 +128,25 @@ class SecurityHttpIntegrationTest {
                 jsonMapper.writeValueAsString(Map.of("username", "demo", "password", DEMO_PASSWORD)));
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("Cache-Control")).contains("no-store");
+        assertThat(response.headers().firstValue("Pragma")).contains("no-cache");
         Map<?, ?> envelope = jsonMapper.readValue(response.body(), Map.class);
+        assertThat(envelope.size()).isEqualTo(2);
+        Map<?, ?> meta = (Map<?, ?>) envelope.get("meta");
+        assertThat(meta.get("requestId")).isEqualTo("security-http-test");
+        assertThat(meta.get("timestamp")).isNotNull();
         Map<?, ?> data = (Map<?, ?>) envelope.get("data");
         String issuedToken = (String) data.get("accessToken");
         assertThat(request("GET", PATH, issuedToken, null).statusCode()).isEqualTo(200);
         assertThat(request("POST", PATH, issuedToken, "{}").statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void invalidCredentialsUseSharedErrorPolicy() throws Exception {
+        var response = request("POST", "/auth/token", null,
+                jsonMapper.writeValueAsString(Map.of("username", "demo", "password", "wrong-password")));
+        assertProblem(response, 401, "INVALID_CREDENTIALS");
+        assertThat(response.headers().firstValue("WWW-Authenticate")).contains("Bearer");
+        assertThat(response.body()).doesNotContain("wrong-password");
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -179,6 +194,9 @@ class SecurityHttpIntegrationTest {
                 .startsWith("application/problem+json");
         Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
         assertThat(body.get("errorCode")).isEqualTo(code);
+        assertThat(body.get("status")).isEqualTo(status);
+        assertThat(body.containsKey("properties")).isFalse();
+        assertThat(response.headers().firstValue("Cache-Control")).contains("no-store");
         assertThat(body.get("requestId")).isEqualTo("security-http-test");
         assertThat(response.body()).doesNotContain(SECRET, DEMO_PASSWORD);
     }

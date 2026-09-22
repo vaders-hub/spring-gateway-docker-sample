@@ -1,11 +1,7 @@
 package com.example.gateway.common.error;
 
+import com.example.gateway.common.api.ApiResponses;
 import com.example.gateway.common.web.RequestContext;
-import java.util.Locale;
-import java.util.Map;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -25,38 +21,27 @@ public final class SecurityProblemWriter {
 
     public ServerAuthenticationEntryPoint authenticationEntryPoint() {
         return (exchange, exception) ->
-                write(exchange, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED);
+                write(exchange, ErrorCode.UNAUTHORIZED);
     }
 
     public ServerAccessDeniedHandler accessDeniedHandler() {
         return (exchange, exception) ->
-                write(exchange, HttpStatus.FORBIDDEN, ErrorCode.ACCESS_DENIED);
+                write(exchange, ErrorCode.ACCESS_DENIED);
     }
 
     private Mono<Void> write(
             ServerWebExchange exchange,
-            HttpStatus status, ErrorCode errorCode) {
+            ErrorCode errorCode) {
         if (exchange.getResponse().isCommitted()) {
             return Mono.empty();
         }
         String requestId = exchange.getRequest().getHeaders().getFirst(RequestContext.REQUEST_ID_HEADER);
         var response = exchange.getResponse();
-        // Boot의 JsonMapper로 직렬화하여 헤더/값을 직접 JSON 문자열에 이어붙이지 않는다.
-        byte[] body = jsonMapper.writeValueAsBytes(Map.of(
-                "type", "urn:problem:" + errorCode.name().toLowerCase(Locale.ROOT).replace('_', '-'),
-                "title", status.getReasonPhrase(),
-                "status", status.value(),
-                "detail", status == HttpStatus.UNAUTHORIZED
-                        ? "Authentication is required."
-                        : "Access to this resource is denied.",
-                "errorCode", errorCode.name(),
-                "requestId", requestId == null ? "unknown" : requestId));
-        response.setStatusCode(status);
-        response.getHeaders().setContentType(MediaType.APPLICATION_PROBLEM_JSON);
-        response.getHeaders().setCacheControl("no-store");
-        if (status == HttpStatus.UNAUTHORIZED) {
-            response.getHeaders().set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
-        }
+        var entity = ApiResponses.fail(errorCode, requestId);
+        // Boot의 JsonMapper가 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화한다.
+        byte[] body = jsonMapper.writeValueAsBytes(entity.getBody());
+        response.setStatusCode(entity.getStatusCode());
+        response.getHeaders().putAll(entity.getHeaders());
         return response.writeWith(Mono.just(response.bufferFactory().wrap(body)));
     }
 }
