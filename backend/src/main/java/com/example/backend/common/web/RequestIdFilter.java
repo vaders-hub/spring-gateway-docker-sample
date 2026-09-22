@@ -16,6 +16,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+// 1·2단계: Servlet 요청 진입 시 안전한 requestId를 응답 헤더와 request attribute에 둔다.
+// Gateway에서 전달한 유효 ID를 유지해 양쪽 로그를 연결한다.
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 class RequestIdFilter extends OncePerRequestFilter {
@@ -39,6 +41,7 @@ class RequestIdFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         }
+        // 예외가 나도 요청 종료 로그를 남긴다. WebFlux doFinally와 달리 Servlet의 동기 호출 경계이다.
         finally {
             long durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
             log.atInfo()

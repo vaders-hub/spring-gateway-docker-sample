@@ -1,3 +1,5 @@
+# 4·6단계: staging profile로 데모 발급기를 끄고 외부 설정을 분리한다.
+# issuer 문자열 변경만으로 OIDC/JWK 연동이 되지는 않는다. decoder는 여전히 HS256이다.
 apiVersion: v1
 kind: ConfigMap
 metadata:

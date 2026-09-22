@@ -1,8 +1,11 @@
+# 1단계: Gateway/Backend/Redis를 app-net으로 연결하는 로컬 실행 구성.
+# .env 값은 Compose가 치환해 환경변수로 전달하며 Spring이 .env를 직접 읽는 것은 아니다.
 services:
   gateway:
     build:
       context: ./gateway
     container_name: local-gateway
+    # 호스트에는 Gateway만 공개한다. backend/redis 주소는 아래 서비스 이름으로 해석된다.
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true
@@ -20,6 +23,7 @@ services:
         -XX:InitialRAMPercentage=25.0
         -XX:MaxRAMPercentage=75.0
         -Duser.timezone=UTC
+      # 컨테이너 내부의 localhost는 자기 자신이므로 app-net의 서비스 DNS를 사용한다.
       BACKEND_URL: http://backend:8081
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -43,6 +47,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
+    # 최초 시작 순서를 health 상태로 조정한다. 실행 중 의존 서비스 장애를 복구하는 정책은 아니다.
     depends_on:
       backend:
         condition: service_healthy
@@ -50,11 +55,13 @@ services:
         condition: service_healthy
     networks:
       - app-net
+    # Spring 종료 대기 20초보다 길게 두어 처리 중 요청의 종료 시간을 확보한다.
     stop_grace_period: 25s
 
   redis:
     image: redis:7.4-alpine
     container_name: local-redis
+    # 요청 제한 실습용 휘발성 Redis: 재생성 후 이전 버킷 상태를 보존하지 않는다.
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     user: "999:1000"
     read_only: true
@@ -81,6 +88,7 @@ services:
       context: ./backend
     container_name: local-backend
     expose:
+      # expose는 호스트 포트를 열거나 접근 제어를 강제하는 설정이 아니다.
       - "8081"
     read_only: true
     tmpfs:

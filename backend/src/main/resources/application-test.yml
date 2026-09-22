@@ -1,3 +1,5 @@
+# 6단계: test profile에서 공통 application.yml에 덮어쓰는 설정.
+# 테스트 실행용 tracing export 비활성화 설정.
 management:
   tracing:
     export:

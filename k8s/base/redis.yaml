@@ -1,3 +1,5 @@
+# 3~4단계: 여러 Gateway Pod가 사용자별 요청 제한 버킷을 공유하는 Redis.
+# 저장 기능은 꺼져 있고 emptyDir은 Pod 삭제 시 사라지므로 영속 DB 구성이 아니다.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -41,6 +43,7 @@ spec:
             runAsNonRoot: true
             runAsUser: 999
             runAsGroup: 1000
+          # PING 응답으로 Service 트래픽 수신 가능 여부를 확인한다.
           readinessProbe:
             exec:
               command: ["redis-cli", "ping"]
@@ -56,6 +59,7 @@ spec:
               mountPath: /data
             - name: tmp
               mountPath: /tmp
+      # emptyDir은 같은 Pod의 컨테이너 재시작 동안 유지되지만 Pod 삭제/교체 시 사라진다.
       volumes:
         - name: data
           emptyDir: {}
@@ -67,6 +71,7 @@ kind: Service
 metadata:
   name: redis
 spec:
+  # ClusterIP Service 이름 redis가 Gateway REDIS_HOST와 연결된다.
   selector:
     app: redis
   ports:

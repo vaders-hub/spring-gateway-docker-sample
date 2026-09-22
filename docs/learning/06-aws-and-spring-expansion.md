@@ -127,3 +127,21 @@ LocalStack/EKS Anywhere 같은 추가 도구도 현재 목표에는 필수가 �
 - [ ] 설정·Secret·권한·트랜잭션의 경계가 서로 다름을 설명한다.
 - [ ] 현재 구현된 기능과 후속 과제를 구분해 기록했다.
 - [ ] 로컬 성공을 운영 EKS/Oracle 검증 완료라고 표현하지 않는다.
+
+## 구조·코드 이해 체크
+
+실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
+
+**읽을 파일:** [패키지 구조](../package-structure.md) · [영속성 설계](../persistence-policy.md) · [장애 정책](../resilience-policy.md) · [Gateway 속성 검증](../../gateway/src/main/java/com/example/gateway/config/properties/SecurityProperties.java) · [Backend Service](../../backend/src/main/java/com/example/backend/service/HelloService.java)
+
+- [ ] kind의 Kubernetes 공통 개념과 EKS의 IAM/VPC/ALB/EBS 등 별도 검증 대상을 대응시켜 설명한다.
+- [ ] Gateway API·Spring Cloud Gateway·AWS API Gateway의 책임을 구분하며 로컬 실행이 AWS 리소스를 만든 것은 아님을 설명한다.
+- [ ] 환경변수 → application.yml/profile → ConfigurationProperties 검증 → Bean 생성 → RuntimeProfileGuard 경계를 추적했다.
+- [ ] Controller의 HTTP/검증 책임, Service의 업무 책임, DTO와 향후 Entity/Repository/Mapper의 책임을 구분한다.
+- [ ] 현재 HS256 공유키 검증과 향후 OIDC/JWK 도입의 차이를 설명한다. issuer 문자열 변경만으로 외부 IdP 연동이 되지 않는다.
+- [ ] Oracle/JPA/MyBatis/migration/혼합 트랜잭션은 후속 구현임을 구분하고, 실제 DB rollback 검증이 필요한 이유를 설명한다.
+- [ ] 현재 구현·실제로 확인한 기능·미구현 과제를 나누어 기록하고 다음에는 관측성/정책/저장소 중 한 과제만 선택한다.
+
+**학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
+
+**다음 학습:** 선택한 확장 과제를 작은 단위로 구현하고 같은 요청 흐름·설정·장애·복구 기준으로 검증합니다. 종료/재개에는 [7번 문서](07-troubleshooting-and-cleanup.md)를 사용합니다.

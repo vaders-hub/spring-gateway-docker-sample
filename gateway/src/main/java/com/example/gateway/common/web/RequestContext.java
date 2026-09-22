@@ -11,6 +11,7 @@ public final class RequestContext {
     private RequestContext() {
     }
 
+    // 클라이언트 요청 ID는 길이/문자 범위를 제한하고 부적합하면 새 UUID로 대체한다. 인증 식별자는 아니다.
     public static String normalizeRequestId(String value) {
         return value != null && SAFE_REQUEST_ID.matcher(value).matches()
                 ? value : UUID.randomUUID().toString();

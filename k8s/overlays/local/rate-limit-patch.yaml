@@ -1,3 +1,5 @@
+# 1·4단계: app-config의 burst만 지정하는 학습용 patch.
+# 현재 base와 같은 값이며, 이 값을 바꾸고 Gateway를 재기동하면 429 발생 차이를 비교할 수 있다.
 apiVersion: v1
 kind: ConfigMap
 metadata:

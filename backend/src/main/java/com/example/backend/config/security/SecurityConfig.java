@@ -24,6 +24,8 @@ class SecurityConfig {
             HttpSecurity http,
             ObservabilityProperties observabilityProperties,
             SecurityProblemWriter problems) throws Exception {
+        // 1단계: 내부 네트워크나 X-Gateway-User만 신뢰하지 않고 Backend도 Bearer JWT를 검증한다.
+        // 인가 경로는 Gateway가 /api를 제거한 이후의 /hello, /echo 기준이다.
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)

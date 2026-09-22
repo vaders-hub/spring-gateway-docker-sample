@@ -1,3 +1,4 @@
+# 3~4단계: Spring Gateway 배포와 NodePort 진입점. JWT/Redis 제한/Backend 라우팅은 앱이 처리한다.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,11 +6,13 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 3
+  # 4단계: 새 Pod가 Ready가 될 때까지 기존 가용 수를 유지하며 하나를 추가할 여유가 필요하다.
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
+  # Deployment selector와 template label, 아래 Service selector가 같은 앱을 가리켜야 한다.
   selector:
     matchLabels:
       app: gateway
@@ -19,6 +22,7 @@ spec:
         app: gateway
     spec:
       automountServiceAccountToken: false
+      # preStop 5초와 Spring 종료 대기 20초를 감안한 총 종료 유예시간이다.
       terminationGracePeriodSeconds: 30
       securityContext:
         seccompProfile:
@@ -26,7 +30,9 @@ spec:
       containers:
         - name: gateway
           image: local-gateway:dev
+          # kind load로 노드에 넣은 이미지를 사용한다. 변경 배포에서는 새 태그로 구분한다.
           imagePullPolicy: IfNotPresent
+          # 일반값은 ConfigMap에서, 비밀값은 env의 명시적 Secret key 참조에서 가져온다.
           envFrom:
             - configMapRef:
                 name: app-config
@@ -49,6 +55,7 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          # requests는 배치 자원 기준이고 limits는 실행 상한이다. 복제본/rollout 증가 시 노드 여유를 확인한다.
           resources:
             requests:
               cpu: 100m
@@ -64,18 +71,21 @@ spec:
             runAsNonRoot: true
             runAsUser: 10001
             runAsGroup: 10001
+          # 시작 probe 성공 전에는 readiness/liveness 평가를 유예해 느린 JVM 시작 시간을 확보한다.
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
               port: http
             failureThreshold: 30
             periodSeconds: 2
+          # 실패하면 Service의 일반 트래픽 대상에서 제외한다. 이 probe 자체가 컨테이너를 재시작하지 않는다.
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: http
             periodSeconds: 5
             timeoutSeconds: 2
+          # 프로세스 생존 검사가 연속 실패하면 재시작한다. Redis 장애는 Gateway readiness에서 판단한다.
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -89,6 +99,7 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+      # 읽기 전용 루트 파일시스템에서 JVM이 쓸 /tmp만 Pod 수명의 임시 볼륨으로 제공한다.
       volumes:
         - name: tmp
           emptyDir: {}
@@ -105,4 +116,5 @@ spec:
     - name: http
       port: 8080
       targetPort: http
+      # kind-config.yaml의 containerPort:30080과 연결되어 호스트 8080으로 접근한다.
       nodePort: 30080

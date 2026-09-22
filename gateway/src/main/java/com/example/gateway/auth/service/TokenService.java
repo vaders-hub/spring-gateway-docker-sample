@@ -41,6 +41,7 @@ public class TokenService {
     }
 
     public TokenResponse issue(TokenRequest request) {
+        // 사용자명과 비밀번호를 둘 다 비교한 뒤 실패를 동일 예외로 처리한다. 실제 사용자 DB 인증은 후속 과제이다.
         boolean usernameMatches = secureEquals(request.username(), demoUsername);
         boolean passwordMatches = secureEquals(request.password(), demoPassword);
         if (!(usernameMatches & passwordMatches)) {
@@ -49,6 +50,8 @@ public class TokenService {
 
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plusSeconds(ttlSeconds);
+        // subject는 인증 사용자/Redis 버킷 key가 되고 scope는 GET·쓰기 API 인가에 사용된다.
+        // issuer·audience·만료는 양쪽 JwtConfig의 검증 조건과 일치해야 한다.
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(issuer)
                 .subject(request.username())

@@ -1,6 +1,9 @@
+# 2단계: 기본 Compose에 함께 지정하는 관측 overlay.
+# local 앱의 scrape를 공개하고 observability profile로 Prometheus/Grafana를 추가한다.
 services:
   gateway:
     environment:
+      # 기본 local profile에서만 익명 scrape를 허용한다. 운영 환경에는 복사하지 않는다.
       PROMETHEUS_PUBLIC: "true"
 
   backend:
@@ -56,6 +59,7 @@ services:
     networks:
       - app-net
 
+# down은 named volume을 보존한다. down -v는 수집 데이터와 Grafana 저장 내용을 삭제한다.
 volumes:
   prometheus-data:
   grafana-data:

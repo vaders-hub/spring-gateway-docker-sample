@@ -1,3 +1,6 @@
+# 6단계: dev profile에서 공통 application.yml에 덮어쓰는 설정.
+# 개발용 DEBUG 로그와 tracing sampling. 공개 Prometheus는 dev에서 guard가 금지한다.
+# 데모 토큰 발급은 이 profile과 enabled 설정을 함께 만족해야 활성화된다.
 app:
   security:
     demo-user:

@@ -23,6 +23,8 @@ public class HelloController {
         this.helloService = helloService;
     }
 
+    // 1단계: Gateway의 /api/hello가 StripPrefix 이후 /hello로 도달한다.
+    // 사용자는 X-Gateway-User가 아니라 Backend Security가 검증한 Principal에서 얻는다.
     @GetMapping("/hello")
     public ApiResponse<HelloResponse> hello(
             @RequestAttribute(RequestContext.REQUEST_ID) String requestId,
@@ -32,6 +34,7 @@ public class HelloController {
                 requestId);
     }
 
+    // @Valid가 EchoRequest 제약을 검사한다. 실패하면 Service 호출 전 400 오류로 처리된다.
     @PostMapping("/echo")
     public ApiResponse<EchoResponse> echo(
             @Valid @RequestBody EchoRequest request,

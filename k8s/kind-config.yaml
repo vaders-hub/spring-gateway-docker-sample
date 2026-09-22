@@ -1,3 +1,5 @@
+# 3단계: Docker 컨테이너 한 개를 Kubernetes control-plane 노드로 사용한다.
+# 호스트 loopback:8080 → kind 노드:30080 → Gateway NodePort로 이어진다.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:

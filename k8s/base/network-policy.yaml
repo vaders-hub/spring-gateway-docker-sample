@@ -1,8 +1,12 @@
+# 08 보충: Backend/Redis의 ingress를 같은 namespace의 Gateway Pod에 허용한다.
+# 집행에는 지원 CNI가 필요하고 여러 정책의 허용 규칙은 가산적이다.
+# egress·TLS·JWT 인증을 대신하지 않으며 허용/차단 경로를 대조해 실제 동작을 검증한다.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: backend-from-gateway-only
 spec:
+  # 보호 대상 Pod: backend label. 아래 from은 이 대상에 접근할 출발 Pod를 고른다.
   podSelector:
     matchLabels:
       app: backend
@@ -13,6 +17,7 @@ spec:
         - podSelector:
             matchLabels:
               app: gateway
+      # namespaceSelector가 없으므로 같은 namespace의 Gateway만 선택한다.
       ports:
         - protocol: TCP
           port: 8081
@@ -22,6 +27,7 @@ kind: NetworkPolicy
 metadata:
   name: redis-from-gateway-only
 spec:
+  # 보호 대상 Pod: redis label. Gateway ingress 자체는 이 정책의 대상이 아니다.
   podSelector:
     matchLabels:
       app: redis

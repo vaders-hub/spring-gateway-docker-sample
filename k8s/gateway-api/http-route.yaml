@@ -1,9 +1,12 @@
+# 5단계: /api와 /auth/token만 Spring Gateway Service로 전달한다.
+# Backend 직접 연결을 피해야 Spring Gateway의 사용자별 요청 제한 경로를 유지할 수 있다.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: spring-gateway
   namespace: gateway-lab
 spec:
+  # edge-gateway의 http listener에 연결한다. Accepted/ResolvedRefs 상태도 함께 확인한다.
   parentRefs:
     - name: edge-gateway
       sectionName: http

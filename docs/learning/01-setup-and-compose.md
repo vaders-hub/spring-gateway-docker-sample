@@ -67,9 +67,9 @@ docker compose config --quiet
 기존 파일을 덮어쓰지 않습니다. Bash 버전에는 강제 덮어쓰기 옵션을 제공하지 않습니다.
 `.env`는 Git 제외 대상이지만 암호화된 보관소는 아닙니다.
 
-주의: 현재 Compose의 `8080:8080`은 loopback 전용 바인딩이 아닙니다.
-개인 로컬 학습 환경에서만 사용하고 Windows 방화벽/공유 네트워크 노출을 확인하세요.
-kind의 8080과 관측 포트는 별도의 loopback 바인딩 설정을 사용합니다.
+현재 Compose의 `127.0.0.1:8080:8080`은 Gateway를 호스트 loopback에 바인딩합니다.
+Backend/Redis는 호스트 포트를 공개하지 않으며 같은 Compose 네트워크에서 서비스 이름으로 접근합니다.
+kind의 8080과 관측 포트도 각각 loopback 바인딩 설정을 사용합니다.
 
 ## 1-1. 기동
 
@@ -145,3 +145,24 @@ lab_api POST /api/echo '{"name":"","value":-1}' status
 제거는 `docker compose down`이며 다른 프로젝트를 대상으로 하는 전역 prune은 사용하지 않습니다.
 
 참고: [Spring Cloud Gateway RequestRateLimiter](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/gatewayfilter-factories/requestratelimiter-factory.html)
+
+## 구조·코드 이해 체크
+
+실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
+
+**읽을 파일:** [Compose](../../docker-compose.yml) · [Gateway Dockerfile](../../gateway/Dockerfile) · [Backend Dockerfile](../../backend/Dockerfile) · [Gateway 설정](../../gateway/src/main/resources/application.yml) · [패키지 책임](../package-structure.md) · [응답 계약](../api-contract.md)
+
+- [ ] Client → Gateway:8080 → Backend:8081 경로와 Gateway → Redis:6379 요청 제한 경로를 그릴 수 있다.
+- [ ] `ports`의 호스트 공개와 `expose`의 내부 포트 표시를 구분하고, 컨테이너 간 주소가 `localhost` 대신 서비스 이름인 이유를 설명한다.
+- [ ] Dockerfile의 Gradle 빌드 단계와 JRE 실행 단계를 구분하고, `bootJar` 성공과 테스트 통과가 다른 확인임을 설명한다.
+- [ ] `.env` → Compose environment → application.yml → ConfigurationProperties로 설정 한 개가 전달되는 과정을 추적했다.
+- [ ] `AuthController → TokenService`의 데모 JWT 발급과 `SecurityConfig/JwtConfig`의 검증을 구분하고, issuer·audience·만료·scope 역할을 설명한다.
+- [ ] `RequestHeadersFilter`가 인증 Principal로 사용자 헤더를 덮어쓰며 Backend는 헤더 대신 재검증한 JWT Principal을 사용하는 이유를 설명한다.
+- [ ] `principalKeyResolver → RequestRateLimiter → StripPrefix=1 → Backend Controller → Service → DTO`를 실제 파일에서 찾았다.
+- [ ] 200·401·400·429가 발생한 위치를 구분한다. 400은 인증/제한을 통과한 뒤 DTO 검증에서, 429는 Backend 도달 전에 발생한다.
+- [ ] readiness에 Redis가 포함되는 이유와 liveness에서 외부 의존성을 제외한 이유를 설명한다.
+- [ ] `RequestIdWebFilter/RequestIdFilter`의 요청 ID를 양쪽 로그 및 응답과 연결하고, 요청 ID가 인증이나 분산 trace 자체는 아님을 설명한다.
+
+**학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
+
+**다음 학습:** 위 요청 흐름을 설명할 수 있으면 [2단계](02-observability.md)로 진행합니다. Security/Filter의 상세 API는 이후 다시 읽어도 됩니다.

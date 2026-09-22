@@ -1,4 +1,7 @@
+# 2단계: 앱의 Actuator 지표를 주기적으로 가져온다.
+# 서비스 이름은 Compose 네트워크 DNS이며 localhost는 Prometheus 컨테이너 자신이다.
 global:
+  # 15초 간격 샘플을 모으므로 호출 직후 rate/p95가 비거나 불안정할 수 있다.
   scrape_interval: 15s
   evaluation_interval: 15s
 

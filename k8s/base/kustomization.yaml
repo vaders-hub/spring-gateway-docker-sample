@@ -1,3 +1,5 @@
+# 3단계: 공통 리소스 목록. namespace와 환경별 차이는 overlay에서 조합한다.
+# 실제 비밀값은 포함하지 않으며 gateway-demo-secret은 별도 스크립트로 생성한다.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

@@ -1,3 +1,6 @@
+# 6단계: test profile에서 공통 application.yml에 덮어쓰는 설정.
+# 테스트 실행용 tracing export 비활성화 설정.
+# 데모 토큰 발급은 이 profile과 enabled 설정을 함께 만족해야 활성화된다.
 app:
   security:
     demo-user:

@@ -125,3 +125,22 @@ readiness 200을 확인한 뒤 [1단계 JWT/API 절차](01-setup-and-compose.md)
 기본 단일 노드 클러스터는 다중 AZ 고가용성을 재현하지 않습니다. Redis는 persistence가
 꺼져 있고 emptyDir을 사용하므로 복구 후 데이터 유지가 보장되지 않습니다.
 kind는 그대로 유지한 채 4단계로 넘어갑니다. 종료/재개는 [정리 가이드](07-troubleshooting-and-cleanup.md)를 참고합니다.
+
+## 구조·코드 이해 체크
+
+실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
+
+**읽을 파일:** [kind 포트](../../k8s/kind-config.yaml) · [local overlay](../../k8s/overlays/local/kustomization.yaml) · [Gateway](../../k8s/base/gateway.yaml) · [Backend](../../k8s/base/backend.yaml) · [Redis](../../k8s/base/redis.yaml) · [ConfigMap](../../k8s/base/configmap.yaml) · [Secret 주입 스크립트](../../scripts/apply-local-secret.sh)
+
+- [ ] Compose service의 실행·연결 책임이 Deployment/Pod와 Service로 나뉘는 이유를 설명한다. Namespace만으로 통신이 차단되지는 않는다.
+- [ ] `127.0.0.1:8080 → kind 노드:30080 → Gateway Service → Ready Pod:8080`을 포트 설정과 연결한다.
+- [ ] Service selector와 Pod label, port/targetPort, EndpointSlice의 관계를 설명하고 Backend/Redis의 Service DNS를 찾았다.
+- [ ] Docker 호스트에 빌드한 이미지와 kind 노드 이미지 저장소를 구분하고 `kind load`가 필요한 이유를 설명한다.
+- [ ] 일반값 ConfigMap과 비밀값 Secret이 Deployment를 거쳐 환경변수로 들어오는 경로를 찾았다. Secret base64를 암호화로 오해하지 않는다.
+- [ ] `local` lifecycle profile과 `kubernetes` 배포 플랫폼을 구분하고, ConfigMap 변경 후 기존 프로세스 환경변수가 자동 갱신되지 않음을 설명한다.
+- [ ] startup/readiness/liveness probe 역할을 구분하고 Running·Ready·Deployment Available의 차이를 설명한다.
+- [ ] requests/limits 및 emptyDir의 의미를 설명하고 Redis Pod 교체 시 데이터 유지가 보장되지 않음을 이해했다.
+
+**학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
+
+**다음 학습:** [08 NetworkPolicy 검증](08-network-policy-validation.md)을 3단계 보충으로 진행한 뒤 [4단계](04-operations-and-recovery.md)로 이동합니다.

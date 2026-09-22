@@ -1,8 +1,11 @@
+# 3~4단계: 비밀이 아닌 공통 환경변수. JWT_SECRET/데모 자격증명은 별도 Secret으로 주입한다.
+# 환경변수로 받은 값은 ConfigMap을 수정해도 기존 프로세스에 자동 반영되지 않는다.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config
 data:
+  # lifecycle profile은 정확히 하나 선택한다. 플랫폼 이름을 추가 profile로 붙이지 않는다.
   SPRING_PROFILES_ACTIVE: local
   APP_ENVIRONMENT: local
   DEPLOYMENT_PLATFORM: kubernetes
@@ -10,6 +13,7 @@ data:
     -XX:InitialRAMPercentage=25.0
     -XX:MaxRAMPercentage=75.0
     -Duser.timezone=UTC
+  # 같은 namespace의 Service DNS. Pod 내부 localhost로 다른 Pod에 접근할 수 없다.
   BACKEND_URL: http://backend:8081
   REDIS_HOST: redis
   REDIS_PORT: "6379"
@@ -33,4 +37,5 @@ data:
   SERVER_TOMCAT_THREADS_MIN_SPARE: "5"
   TRACING_SAMPLING_PROBABILITY: "1.0"
   OTEL_EXPORT_ENABLED: "false"
+  # Compose 관측 overlay와 달리 kind 기본 구성은 scrape에도 인증을 요구한다.
   PROMETHEUS_PUBLIC: "false"

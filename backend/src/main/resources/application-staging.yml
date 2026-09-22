@@ -1,3 +1,5 @@
+# 6단계: staging profile에서 공통 application.yml에 덮어쓰는 설정.
+# 운영 전 검증용 INFO/ECS 구조화 로그. 비밀값은 외부에서 주입한다.
 logging:
   level:
     root: INFO

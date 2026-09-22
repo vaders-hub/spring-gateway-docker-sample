@@ -117,3 +117,22 @@ kind를 생성하기 전에 8080을 비웁니다. 위 `down`은 volume을 지우
 [Grafana datasource](https://grafana.com/docs/grafana/latest/datasources/prometheus/),
 [Spring Boot metrics](https://docs.spring.io/spring-boot/reference/actuator/metrics.html),
 [Gateway metrics filter](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/global-filters.html)
+
+## 구조·코드 이해 체크
+
+실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
+
+**읽을 파일:** [관측 Compose](../../docker-compose.observability.yml) · [scrape 설정](../../observability/prometheus.yml) · [Grafana datasource](../../observability/grafana/provisioning/datasources/prometheus.yml) · [Gateway 계측](../../gateway/src/main/resources/application.yml) · [Backend 계측](../../backend/src/main/resources/application.yml)
+
+- [ ] 앱의 `/actuator/prometheus` → Prometheus 수집 → Grafana 조회 경로를 설명하고, Grafana가 앱에 직접 지표를 요청하는 구조가 아님을 이해했다.
+- [ ] Compose overlay가 기본 서비스 환경변수를 합치는 방식과 `observability` profile로 추가되는 서비스를 찾았다.
+- [ ] `up=1`은 scrape 성공이며 업무 API 정상 동작을 모두 보장하지 않는다는 점을 설명한다.
+- [ ] 정상 요청과 Gateway에서 거절한 401 요청을 비교해 Gateway/Backend HTTP 지표 및 route 지표의 차이를 설명한다.
+- [ ] counter 증가량, rate, 평균 지연, histogram 기반 p95를 구분하고 샘플 부족/무요청 시 결과를 해석한다.
+- [ ] 건강 검사도 HTTP 지표에 포함됨을 확인하고 API 분석 시 실제 `uri` label을 보고 필터링한다.
+- [ ] requestId로 로그를 연결하고 logs/metrics/traces 역할을 구분한다. 현재 trace 저장소와 완성 dashboard는 기본 제공되지 않는다.
+- [ ] 익명 scrape 허용은 local 학습 설정임을 이해하고, named volume과 `down`/`down -v`의 데이터 보존 차이를 설명한다.
+
+**학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
+
+**다음 학습:** 관측 Compose를 종료해 8080을 비운 뒤 [3단계](03-kind-kubernetes.md)로 넘어갑니다.

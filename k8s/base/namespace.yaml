@@ -1,3 +1,4 @@
+# 3단계: 프로젝트 리소스를 묶는 namespace. namespace만으로 네트워크가 격리되지는 않는다.
 apiVersion: v1
 kind: Namespace
 metadata:

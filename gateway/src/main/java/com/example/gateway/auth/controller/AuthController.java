@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 
+// 1단계: 데모 인증 HTTP 진입점. profile과 enabled 조건으로 local/dev/test에서만 Bean을 만든다.
+// 운영 OIDC 서버를 구현한 것이 아니며 입력 검증 후 발급 책임은 TokenService에 위임한다.
 @RestController
 @Profile({"local", "dev", "test"})
 @RequestMapping("/auth")
@@ -37,6 +39,7 @@ public class AuthController {
             ServerWebExchange exchange) {
         String requestId = exchange.getRequest().getHeaders()
                 .getFirst(RequestContext.REQUEST_ID_HEADER);
+        // 토큰 응답은 브라우저/프록시 캐시에 남기지 않도록 no-store/no-cache를 지정한다.
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .header("Pragma", "no-cache")

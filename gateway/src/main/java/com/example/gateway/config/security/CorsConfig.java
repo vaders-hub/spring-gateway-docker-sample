@@ -12,6 +12,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 class CorsConfig {
     @Bean
     UrlBasedCorsConfigurationSource corsConfigurationSource(SecurityProperties properties) {
+        // 브라우저의 허용 Origin/메서드/헤더 정책이다. JWT 인증이나 서버 간 접근 제어를 대신하지 않는다.
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.cors().allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
@@ -19,6 +20,7 @@ class CorsConfig {
                 "Authorization",
                 "Content-Type",
                 RequestContext.REQUEST_ID_HEADER));
+        // 브라우저 JavaScript가 응답의 requestId를 읽어 문의/로그 추적에 사용할 수 있게 한다.
         configuration.setExposedHeaders(List.of(RequestContext.REQUEST_ID_HEADER));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(properties.cors().maxAge().toSeconds());

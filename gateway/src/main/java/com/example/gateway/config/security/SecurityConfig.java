@@ -24,6 +24,8 @@ class SecurityConfig {
             ServerHttpSecurity http,
             ObservabilityProperties observabilityProperties,
             SecurityProblemWriter problems) {
+        // 1단계: 세션/로그인 폼 대신 매 요청의 Bearer JWT로 인증한다.
+        // 인가가 실패하면 route filter와 Backend까지 진행하지 않으므로 지표 수집 범위도 달라진다.
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
@@ -44,6 +46,7 @@ class SecurityConfig {
                     else {
                         authorize.pathMatchers("/actuator/prometheus").authenticated();
                     }
+                    // read/write scope로 HTTP 동작을 구분한다. 토큰은 있으나 scope가 부족하면 403이다.
                     authorize.pathMatchers(HttpMethod.GET, "/api/**").access(hasScope("api.read"));
                     authorize.pathMatchers(HttpMethod.HEAD, "/api/**").access(hasScope("api.read"));
                     authorize.pathMatchers(HttpMethod.POST, "/api/**").access(hasScope("api.write"));

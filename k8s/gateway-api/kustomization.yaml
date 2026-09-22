@@ -1,3 +1,4 @@
+# 5단계: 기본 앱과 Envoy CRD/controller 설치 후 선택 적용하는 진입 리소스 모음.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Optional resources: apply only after the base and Envoy Gateway CRDs/controller.

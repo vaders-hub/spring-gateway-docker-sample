@@ -1,3 +1,5 @@
+# 4·6단계: 동일 이미지에 namespace/복제본/설정 차이를 합치는 렌더링 실습.
+# 별도 Secret과 토큰 발급 신뢰 구성이 필요하며 local처럼 바로 기동하는 절차는 아니다.
 # Render-only learning example: supply a separate Secret and trusted JWT issuer before deployment.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

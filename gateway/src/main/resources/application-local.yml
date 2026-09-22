@@ -1,3 +1,6 @@
+# 6단계: local profile에서 공통 application.yml에 덮어쓰는 설정.
+# 로컬 학습용 DEBUG 로그와 tracing sampling. 수집 서버/export 활성화는 별도 설정이다.
+# 데모 토큰 발급은 이 profile과 enabled 설정을 함께 만족해야 활성화된다.
 app:
   security:
     demo-user:

@@ -1,3 +1,5 @@
+# 5단계: Envoy 프록시 Service를 ClusterIP로 생성하도록 지정하는 구현별 설정.
+# 로컬 진입은 kubectl port-forward를 사용하며 클라우드 LoadBalancer는 생성하지 않는다.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:

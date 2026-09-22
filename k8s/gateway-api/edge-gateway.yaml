@@ -1,3 +1,5 @@
+# 5단계: GatewayClass/EnvoyProxy를 참조해 HTTP listener를 선언한다.
+# 설정은 컨트롤러가 반영하고 실제 HTTP 트래픽은 생성된 Envoy Proxy가 전달한다.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -14,6 +16,7 @@ spec:
     - name: http
       protocol: HTTP
       port: 80
+      # 같은 namespace의 HTTPRoute만 이 listener에 연결하도록 범위를 제한한다.
       allowedRoutes:
         namespaces:
           from: Same

@@ -30,6 +30,7 @@ class JwtConfig {
                 .withSecretKey(jwtSecretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+        // 서명만 맞는 토큰도 다른 API용일 수 있다. audience와 기본 issuer/시간 검증을 함께 적용한다.
         OAuth2TokenValidator<Jwt> audienceValidator = jwt ->
                 jwt.getAudience() != null && jwt.getAudience().contains(properties.audience())
                         ? OAuth2TokenValidatorResult.success()

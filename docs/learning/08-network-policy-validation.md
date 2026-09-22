@@ -89,3 +89,21 @@ kind 기본 CNI 비활성화와 호환 CNI 설치 계획을 먼저 정합니다.
 - [ ] DNS 실패와 TCP 차단을 구분했다.
 - [ ] 집행 확인 / 차단 미확인 / 판정 불가 중 하나를 기록했다.
 - [ ] 임시 Pod가 정리되었고 앱 설정은 바꾸지 않았다.
+
+## 구조·코드 이해 체크
+
+실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
+
+**읽을 파일:** [NetworkPolicy](../../k8s/base/network-policy.yaml) · [Gateway label](../../k8s/base/gateway.yaml) · [Backend Service](../../k8s/base/backend.yaml) · [Redis Service](../../k8s/base/redis.yaml)
+
+- [ ] `spec.podSelector`는 보호 대상 Backend/Redis이고 `ingress.from.podSelector`는 접근을 허용할 같은 namespace의 Gateway임을 설명한다.
+- [ ] 두 정책의 TCP 8081/6379와 Service targetPort/Pod label을 연결하고 ingress 방향만 제한한다는 범위를 설명한다.
+- [ ] 여러 NetworkPolicy의 허용 규칙은 가산적임을 이해하고 객체 생성 성공과 지원 CNI의 실제 집행을 구분한다.
+- [ ] 실제 Gateway의 허용 경로 → 임시 Pod의 DNS 확인 → 비허용 연결 시도 → 허용 경로 재확인 순서가 필요한 이유를 설명한다.
+- [ ] HTTP 401/403도 네트워크 연결 성공 증거이며 timeout만으로 정책 차단을 확정할 수 없음을 설명한다.
+- [ ] 임시 Pod에 `app=gateway` label을 붙이지 않는 이유와 trap이 해당 임시 Pod만 정리하는 범위를 설명한다.
+- [ ] 관찰 결과를 집행 확인/차단 미확인/판정 불가 중 하나로 기록하고, 사용자 인증·TLS·전체 egress까지 검증했다고 확대하지 않는다.
+
+**학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
+
+**다음 학습:** 이 문서는 3단계 보충입니다. 결과를 기록한 뒤 [4단계](04-operations-and-recovery.md)로 진행하며, CNI 변경이 필요하면 별도 실습으로 계획합니다.

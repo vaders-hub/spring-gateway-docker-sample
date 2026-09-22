@@ -188,3 +188,23 @@ local Secret 생성 스크립트도 staging에는 적용되지 않습니다.
 [Redis fail-closed / CircuitBreaker / Retry 설계](../resilience-policy.md)를 먼저 읽고,
 정책을 선택한 뒤 별도 구현합니다. 현재 route에는 CircuitBreaker/Retry를 추가하지 않았습니다.
 연결 거절·응답 지연·HTTP 5xx를 분리해서 재현하고, 쓰기 요청의 중복 실행 위험을 먼저 정합니다.
+
+## 구조·코드 이해 체크
+
+실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
+
+**읽을 파일:** [Gateway 배포](../../k8s/base/gateway.yaml) · [Backend 배포](../../k8s/base/backend.yaml) · [ConfigMap](../../k8s/base/configmap.yaml) · [staging overlay](../../k8s/overlays/staging/kustomization.yaml) · [profile guard](../../gateway/src/main/java/com/example/gateway/config/runtime/RuntimeProfileGuard.java) · [후속 장애 정책](../resilience-policy.md)
+
+- [ ] Deployment → ReplicaSet → Pod 관계와 replicas 변경 시 Service가 Ready Pod를 선택하는 과정을 설명한다.
+- [ ] ConfigMap 원본, Deployment의 개별 env override, 실행 중 프로세스 환경변수를 구분하고 재기동이 필요한 이유를 설명한다.
+- [ ] Redis 장애 시 Gateway readiness와 liveness 차이를 설명하고 EndpointSlice 및 실제 API 결과로 관찰 내용을 뒷받침한다.
+- [ ] readiness 제외는 요청마다 Redis 오류를 차단하는 fail-closed 구현과 다르다는 점을 설명한다.
+- [ ] `RuntimeProfileGuard`에서 잘못된 profile이 시작 실패로 이어지는 경로를 찾고, Events로 자원 부족과 설정 오류를 구분한다.
+- [ ] `maxUnavailable=0/maxSurge=1`, 정상 revision 기록, rollout status/undo를 연결해 실패 배포의 복구 과정을 설명한다.
+- [ ] 이미지 빌드 → kind load → image 변경 → rollout 확인을 설명하고, 명령으로 바꾼 상태와 Git YAML 선언의 차이를 기록한다.
+- [ ] base/local/staging overlay가 같은 이미지를 다른 설정으로 실행하도록 구성됨을 설명하고, 렌더링 성공을 staging 기동 성공으로 기록하지 않는다.
+- [ ] 실습 전후의 복제본·설정·인증 API를 비교해 복구를 확인했다. CircuitBreaker/Retry는 현재 route에 구현되지 않은 후속 과제임을 구분한다.
+
+**학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
+
+**다음 학습:** 정상 복구 결과를 기록한 뒤 [5단계](05-gateway-api.md)에서 외부 진입 경로를 추가합니다.

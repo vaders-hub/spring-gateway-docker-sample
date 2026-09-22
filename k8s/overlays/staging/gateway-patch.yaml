@@ -1,3 +1,5 @@
+# 4단계: Gateway 자원 상한을 변경하고 NodePort를 제거하는 두 리소스 patch.
+# ClusterIP 전환 후 외부 진입점은 별도로 구성해야 한다.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

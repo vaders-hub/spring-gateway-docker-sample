@@ -65,3 +65,22 @@ Envoy만 내릴 때 기본 앱/Redis/Secret이나 공유 CRD까지 삭제하지 
 공식 자료: [Envoy 설치](https://gateway.envoyproxy.io/docs/install/install-helm/),
 [Envoy 호환표](https://gateway.envoyproxy.io/news/releases/matrix/),
 [Ingress의 현재 권장 방향](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+
+## 구조·코드 이해 체크
+
+실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
+
+**읽을 파일:** [GatewayClass](../../k8s/gateway-api/gateway-class.yaml) · [EnvoyProxy](../../k8s/gateway-api/envoy-proxy.yaml) · [Gateway](../../k8s/gateway-api/edge-gateway.yaml) · [HTTPRoute](../../k8s/gateway-api/http-route.yaml) · [Spring route](../../gateway/src/main/resources/application.yml)
+
+- [ ] Gateway API의 선언 리소스, 이를 조정하는 Envoy Gateway 컨트롤러, 실제 트래픽을 전달하는 Envoy Proxy를 구분한다.
+- [ ] `GatewayClass → Gateway`, `Gateway → EnvoyProxy`, `HTTPRoute → Gateway listener → gateway Service` 참조를 파일의 이름/namespace로 연결한다.
+- [ ] `Client:8888 → port-forward → Envoy Proxy → Spring Gateway → Backend` 경로와 기존 8080 경로를 비교한다.
+- [ ] HTTPRoute가 Backend에 직접 연결되면 Spring Gateway의 JWT·CORS·사용자별 제한 경로를 우회하는 이유를 설명한다.
+- [ ] HTTPRoute는 Authorization과 `/api`를 유지하고 Spring의 StripPrefix가 한 번 제거하는 위치를 찾았다.
+- [ ] Envoy의 경로 미일치 404와 Spring의 401/400/429를 구분하고 Accepted/ResolvedRefs/Programmed 상태의 확인 위치를 안다.
+- [ ] 8888과 8080에서 같은 subject가 같은 Redis 버킷을 쓰는 이유와 기존 NodePort가 남아 있는 의미를 설명한다.
+- [ ] 선택 Route 변경 후 hello/echo 결과를 비교하고 원복했다(실습한 경우). TLS·외부 DNS·AWS ALB는 검증 범위 밖임을 기록했다.
+
+**학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
+
+**다음 학습:** [6단계](06-aws-and-spring-expansion.md)에서 로컬 검증 범위와 실제 AWS 확장 과제를 정리합니다.

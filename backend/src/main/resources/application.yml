@@ -1,5 +1,8 @@
+# 1·2·6단계: 모든 profile의 공통 설정. 환경변수와 application-{profile}.yml이 값을 보완한다.
+# Servlet/Tomcat 기반 Backend: JWT를 재검증하고 Controller/Service로 요청을 처리한다.
 server:
   port: 8081
+  # SIGTERM 후 처리 중 요청을 마무리한다. 컨테이너 종료 유예시간과 함께 읽는다.
   shutdown: graceful
   forward-headers-strategy: framework
   max-http-request-header-size: 16KB
@@ -24,6 +27,7 @@ spring:
 app:
   observability:
     prometheus-public: ${PROMETHEUS_PUBLIC:false}
+  # 필수 비밀값은 환경변수로 받는다. config/properties에서 시작 시 타입·필수값을 검증한다.
   security:
     jwt:
       issuer: ${JWT_ISSUER}
@@ -34,6 +38,7 @@ management:
   info:
     env:
       enabled: true
+  # 노출 대상과 인증 허용은 별개이다. config/security/SecurityConfig가 접근을 결정한다.
   endpoints:
     web:
       exposure:
@@ -44,10 +49,12 @@ management:
         enabled: true
       show-details: never
       group:
+        # 프로세스 생존과 트래픽 수신 가능 여부를 분리해 외부 의존성 장애의 재시작 전파를 피한다.
         liveness:
           include: livenessState
         readiness:
           include: readinessState
+  # HTTP 서버 histogram/SLO로 지연 분포를 수집한다. 건강 검사도 지표에 포함될 수 있다.
   metrics:
     distribution:
       percentiles-histogram:
@@ -61,6 +68,7 @@ management:
     tags:
       application: ${spring.application.name}
       environment: ${APP_ENVIRONMENT:unknown}
+  # sampling과 export는 별개이다. Collector/저장소가 없으므로 OTLP export는 기본 off이다.
   tracing:
     sampling:
       probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
@@ -81,4 +89,5 @@ info:
   app:
     name: ${spring.application.name}
     environment: ${APP_ENVIRONMENT:unknown}
+    # 실행 위치(docker-compose/kubernetes)이며 Spring lifecycle profile(local 등)과 구분한다.
     deployment-platform: ${DEPLOYMENT_PLATFORM:unknown}

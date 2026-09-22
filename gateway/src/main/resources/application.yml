@@ -1,5 +1,8 @@
+# 1·2·6단계: 모든 profile의 공통 설정. 환경변수와 application-{profile}.yml이 값을 보완한다.
+# WebFlux/Netty 기반 Gateway: JWT 인가 후 Redis 제한과 Backend 라우팅을 수행한다.
 server:
   port: 8080
+  # SIGTERM 후 처리 중 요청을 마무리한다. 컨테이너 종료 유예시간과 함께 읽는다.
   shutdown: graceful
   forward-headers-strategy: framework
   max-http-request-header-size: 16KB
@@ -15,6 +18,7 @@ spring:
     timeout-per-shutdown-phase: 20s
   codec:
     max-in-memory-size: 1MB
+  # Redis는 요청 제한 상태를 공유한다. 연결/명령 timeout과 readiness 의존성을 함께 본다.
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -25,10 +29,12 @@ spring:
     gateway:
       server:
         webflux:
+          # route 지표는 라우팅 filter에 도달한 요청 기준이다. Security가 앞에서 거절한 요청은 빠질 수 있다.
           metrics:
             enabled: true
             path-tags:
               enabled: false
+          # Gateway → Backend 구간의 연결·응답·pool 대기 제한. 클라이언트 → Gateway 서버 timeout과 별개이다.
           httpclient:
             connect-timeout: ${BACKEND_CONNECT_TIMEOUT_MS:2000}
             response-timeout: ${BACKEND_RESPONSE_TIMEOUT:5s}
@@ -42,20 +48,25 @@ spring:
           routes:
             - id: backend-api
               uri: ${BACKEND_URL:http://localhost:8081}
+              # /auth/token은 Gateway Controller가 처리하고 /api/**만 Backend route에 매칭된다.
               predicates:
                 - Path=/api/**
               filters:
+                # JWT Principal 이름을 key로 Redis 버킷을 공유한다. 초당 replenishRate, 최대 burstCapacity이다.
+                # Redis 오류 시 요청별 fail-closed는 후속 과제이며 readiness만으로 보장되지 않는다.
                 - name: RequestRateLimiter
                   args:
                     key-resolver: "#{@principalKeyResolver}"
                     redis-rate-limiter.replenishRate: ${RATE_LIMIT_REPLENISH_RATE:2}
                     redis-rate-limiter.burstCapacity: ${RATE_LIMIT_BURST_CAPACITY:5}
                     redis-rate-limiter.requestedTokens: 1
+                # /api/hello → /hello로 첫 경로 조각을 한 번 제거한다. Backend Controller의 URL과 연결한다.
                 - StripPrefix=1
 
 app:
   observability:
     prometheus-public: ${PROMETHEUS_PUBLIC:false}
+  # 필수 비밀값은 환경변수로 받는다. config/properties에서 시작 시 타입·필수값을 검증한다.
   security:
     jwt:
       issuer: ${JWT_ISSUER}
@@ -74,6 +85,7 @@ management:
   info:
     env:
       enabled: true
+  # 노출 대상과 인증 허용은 별개이다. config/security/SecurityConfig가 접근을 결정한다.
   endpoints:
     web:
       exposure:
@@ -84,10 +96,13 @@ management:
         enabled: true
       show-details: never
       group:
+        # 프로세스 생존과 트래픽 수신 가능 여부를 분리해 외부 의존성 장애의 재시작 전파를 피한다.
         liveness:
           include: livenessState
+        # Redis 장애 시 트래픽 수신 불가로 보고한다. liveness에는 Redis를 넣지 않는다.
         readiness:
           include: readinessState,redis
+  # HTTP 서버 histogram/SLO로 지연 분포를 수집한다. 건강 검사도 지표에 포함될 수 있다.
   metrics:
     distribution:
       percentiles-histogram:
@@ -101,6 +116,7 @@ management:
     tags:
       application: ${spring.application.name}
       environment: ${APP_ENVIRONMENT:unknown}
+  # sampling과 export는 별개이다. Collector/저장소가 없으므로 OTLP export는 기본 off이다.
   tracing:
     sampling:
       probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
@@ -121,6 +137,7 @@ info:
   app:
     name: ${spring.application.name}
     environment: ${APP_ENVIRONMENT:unknown}
+    # 실행 위치(docker-compose/kubernetes)이며 Spring lifecycle profile(local 등)과 구분한다.
     deployment-platform: ${DEPLOYMENT_PLATFORM:unknown}
 
 logging:

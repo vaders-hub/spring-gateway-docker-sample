@@ -14,6 +14,8 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
+// 1단계: Controller 진입 전 Security에서 발생한 401/403을 JSON 오류로 작성한다.
+// ControllerAdvice와 별도 경로이며 requestId로 같은 요청을 추적한다.
 @Component
 public final class SecurityProblemWriter {
     private final JsonMapper jsonMapper;
@@ -39,6 +41,7 @@ public final class SecurityProblemWriter {
             return;
         }
         Object requestId = request.getAttribute(RequestContext.REQUEST_ID);
+        // Boot의 JsonMapper로 직렬화하여 헤더/값을 직접 JSON 문자열에 이어붙이지 않는다.
         byte[] body = jsonMapper.writeValueAsBytes(Map.of(
                 "type", "urn:problem:" + errorCode.name().toLowerCase(Locale.ROOT).replace('_', '-'),
                 "title", status.getReasonPhrase(),

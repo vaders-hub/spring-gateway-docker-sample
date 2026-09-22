@@ -10,6 +10,7 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+// 6단계: 외부 app.security 설정을 타입으로 묶고 시작 시 필수값/중첩 속성을 검증한다.
 @Validated
 @ConfigurationProperties(prefix = "app.security")
 public record SecurityProperties(
@@ -23,6 +24,7 @@ public record SecurityProperties(
             @NotBlank @Size(min = 32) String secret,
             @NotNull Duration ttl) {
 
+        // 초 단위 JWT TTL로 변환할 때 0초나 소수초가 되지 않도록 제한한다.
         public Jwt {
             if (ttl != null && (ttl.compareTo(Duration.ofSeconds(1)) < 0 || ttl.getNano() != 0)) {
                 throw new IllegalArgumentException("app.security.jwt.ttl must be a positive whole number of seconds");
@@ -70,6 +72,7 @@ public record SecurityProperties(
                 throw new IllegalArgumentException(
                         "app.security.cors.allowed-origins must contain at least one origin");
             }
+            // CORS는 URL 경로 패턴이 아니라 scheme/host/port로 이루어진 정확한 Origin 목록이다.
             for (String origin : allowedOrigins) {
                 URI uri;
                 try {
