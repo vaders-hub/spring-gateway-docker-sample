@@ -1,0 +1,12 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: local-edge-proxy
+  namespace: gateway-lab
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        # Local-only entry via kubectl port-forward; no cloud LoadBalancer needed.
+        type: ClusterIP

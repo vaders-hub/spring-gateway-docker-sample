@@ -1,0 +1,53 @@
+# Build output and local caches
+.gradle/
+.gradle-user-home/
+build/
+target/
+bin/
+out/
+.verification-build/
+*.class
+*.jar
+*.war
+!gradle/wrapper/gradle-wrapper.jar
+
+# Credentials: share only sanitized examples
+.env
+.env.*
+!.env.example
+.aws/
+.kube/
+*.kubeconfig
+/secrets/
+k8s/**/secret*.yaml
+k8s/**/secret*.yml
+!k8s/**/secret*.example.yaml
+!k8s/**/secret*.example.yml
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Share only portable IDE settings
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS files, logs and scratch files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+*.swp
+*.swo
+*~

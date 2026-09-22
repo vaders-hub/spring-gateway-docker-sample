@@ -1,0 +1,9 @@
+app:
+  security:
+    demo-user:
+      enabled: true
+
+management:
+  tracing:
+    export:
+      enabled: false

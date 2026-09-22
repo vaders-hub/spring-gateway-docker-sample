@@ -1,0 +1,4 @@
+management:
+  tracing:
+    export:
+      enabled: false

@@ -1,0 +1,84 @@
+server:
+  port: 8081
+  shutdown: graceful
+  forward-headers-strategy: framework
+  max-http-request-header-size: 16KB
+  tomcat:
+    connection-timeout: ${SERVER_TOMCAT_CONNECTION_TIMEOUT:5s}
+    keep-alive-timeout: ${SERVER_TOMCAT_KEEP_ALIVE_TIMEOUT:30s}
+    max-connections: ${SERVER_TOMCAT_MAX_CONNECTIONS:500}
+    accept-count: ${SERVER_TOMCAT_ACCEPT_COUNT:100}
+    threads:
+      max: ${SERVER_TOMCAT_THREADS_MAX:50}
+      min-spare: ${SERVER_TOMCAT_THREADS_MIN_SPARE:5}
+
+spring:
+  application:
+    name: backend
+  mvc:
+    problemdetails:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+app:
+  observability:
+    prometheus-public: ${PROMETHEUS_PUBLIC:false}
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER}
+      audience: ${JWT_AUDIENCE:gateway-sample-api}
+      secret: ${JWT_SECRET}
+
+management:
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: ${HTTP_HISTOGRAM_ENABLED:true}
+      slo:
+        http.server.requests: 100ms,250ms,500ms,1s,2s
+      minimum-expected-value:
+        http.server.requests: 1ms
+      maximum-expected-value:
+        http.server.requests: 5s
+    tags:
+      application: ${spring.application.name}
+      environment: ${APP_ENVIRONMENT:unknown}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+    propagation:
+      type: W3C
+    export:
+      otlp:
+        enabled: ${OTEL_EXPORT_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      deployment.environment: ${APP_ENVIRONMENT:unknown}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+info:
+  app:
+    name: ${spring.application.name}
+    environment: ${APP_ENVIRONMENT:unknown}
+    deployment-platform: ${DEPLOYMENT_PLATFORM:unknown}

@@ -1,0 +1,12 @@
+# Render-only learning example: supply a separate Secret and trusted JWT issuer before deployment.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gateway-lab-staging
+resources:
+  - ../../base
+replicas:
+  - name: backend
+    count: 2
+patches:
+  - path: config-patch.yaml
+  - path: gateway-patch.yaml
