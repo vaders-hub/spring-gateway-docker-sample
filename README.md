@@ -6,6 +6,8 @@ Java 25, Gradle 9.7.1, Spring Cloud Gateway, Redis 및 kind Kubernetes를
 처음 시작한다면 [무료 로컬 AWS/EKS 학습 로드맵](docs/learning/README.md)을 먼저 읽으세요.
 kind 배포·운영 실습 후에는 [9단계 PV·PVC와 저장·복원](docs/learning/09-storage-and-persistence.md)으로
 Pod 교체 시 데이터 보존과 백업·복원을 학습할 수 있습니다.
+[10단계 Spring Boot 기본 구성 검증](docs/learning/10-spring-boot-readiness.md)에서는
+Stateless·설정 외부화·probe·stdout 로그·graceful shutdown을 검증하고 후속 장애 정책을 정리합니다.
 실제 AWS 리소스를 만들지 않고 Compose → kind → Gateway API → 운영 실습 순서로 진행하며,
 Spring Boot 설정과 Oracle/JPA/MyBatis 확장 계획도 별도로 구분합니다.
 

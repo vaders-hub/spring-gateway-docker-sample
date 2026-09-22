@@ -6,6 +6,7 @@
 
 **AWS 리소스를 생성하지 않고 로컬 Kubernetes에서 EKS에 공통으로 적용되는 개념을 익힙니다.**
 동시에 Spring Boot의 설정·보안·계층 분리·운영 기본선을 확장합니다.
+각 학습은 Kubernetes 동작과 Spring Boot 구성을 연결하고, 추후 재사용할 설정 목적·코드·검증·복구 근거를 남깁니다.
 kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VPC, ALB, EBS,
 관리형 control plane까지 로컬에서 재현된다고 가정하지 않습니다.
 
@@ -33,12 +34,15 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 상시 | [문제 해결·종료](07-troubleshooting-and-cleanup.md) | 증거 기반 진단과 프로젝트만 종료 | 다른 프로젝트에 영향 없음 |
 | 3단계 보충 | [NetworkPolicy 검증](08-network-policy-validation.md) | 허용 경로·차단 경로 대조 | 집행/미집행/판정 불가 구분 |
 | 9 (3~4단계 후속) | [PV·PVC와 저장·복원](09-storage-and-persistence.md) | 전용 namespace에서 Pod 교체, PVC 삭제, 호스트 백업·새 PVC 복원 | emptyDir/PVC 수명 차이와 복원 파일 checksum 일치 |
+| 10 (4단계 후속) | [Spring Boot 기본 구성 검증](10-spring-boot-readiness.md) | Stateless Pod 교체 실습, 종료 검증 설계, 설정 관리표 | 같은 JWT 인증 유지; graceful/Redis 후속 구현과 검증 상태 구분 |
 | 4단계 후속 | [장애 정책 설계](../resilience-policy.md) | fail-closed·CircuitBreaker·Retry 설계 | 기본 동작과 미구현 과제 구분 |
 
 1~2단계는 Compose, 3~5단계는 kind입니다. **Compose와 kind를 기본 설정으로 동시에
 띄우면 8080 포트가 충돌합니다.** 2단계 종료 후 Compose를 내리고 kind로 넘어갑니다.
 모든 단계를 한꺼번에 띄울 필요는 없습니다. Oracle과 tracing backend는 후속 선택 과제입니다.
-권장 순서는 `01 → 02 → 03 → 08(보충) → 04 → 09(저장소) → 05 → 06`입니다.
+권장 순서는 `01 → 02 → 03 → 08(보충) → 04 → 10(기본 검증) → 09(저장소) → 05 → 06`입니다.
+10-1은 현재 코드로 실습할 수 있습니다. 10-3 지연 fixture와 10-4 장애 정책은 구현 과제로 기록하고
+나머지 Kubernetes 학습과 병행합니다. 후속 코드를 구현할 때 해당 검증으로 돌아옵니다.
 09는 기존 kind를 사용하는 독립 저장소 실습이며 Gateway API 설치는 필요하지 않습니다. 07은 상시 참고합니다.
 
 ## 현재 준비된 것과 앞으로 구현할 것
@@ -52,12 +56,28 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 추가 구현 필요 | Oracle 연결, JPA/MyBatis, migration, 업무 Entity/Repository/Mapper |
 | 보안 보완 과제 | Redis 오류 시 요청 단위 fail-closed; 현재 readiness 제외와 별개 |
 | 저장소 실습 문서 존재 | 09에 PVC/Deployment YAML과 백업·복원 절차 포함; 실행 시에만 전용 리소스 생성 |
-| 별도 실습 필요 | CNI 정책 집행, 09의 로컬 저장·복원 실제 확인, metrics-server/HPA |
+| Spring Boot 보완 문서 존재 | 10에 Stateless 실습과 설정 관리표; 지연 fixture/처리 중 종료 검증은 추가 구현 필요 |
+| 별도 실습 필요 | CNI 정책 집행, 09 저장·복원, 10 인증 유지 실제 확인, metrics-server/HPA |
 | 이 무료 과정에서 실행하지 않음 | AWS 리소스 생성, 실제 EKS의 IAM/VPC/ALB 검증 |
 
 이번 문서 작성은 기동·컴파일·테스트를 수행했다는 의미가 아닙니다.
 각 문서의 명령은 학습자가 실습 시 실행할 절차이고 체크박스는 직접 확인한 뒤 표시합니다.
 Docker 이미지 빌드는 Java 컴파일을 포함하므로 시간이 준비됐을 때 실행합니다.
+
+## Kubernetes와 Spring Boot를 함께 완성하는 기준
+
+| Kubernetes 학습 | 함께 보완할 Spring Boot 구성 |
+|---|---|
+| Pod 교체·복제본 | Stateless 인증, 공유 상태, 중복 처리 |
+| ConfigMap·Secret | 외부 설정, 타입/필수값 검증, profile 보호 |
+| Probe·장애 | 의존성별 readiness, 요청 단위 장애 정책 |
+| Rollout·종료 | graceful shutdown, 처리 중 요청/비동기 작업 수명 |
+| 관측성 | stdout 구조화 로그, requestId, metrics/trace 수집 |
+| Service·연동 | 연결·응답·pool timeout, 오류 계약, 제한된 재시도 |
+| PV/PVC | 데이터 수명, DB 도입 시 migration·트랜잭션·백업 |
+
+각 주제는 **설정 목적 → 관련 코드 → 실습 → 기대 결과 → 실제 결과 → 운영 조정값**으로 정리합니다.
+학습용 기본값과 운영에서 검증할 값을 구분합니다. 재사용 기준은 [10단계 설정 관리표](10-spring-boot-readiness.md#10-5-추후-참고용-설정-관리표)를 사용합니다.
 
 ## 공통 실행 규칙
 
@@ -92,6 +112,9 @@ set -o pipefail
 실패 원인과 근거:
 복구 결과:
 아직 검증하지 않은 것:
+연결한 Spring Boot 설정/코드와 선택 이유:
+문서 준비 / 코드 구현 / 자동 테스트 / 실제 실행 상태:
+운영 적용 시 조정할 값과 근거:
 ```
 
 목표는 명령 복사가 아니라 "요청이 어떤 계층을 통과하고, 장애 때 무엇이 바뀌며,

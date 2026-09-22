@@ -4,6 +4,20 @@
 CircuitBreaker 의존성/필터, Retry, 오류 규격 변경은 아직 구현하지 않았습니다.
 기본 connect 2초 / response 5초 timeout은 존재하지만 회로 차단기와 동일하지 않습니다.
 
+## 학습 단계와의 연결
+
+[10단계 Spring Boot 기본 구성 검증](learning/10-spring-boot-readiness.md)에서
+Stateless/종료/timeout을 같은 요청 수명으로 연결합니다. 이 문서는 장애 정책의 구현 기준을 유지합니다.
+
+| 구현 순서 | 산출물 | 완료 근거 |
+|---|---|---|
+| 1 | local/test 전용 지연 fixture와 종료 검증 | 시작 확인 후 종료, 기존 요청 완료/취소 및 복구 증거 |
+| 2 | Redis 실패 구분과 요청별 차단 | 429/제안 503 구분, 장애 중 Backend 미호출 |
+| 3 | 프록시 오류 계약과 timeout 검증 | 연결 거절/응답 지연/pool 대기 각각의 코드·지연 기록 |
+| 4 | 읽기 CircuitBreaker, 제한된 Retry | 상태 전이·실제 호출 수·총 지연·부하 상한 확인 |
+
+현재 위 산출물은 구현 과제입니다. 4단계 Redis readiness 실습 성공으로 대체하지 않습니다.
+
 ## 1. Redis 오류와 제한 초과를 구분
 
 Spring Cloud Gateway 5.0.3 RedisRateLimiter는 Redis 오류를 내부에서 허용 응답으로
