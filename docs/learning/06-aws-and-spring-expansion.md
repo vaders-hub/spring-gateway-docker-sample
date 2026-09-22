@@ -113,11 +113,13 @@ JPA flush/영속성 컨텍스트와 MyBatis SQL 변경의 정합성도 별도 �
 2. 관측성 이식: Compose에서 익힌 scrape/dashboard를 kind용 배포로 이전.
    운영 앱의 metrics 인증을 끄는 대신 전용 scrape 인증/네트워크를 설계.
 3. 자원/자동 확장: metrics-server 설치·검증 후 HPA. Prometheus 설치만으로 HPA가 동작하지 않음.
-4. 저장소: PVC 기반 로컬 persistence를 학습하고 삭제/백업/복원 실험. EBS 검증과는 별개.
+4. 저장소: [9단계 PV·PVC 실습](09-storage-and-persistence.md)에서 Pod 교체 시 보존,
+   PVC 삭제와 호스트 백업·새 PVC 복원을 확인합니다. EBS 검증과는 별개입니다.
 5. OIDC·trace: 로컬 IdP와 Collector/trace backend를 각각 추가. 무료 로컬 서버와
    외부 SaaS 무료 체험을 구분하고 자원 사용량을 확인.
 
-모두 후속 구현 과제입니다. AWS 자격증명이나 유료 에뮬레이터를 필수 조건으로 만들지 않습니다.
+저장소는 9단계에 실행 절차가 준비되어 있고 나머지는 후속 구현 과제입니다.
+문서 존재와 실제 실행 검증을 구분합니다. AWS 자격증명이나 유료 에뮬레이터를 필수 조건으로 만들지 않습니다.
 LocalStack/EKS Anywhere 같은 추가 도구도 현재 목표에는 필수가 아닙니다.
 
 ## 최종 체크
