@@ -25,6 +25,8 @@ class RequestIdWebFilter implements WebFilter {
         String requestId = RequestContext.normalizeRequestId(exchange.getRequest().getHeaders()
                 .getFirst(RequestContext.REQUEST_ID_HEADER));
         long startedAt = System.nanoTime();
+        exchange.getAttributes().put(RequestContext.REQUEST_ID_ATTRIBUTE, requestId);
+        exchange.getAttributes().put(RequestContext.REQUEST_PATH_ATTRIBUTE, exchange.getRequest().getPath().value());
 
         ServerHttpRequest request = exchange.getRequest().mutate()
                 .headers(headers -> headers.set(RequestContext.REQUEST_ID_HEADER, requestId))

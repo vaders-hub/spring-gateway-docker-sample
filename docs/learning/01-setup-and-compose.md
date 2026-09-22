@@ -129,7 +129,10 @@ sleep 3
 lab_api POST /api/echo '{"name":"","value":-1}' status
 ```
 
-401/400/429는 서로 다른 계층의 결과입니다. 모든 오류가 동일 본문을 갖는 것은 아닙니다.
+이 실습의 401/400/429는 서로 다른 계층에서 발생하지만 공통 Problem Details 형식으로 반환합니다.
+401은 Gateway Security, 잘못된 echo DTO의 400은 Backend 검증, 429는 Gateway의
+`RequestRateLimiter` → `throw-on-limit` → Advice/전역 handler의 `GatewayErrorResponses` 경로입니다.
+429가 발생하면 Backend에는 요청을 보내지 않습니다. [오류 처리 범위](../api-contract.md#시스템별-오류-처리-경계)를 참고합니다.
 
 ## 체크 / 종료
 
@@ -159,7 +162,7 @@ lab_api POST /api/echo '{"name":"","value":-1}' status
 - [ ] `AuthController → TokenService`의 데모 JWT 발급과 `SecurityConfig/JwtConfig`의 검증을 구분하고, issuer·audience·만료·scope 역할을 설명한다.
 - [ ] `RequestHeadersFilter`가 인증 Principal로 사용자 헤더를 덮어쓰며 Backend는 헤더 대신 재검증한 JWT Principal을 사용하는 이유를 설명한다.
 - [ ] `principalKeyResolver → RequestRateLimiter → StripPrefix=1 → Backend Controller → Service → DTO`를 실제 파일에서 찾았다.
-- [ ] 200·401·400·429가 발생한 위치를 구분한다. 400은 인증/제한을 통과한 뒤 DTO 검증에서, 429는 Backend 도달 전에 발생한다.
+- [ ] 200·401·400·429가 발생한 위치를 구분한다. echo 실습의 400은 인증/제한을 통과한 뒤 Backend DTO 검증에서, 429는 Gateway 요청 제한에서 Backend 도달 전에 발생한다.
 - [ ] readiness에 Redis가 포함되는 이유와 liveness에서 외부 의존성을 제외한 이유를 설명한다.
 - [ ] `RequestIdWebFilter/RequestIdFilter`의 요청 ID를 양쪽 로그 및 응답과 연결하고, 요청 ID가 인증이나 분산 trace 자체는 아님을 설명한다.
 

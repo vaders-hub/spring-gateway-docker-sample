@@ -3,6 +3,7 @@ package com.example.backend.config.security;
 import com.example.backend.common.error.SecurityProblemWriter;
 import com.example.backend.config.properties.JwtProperties;
 import com.example.backend.config.properties.ObservabilityProperties;
+import jakarta.servlet.DispatcherType;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +40,8 @@ class SecurityConfig {
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
                         .accessDeniedHandler(problems.accessDeniedHandler()))
                 .authorizeHttpRequests(authorize -> {
+                    // 컨테이너 내부 오류 dispatch만 허용한다. 외부의 /error 직접 요청은 기존 인증 정책을 따른다.
+                    authorize.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll();
                     authorize.requestMatchers("/actuator/health/**", "/actuator/info").permitAll();
                     if (observabilityProperties.prometheusPublic()) {
                         authorize.requestMatchers("/actuator/prometheus").permitAll();

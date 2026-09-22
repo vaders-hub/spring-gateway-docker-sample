@@ -173,12 +173,14 @@ Pod 대상 port-forward는 대상 Pod가 종료되면 끊길 수 있습니다. �
 
 세부 정책의 단일 기준은 [resilience-policy.md](../resilience-policy.md)입니다.
 현재 RedisRateLimiter의 오류 허용 fallback을 readiness로 완전히 막았다고 기록하지 않습니다.
-아래는 구현 목표이며 현재 오류 코드/route가 이미 이렇게 동작한다는 뜻은 아닙니다.
+기본 오류 계약은 구현했고, 아래 표의 Redis fail-closed·pool 고갈·CircuitBreaker 등은 후속 목표입니다.
+Gateway는 429에 `TOO_MANY_REQUESTS`, 연결 실패에 502 `BAD_GATEWAY`, 응답 timeout에 504
+`GATEWAY_TIMEOUT`을 반환합니다. [처리 범위와 테스트](../api-contract.md#시스템별-오류-처리-경계)를 참고합니다.
 
 | 우선순위 | 추가할 내용 | 완료 기준 |
 |---|---|---|
 | P1 | 요청 제한의 허용/한도 초과/Redis 오류 분리 | quota=429, 판정 불가=제안 503 `RATE_LIMIT_UNAVAILABLE`; 오류 시 Backend 미호출 |
-| P1 | Gateway filter/프록시 오류 계약 | ControllerAdvice 밖의 오류도 requestId/안전한 오류 코드 유지 |
+| 기본 구현 | Gateway filter/프록시 오류 계약 | 전역 handler와 로컬 HTTP 테스트 구현; 실제 배포 환경에서 추가 확인 |
 | P1 | 연결 거절·응답 지연·pool 대기 초과 실습 | 각 경로의 응답 코드·최대 지연·Backend 호출 수 기록 |
 | P2 | 읽기 route의 CircuitBreaker | closed/open/half-open과 회복을 지표 및 실제 호출 수로 확인 |
 | P2 | 제한된 읽기 Retry | 횟수·backoff·전체 예산 고정, 쓰기 자동 재시도는 기본 제외 |
@@ -199,7 +201,8 @@ Service 경로에서 접속이 안 되는 결과와 Pod 직접 접근의 HTTP 50
 
 계산할 전체 예산은 pool 대기·연결·응답·재시도 backoff·호출자 제한을 포함합니다.
 각 설정이 모든 구간을 단순 합산해 항상 같은 시점에 종료시킨다고 가정하지 않고 실제 지연을 측정합니다.
-503과 504 등 외부 오류 계약은 실패 유형별로 정한 뒤 테스트하며, 현재 프록시 오류가 모두 공통 JSON이라고 가정하지 않습니다.
+연결 실패 502와 응답 지연 504는 로컬 HTTP 테스트로 확인합니다. pool 대기 초과의 개별 분류·부하 검증은 후속입니다.
+Backend가 반환한 오류는 그대로 전달하며, 이미 committed된 응답과 Envoy/LB 오류는 Java 전역 handler로 바꾸지 않습니다.
 
 ## 10-5. 추후 참고용 설정 관리표
 
@@ -213,7 +216,7 @@ Service 경로에서 접속이 안 되는 결과와 Pod 직접 접근의 HTTP 50
 | 가용성 | Actuator group, k8s probes | 의존성 정책·기동시간·실패 임계값 | 기본 구현, 4단계 장애 실습 |
 | 종료 | shutdown timeout, preStop, 종료 유예 | 최대 처리시간·종료 단계·작업 유형 | 기본 구현, 10-3 fixture/검증 미구현 |
 | 로그/관측 | SLF4J, ECS, metrics, requestId | 민감값·label 수·보존량·수집 장애 | 부분 구현, 중앙 수집/trace 저장소 후속 |
-| 외부 연동 | Gateway HTTP pool/Redis timeout | 동시성·호출자 예산·서비스 허용 부하 | 기본 설정, 10-4 오류 계약/차단 후속 |
+| 외부 연동 | Gateway HTTP pool/Redis timeout | 동시성·호출자 예산·서비스 허용 부하 | 기본 오류 계약 구현, 10-4 Redis 차단/pool 부하 검증 후속 |
 | 데이터 | [영속성 도입 기준](../persistence-policy.md) | migration·트랜잭션·backup/RPO/RTO | DB 미구현, 9단계는 파일 저장 실습 |
 
 재사용 시 체크: 변경 이유, 설정 기본값, 환경변수/Secret 주입 위치, 잘못된 값의 실패 방식,

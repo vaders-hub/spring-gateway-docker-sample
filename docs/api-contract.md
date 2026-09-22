@@ -39,7 +39,14 @@
 - 잘못된 로컬 데모 자격증명은 `INVALID_CREDENTIALS`
 - 인증 누락/실패는 `UNAUTHORIZED`
 - scope 부족은 `ACCESS_DENIED`
+- 없는 리소스/허용하지 않는 메서드는 `NOT_FOUND` / `METHOD_NOT_ALLOWED`
+- Gateway 요청 허용량 소진은 `TOO_MANY_REQUESTS`
+- Gateway의 Backend 연결 실패/응답 시간 초과는 `BAD_GATEWAY` / `GATEWAY_TIMEOUT`
+- 서비스 사용 불가 상태는 `SERVICE_UNAVAILABLE`
 - 예상하지 못한 서버 오류는 `INTERNAL_ERROR`
+
+기존 프레임워크 404/405의 `errorCode`는 `INVALID_REQUEST`에서 위 전용 코드로 세분화했습니다.
+전용 코드가 없는 4xx/5xx도 원래 HTTP 상태와 본문의 `status`를 보존합니다.
 
 예외 메시지, stack trace, JWT, 비밀번호, 내부 클래스명은 응답에 포함하지 않습니다.
 
@@ -70,14 +77,43 @@ return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 추가하면 `Location` 같은 요청별 헤더는 해당 Controller에서 추가합니다.
 
 `GlobalExceptionHandler`는 공통 오류에 요청 경로(`instance`), 필드별 검증 오류(`errors`),
-잘못된 JSON의 안전한 메시지를 덧붙입니다. 프레임워크의 405 등은 코드의 기본 400 대신
+잘못된 JSON의 안전한 메시지를 덧붙입니다. 프레임워크 오류는
 원래 HTTP 상태를 본문의 `status`에도 반영하며 `Allow` 등 원래 헤더를 보존합니다.
 Service는 응답 팩터리를 호출하지 않고 업무 결과를 반환하거나 예외를 던집니다.
 
 인증/인가 오류는 Controller 전에 발생하므로 `SecurityProblemWriter`를 유지합니다.
 writer는 `ApiResponses.fail`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
 Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화합니다.
-Gateway의 rate-limit/프록시 오류와 Envoy 응답까지 이 팩터리로 자동 통일되는 것은 아닙니다.
+
+## 시스템별 오류 처리 경계
+
+| 발생 경로 | 처리 코드 | 결과 |
+|---|---|---|
+| Controller/DTO 검증/Service 예외 | 각 모듈 `GlobalExceptionHandler` | 공통 Problem Details, 안전한 메시지, 필드별 `errors` |
+| 인증/인가 거절 | 각 모듈 `SecurityProblemWriter` | 401/403과 인증 헤더 유지 |
+| Backend Servlet filter 예외 또는 `sendError` | [ApiErrorController](../backend/src/main/java/com/example/backend/common/error/ApiErrorController.java) | 컨테이너 ERROR dispatch의 원래 상태·경로·requestId로 JSON 작성 |
+| Gateway WebFilter/라우팅 예외 | Advice 또는 [GatewayErrorHandler](../gateway/src/main/java/com/example/gateway/common/error/GatewayErrorHandler.java) → `GatewayErrorResponses` | 미처리 오류 500, 연결 실패 502, 응답 timeout 504 등 |
+| Gateway 요청 제한 거절 | YAML의 `throw-on-limit: true` → 공통 `GatewayErrorResponses` | 429 본문 작성, rate-limit 헤더 유지, Backend 미호출 |
+
+Backend는 Boot 4의 `spring.web.error.path`(기본 `/error`)를 사용하며, Security에서
+`DispatcherType.ERROR`만 허용합니다. 외부의 `/error` 직접 호출에는 기존 인증 정책이 적용되고,
+인증된 직접 호출은 오류 dispatch가 아니므로 404입니다. 오류 상태를 모두 500이나 200으로 바꾸지 않습니다.
+
+Gateway 라우팅 예외는 `GlobalExceptionHandler`에 전달되기도 하므로, Advice와 전역 handler가
+[GatewayErrorResponses](../gateway/src/main/java/com/example/gateway/common/error/GatewayErrorResponses.java)의 상태·헤더 매핑을 함께 사용합니다.
+Gateway의 [ProblemResponseWriter](../gateway/src/main/java/com/example/gateway/common/error/ProblemResponseWriter.java)는
+Security/전역 handler의 직렬화·헤더 쓰기를 공유합니다. 정규화한 requestId와 원래 요청 경로는
+exchange attribute에 두어 요청 mutate/StripPrefix 이후에도 유지합니다. HEAD 응답에는 본문을 쓰지 않습니다.
+프레임워크의 `Allow`, rate-limit 헤더, 기존 `Retry-After`를 보존하며, 계산 근거 없는 Retry-After를 새로 만들지 않습니다.
+
+Backend가 이미 HTTP 오류 응답을 반환한 경우 Gateway는 본문을 그대로 전달합니다.
+Actuator/Prometheus의 고유 응답, 예외 없이 직접 종료하는 다른 필터의 응답(예: CORS 거절),
+이미 전송을 시작한 응답, 클라이언트 연결 단절, Envoy/LB에서 생성한 오류까지 강제로 재작성하지 않습니다.
+Redis 오류의 기본 허용 fallback도 바꾸지 않았으며 요청별 fail-closed는 별도 과제입니다.
+
+참고: [Gateway 5.0.3 RequestRateLimiter](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/gatewayfilter-factories/requestratelimiter-factory.html),
+[Servlet 오류 처리](https://docs.spring.io/spring-boot/reference/web/servlet.html#error-handling),
+[WebFlux 오류 처리](https://docs.spring.io/spring-boot/reference/web/reactive.html#error-handling)
 
 ## JWT와 메서드별 권한
 
@@ -99,8 +135,12 @@ echo는 영속 쓰기가 아니지만 메서드별 권한 분리 학습을 위�
 각 모듈의 `SecurityHttpIntegrationTest`는 실제 HTTP/서명 토큰으로 401/403/200과
 Problem Details를 확인하도록 작성했습니다. Gateway는 테스트 전용 Controller를 호출하며,
 실제 Backend 프록시·Redis 제한·장애 경로는 이 테스트의 범위 밖입니다.
-Gateway 기본 rate-limit 429, 프록시 오류, Envoy 오류가 모두 위 Problem Details를
-따른다고 보장하지 않습니다. 이 경계는 [후속 장애 정책](resilience-policy.md)에서 다룹니다.
+추가한 `GatewayErrorHttpIntegrationTest`는 실제 Netty HTTP upstream, 프로젝트 YAML route 및 테스트 전용 장애 route로
+429·502·504·404·405·500, HEAD, 기존 Backend 오류 통과를 검증합니다. Redis의 허용/거절 판정만
+spy로 고정하므로 실제 Redis 버킷/장애 검증과는 다릅니다. Backend의 HTTP 테스트는 Servlet filter
+예외와 `sendError`를 발생시켜 실제 Tomcat ERROR dispatch와 Security의 상호작용도 검증합니다.
+committed 응답 보존은 단위 테스트로 확인하며 Compose/kind 재배포와 부하·Redis 장애 실험은 별도입니다.
+[후속 장애 정책](resilience-policy.md)을 참고합니다.
 
 ## 계층 경계
 

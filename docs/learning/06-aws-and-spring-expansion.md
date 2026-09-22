@@ -76,7 +76,8 @@ bash ./gradlew gateway:test backend:test
 [10단계](10-spring-boot-readiness.md)에 설정별 코드 위치, 실행 가능한 Stateless 검증,
 graceful 종료 fixture의 구현 조건, 장애/timeout 검증 기준, 운영 조정값 기록표를 정리했습니다.
 우선 같은 JWT로 Pod 교체 후 인증을 검증하고, 지연 fixture/종료 테스트를 추가한 뒤
-Redis 오류의 요청 단위 차단과 프록시 오류 계약을 보완합니다. CircuitBreaker/Retry는 그 이후입니다.
+Redis 오류의 요청 단위 차단과 pool 고갈 검증을 보완합니다. 기본 프록시 오류 계약은
+구현했으며 [처리 범위](../api-contract.md#시스템별-오류-처리-경계)를 참고합니다. CircuitBreaker/Retry는 그 이후입니다.
 설정값이 있다는 사실과 자동 테스트/실제 kind 검증 결과를 별도로 기록합니다.
 
 ## 6-3. Oracle + JPA + MyBatis 후속 단계

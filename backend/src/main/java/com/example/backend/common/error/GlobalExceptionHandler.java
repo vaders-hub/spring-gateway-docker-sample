@@ -58,16 +58,18 @@ class GlobalExceptionHandler {
         if (exception instanceof AccessDeniedException) {
             return problem(ErrorCode.ACCESS_DENIED, request);
         }
-        // 405 등 프레임워크의 4xx와 Allow 같은 응답 헤더를 보존해 잘못된 500 변환을 피한다.
-        if (exception instanceof ErrorResponse error && error.getStatusCode().is4xxClientError()) {
+        // 프레임워크의 4xx/5xx 상태와 Allow 같은 응답 헤더를 보존한다.
+        if (exception instanceof ErrorResponse error && error.getStatusCode().isError()) {
             HttpStatusCode status = error.getStatusCode();
             HttpStatus knownStatus = HttpStatus.resolve(status.value());
-            ResponseEntity<ProblemDetail> response = problem(ErrorCode.INVALID_REQUEST, request);
+            ResponseEntity<ProblemDetail> response = problem(ErrorCode.fromStatus(status.value()), request);
             ProblemDetail body = response.getBody();
-            // 공통 코드의 기본 400보다 프레임워크가 결정한 실제 4xx 상태를 우선한다.
+            // 공통 코드의 기본 상태보다 프레임워크가 결정한 실제 오류 상태를 우선한다.
             body.setStatus(status.value());
-            body.setTitle(knownStatus == null ? "Request rejected" : knownStatus.getReasonPhrase());
-            body.setDetail("The request could not be processed.");
+            body.setTitle(knownStatus == null ? "Request failed" : knownStatus.getReasonPhrase());
+            if (ErrorCode.fromStatus(status.value()) == ErrorCode.INVALID_REQUEST) {
+                body.setDetail("The request could not be processed.");
+            }
             return ResponseEntity.status(status)
                     .headers(error.getHeaders())
                     .headers(response.getHeaders())

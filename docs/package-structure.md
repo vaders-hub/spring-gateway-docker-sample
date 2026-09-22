@@ -12,7 +12,7 @@ application YAML은 각 모듈의 src/main/resources에 유지합니다.
 | config/gateway | Gateway 사용자별 rate-limit key resolver |
 | filter | Gateway 라우팅 단계의 인증 사용자 헤더 전달 |
 | common/web | 라우팅 전 Request ID 정규화와 요청 로그, HTTP 헤더 상수 |
-| common/error | ControllerAdvice, 오류 코드, Security JSON 오류 writer |
+| common/error | ControllerAdvice, 오류 코드, Security writer, Backend `ApiErrorController`, Gateway `GatewayErrorHandler`/`GatewayErrorResponses`/`ProblemResponseWriter` |
 | common/api | `ApiResponse` 본문, `SuccessCode` 정책, `ApiResponses.success`/`fail` HTTP 응답 생성 |
 | auth/controller, auth/service, auth/dto | Gateway 인증 HTTP 경계, 토큰 발급 use case, DTO |
 | controller, service, dto | Backend HTTP 경계, use case, DTO |
@@ -61,7 +61,10 @@ Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties
 - 잘못된 Bearer 토큰과 인증 누락 모두 동일 SecurityProblemWriter를 사용합니다.
 - `ApiResponses.success`/`fail`과 `SuccessCode`/`ErrorCode`로 HTTP 상태·헤더·기본 오류 메시지를 공통화합니다.
 - 오류 JSON은 Boot 4의 자동 구성 JsonMapper를 주입받아 직렬화합니다.
-- ControllerAdvice는 Spring ErrorResponse의 4xx 상태와 Allow 같은 응답 헤더를 보존합니다.
+- Advice가 처리하지 못한 오류는 Backend의 Servlet `/error`와 Gateway의 `ErrorWebExceptionHandler`에서 각각 처리합니다.
+- Gateway 429는 `throw-on-limit`으로 예외를 전달하고 Advice/전역 handler가 같은 `GatewayErrorResponses`를 사용하며, 이미 수신한 Backend 오류 본문은 그대로 전달합니다.
+  [처리 범위와 예외](api-contract.md#시스템별-오류-처리-경계)를 참고합니다.
+- ControllerAdvice는 Spring ErrorResponse의 4xx/5xx 상태와 Allow 같은 응답 헤더를 보존합니다.
 - 예상하지 못한 오류는 requestId와 예외 타입을 남기며, 비밀값이 들어갈 수 있는 원문
   메시지/stack trace는 기본 로그에 쓰지 않습니다.
 - JWT 키, 데모 비밀번호, 토큰 DTO의 toString은 민감값을 가립니다.

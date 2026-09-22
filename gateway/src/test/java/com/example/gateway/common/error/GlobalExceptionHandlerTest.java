@@ -17,8 +17,8 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode().value()).isEqualTo(500);
         assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
         assertThat(response.getBody().getDetail()).isEqualTo("An unexpected error occurred.");
-        assertThat(response.getBody().getProperties()).containsEntry("errorCode", "INTERNAL_ERROR")
-                .containsEntry("requestId", "unknown");
+        assertThat(response.getBody().getProperties()).containsEntry("errorCode", "INTERNAL_ERROR");
+        assertThat(response.getBody().getProperties().get("requestId")).isNotNull();
         assertThat(response.getBody().getInstance().toString()).isEqualTo("/api/example");
     }
 
@@ -31,6 +31,6 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getStatus()).isEqualTo(405);
         assertThat(response.getBody().getTitle()).isEqualTo("Method Not Allowed");
         assertThat(response.getHeaders().getFirst("Allow")).isEqualTo("POST");
-        assertThat(response.getBody().getProperties()).containsEntry("errorCode", "INVALID_REQUEST");
+        assertThat(response.getBody().getProperties()).containsEntry("errorCode", "METHOD_NOT_ALLOWED");
     }
 }

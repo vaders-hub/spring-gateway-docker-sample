@@ -1,7 +1,8 @@
 # 후속 장애 정책: Redis fail-closed와 CircuitBreaker / Retry
 
-현재는 **설계와 실습 기준만 추가**했습니다. RedisRateLimiter 기본 동작과 route는 유지하며
-CircuitBreaker 의존성/필터, Retry, 오류 규격 변경은 아직 구현하지 않았습니다.
+Gateway의 429·연결 실패 502·응답 timeout 504 공통 오류 처리는 구현했습니다.
+RedisRateLimiter의 허용/거절 판정과 기본 오류 허용 fallback은 유지하며 `throw-on-limit`만 활성화했습니다.
+Redis fail-closed, CircuitBreaker 의존성/필터와 Retry는 **아직 설계·실습 기준 단계**입니다.
 기본 connect 2초 / response 5초 timeout은 존재하지만 회로 차단기와 동일하지 않습니다.
 
 ## 학습 단계와의 연결
@@ -13,10 +14,12 @@ Stateless/종료/timeout을 같은 요청 수명으로 연결합니다. 이 문�
 |---|---|---|
 | 1 | local/test 전용 지연 fixture와 종료 검증 | 시작 확인 후 종료, 기존 요청 완료/취소 및 복구 증거 |
 | 2 | Redis 실패 구분과 요청별 차단 | 429/제안 503 구분, 장애 중 Backend 미호출 |
-| 3 | 프록시 오류 계약과 timeout 검증 | 연결 거절/응답 지연/pool 대기 각각의 코드·지연 기록 |
+| 3 | 프록시 오류 계약과 timeout 검증 | 연결 거절 502/응답 지연 504의 로컬 HTTP 테스트 구현; 실제 pool 고갈·Compose/kind 검증은 후속 |
 | 4 | 읽기 CircuitBreaker, 제한된 Retry | 상태 전이·실제 호출 수·총 지연·부하 상한 확인 |
 
-현재 위 산출물은 구현 과제입니다. 4단계 Redis readiness 실습 성공으로 대체하지 않습니다.
+기본 오류 계약의 구현·검증 범위는 [API 계약](api-contract.md#시스템별-오류-처리-경계)을 참고합니다.
+Redis 허용/거절만 고정한 자동 테스트는 실제 Redis 장애·분산 버킷 검증을 대체하지 않습니다.
+나머지 산출물은 구현 과제이며 4단계 Redis readiness 실습 성공으로 대체하지 않습니다.
 
 ## 1. Redis 오류와 제한 초과를 구분
 

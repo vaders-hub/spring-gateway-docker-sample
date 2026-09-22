@@ -1,6 +1,16 @@
 package com.example.backend.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.Ordered;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@Import(SecurityHttpIntegrationTest.ErrorFixtures.class)
 class SecurityHttpIntegrationTest {
     private static final String SECRET = UUID.randomUUID().toString();
     private static final String ISSUER = "security-http-test";
@@ -135,6 +146,73 @@ class SecurityHttpIntegrationTest {
         Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
         assertThat(body.get("detail")).isEqualTo("The request body is missing or malformed.");
         assertThat(body.get("instance")).isEqualTo("/echo");
+    }
+
+    @Test
+    void servletFilterFailureUsesErrorDispatchWithoutAuthenticationMasking() throws Exception {
+        var response = request("GET", "/fixture/failure", null, null);
+        assertProblem(response, 500, "INTERNAL_ERROR");
+        Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
+        assertThat(body.get("instance")).isEqualTo("/fixture/failure");
+        assertThat(response.headers().firstValue("X-Request-Id")).contains("security-http-test");
+        assertThat(response.body()).doesNotContain("private-filter-message", "ServletException", "trace");
+    }
+
+    @Test
+    void sendErrorPreservesStatusAndProtocolHeaders() throws Exception {
+        var method = request("GET", "/fixture/method", null, null);
+        assertProblem(method, 405, "METHOD_NOT_ALLOWED");
+        assertThat(method.headers().firstValue("Allow")).contains("POST");
+        var unavailable = request("GET", "/fixture/unavailable", null, null);
+        assertProblem(unavailable, 503, "SERVICE_UNAVAILABLE");
+        assertThat(unavailable.headers().firstValue("Retry-After")).contains("7");
+    }
+
+    @Test
+    void errorDispatchUsesJsonEvenForBrowserAccept() throws Exception {
+        var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/fixture/failure"))
+                .timeout(Duration.ofSeconds(5)).header("Accept", "text/html")
+                .header("X-Request-Id", "security-http-test").GET().build();
+        try (var client = HttpClient.newHttpClient()) {
+            assertProblem(client.send(request, HttpResponse.BodyHandlers.ofString()), 500, "INTERNAL_ERROR");
+        }
+    }
+
+    @Test
+    void unknownPathAndDirectErrorAccessFollowNormalSecurityPolicy() throws Exception {
+        assertProblem(request("GET", "/missing", token("api.read", AUDIENCE, ISSUER, SECRET, 300), null),
+                404, "NOT_FOUND");
+        assertProblem(request("GET", "/error", null, null), 401, "UNAUTHORIZED");
+        assertProblem(request("GET", "/error", token("api.read", AUDIENCE, ISSUER, SECRET, 300), null),
+                404, "NOT_FOUND");
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class ErrorFixtures {
+        // 테스트 컨텍스트에서만 인증 이전 filter 실패/sendError를 만든다. 운영 endpoint는 추가하지 않는다.
+        @Bean
+        FilterRegistrationBean<Filter> errorFixtureFilter() {
+            FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>((request, response, chain) -> {
+                var http = (HttpServletRequest) request;
+                var servlet = (HttpServletResponse) response;
+                switch (http.getRequestURI()) {
+                    case "/fixture/failure" -> throw new ServletException("private-filter-message");
+                    case "/fixture/method" -> {
+                        servlet.setHeader("Allow", "POST");
+                        servlet.sendError(405, "private-container-message");
+                    }
+                    case "/fixture/unavailable" -> {
+                        servlet.setHeader("Retry-After", "7");
+                        servlet.sendError(503, "private-container-message");
+                    }
+                    default -> chain.doFilter(request, response);
+                }
+            });
+            registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+            registration.setDispatcherTypes(DispatcherType.REQUEST);
+            registration.addUrlPatterns("/fixture/*");
+            return registration;
+        }
     }
 
     private HttpResponse<String> request(String method, String path, String token, String body) throws Exception {

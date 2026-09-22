@@ -20,12 +20,14 @@ class SecurityProblemWriterTest {
                 .addMixIn(ProblemDetail.class, ProblemDetailJacksonMixin.class).build();
         var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/hello")
                 .header(RequestContext.REQUEST_ID_HEADER, "id-with-\"quote").build());
-        new SecurityProblemWriter(mapper).authenticationEntryPoint()
+        new SecurityProblemWriter(new ProblemResponseWriter(mapper)).authenticationEntryPoint()
                 .commence(exchange, new BadCredentialsException("private-token")).block();
         Map<?, ?> body = mapper.readValue(exchange.getResponse().getBodyAsString().block(), Map.class);
         assertThat(exchange.getResponse().getStatusCode().value()).isEqualTo(401);
         assertThat(exchange.getResponse().getHeaders().getFirst("WWW-Authenticate")).isEqualTo("Bearer");
-        assertThat(body.get("requestId")).isEqualTo("id-with-\"quote");
+        assertThat(body.get("requestId")).isEqualTo(exchange.getResponse().getHeaders()
+                .getFirst(RequestContext.REQUEST_ID_HEADER));
+        assertThat(body.get("requestId").toString()).matches("[A-Za-z0-9._-]{1,64}");
         assertThat(body.get("errorCode")).isEqualTo("UNAUTHORIZED");
         assertThat(body.get("status")).isEqualTo(401);
         assertThat(body.containsKey("properties")).isFalse();

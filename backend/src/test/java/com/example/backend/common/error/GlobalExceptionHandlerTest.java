@@ -29,6 +29,6 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getStatus()).isEqualTo(405);
         assertThat(response.getBody().getTitle()).isEqualTo("Method Not Allowed");
         assertThat(response.getHeaders().getFirst("Allow")).isEqualTo("GET");
-        assertThat(response.getBody().getProperties()).containsEntry("errorCode", "INVALID_REQUEST");
+        assertThat(response.getBody().getProperties()).containsEntry("errorCode", "METHOD_NOT_ALLOWED");
     }
 }
