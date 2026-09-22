@@ -33,10 +33,39 @@ Grafana 계정은 `admin`, 비밀번호는 로컬 `.env`의 `GRAFANA_ADMIN_PASSW
 
 1. 1단계의 JWT/API 호출을 실행해 요청 지표를 만듭니다.
 2. Prometheus Targets 화면에서 gateway/backend가 모두 UP인지 확인합니다.
-3. 아래 PromQL을 순서대로 조회합니다. scrape 주기 15초, rate window 5분이므로
+3. [Prometheus Query](http://localhost:9090/query)의 입력창에 아래 PromQL을 하나씩 붙여 넣고 `Execute`를 누릅니다. scrape 주기 15초, rate window 5분이므로
    바로 빈 결과가 나오면 샘플이 쌓인 뒤 확인합니다.
 4. Grafana Explore에서 이미 provision된 `Prometheus` datasource를 선택합니다.
 5. `Local Gateway Lab` dashboard를 만들고 같은 쿼리의 패널을 추가·저장합니다.
+
+패널 편집 화면의 `Queries → Data source`에서 `Prometheus`를 선택하고 `Code` 모드에
+PromQL을 입력한 뒤 `Run queries`를 누릅니다. `-- Grafana --`의 `Random Walk`는 샘플 데이터이며,
+`Expression`의 SQL 입력창은 PromQL을 실행하는 곳이 아닙니다. `=~` 앞에 역슬래시를 붙이지 않습니다.
+
+### Prometheus 데이터 소스가 목록에 없을 때
+
+이 프로젝트는 시작 시 Prometheus 데이터 소스를 자동 등록합니다. 등록 로그가 있어도
+플러그인이 로딩되지 않으면 선택 목록에 보이지 않을 수 있습니다.
+Grafana 13.2.2에서 기본 플러그인을 시작 시 자동 업데이트하다가 읽기 전용 이미지 경로에
+쓰지 못하면 `Failed to install plugin` / `read-only file system` 이후
+`Could not find plugin definition for data source`가 발생할 수 있습니다.
+
+관측 Compose의 `GF_PLUGINS_PREINSTALL_AUTO_UPDATE: "false"`는 시작 시 자동 업데이트를 끄고
+이미지에 포함된 플러그인을 사용하도록 합니다. `read_only: true`와 기존 데이터 volume은 유지합니다.
+플러그인 버전 갱신은 Grafana 이미지 업그레이드 시 별도로 검증합니다.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.observability.yml \
+  --profile observability up -d --no-deps grafana
+docker compose -f docker-compose.yml -f docker-compose.observability.yml \
+  --profile observability logs --since 2m grafana
+```
+
+Grafana가 다시 기동되면 브라우저를 새로고침하고 데이터 소스를 선택합니다.
+`down -v`나 데이터 소스 중복 생성은 필요하지 않습니다.
+[자동 업데이트 설정](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#preinstall_auto_update)을 참고합니다.
+
+### 조회할 PromQL
 
 ```promql
 up{job=~"gateway|backend"}

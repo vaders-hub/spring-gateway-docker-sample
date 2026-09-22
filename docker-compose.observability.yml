@@ -44,6 +44,8 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Run bash scripts/ensure-observability-env.sh first}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      # 이미지에 포함된 플러그인을 사용한다. 시작 시 자동 업데이트는 read_only 파일시스템과 충돌한다.
+      GF_PLUGINS_PREINSTALL_AUTO_UPDATE: "false"
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
