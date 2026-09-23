@@ -30,7 +30,7 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 |---|---|---|---|
 | 설치 | [Windows + WSL2 기본 도구 설치](00-windows-tool-installation.md) | WSL2·Docker·kubectl·kind·Helm, 선택 JDK 25 | 버전/PATH 및 Docker Server 확인 |
 | 0~1 | [준비와 Compose](01-setup-and-compose.md) | 도구 확인, 환경변수, JWT, API, Redis 제한 | 200/400/401/429를 구분 |
-| 2 | [관측성](02-observability.md) | Prometheus/Grafana 기동, 요청 지표 확인 | 두 scrape target의 up=1 |
+| 2 | [관측성](02-observability.md) · [Micrometer 별첨](02-appendix-micrometer-actuator.md) | Prometheus/Grafana 기동, 요청 지표 확인 | 두 scrape target의 up=1 |
 | 3 | [kind 배포](03-kind-kubernetes.md) | 이미지 로드, Namespace/Secret/Deployment/Service | 3개 앱 Deployment Available |
 | 4 | [운영·장애 실습](04-operations-and-recovery.md) | 복제본, ConfigMap, readiness, rollout/복구 | 장애를 관찰하고 원상복구 |
 | 5 | [Gateway API](05-gateway-api.md) | Envoy + Gateway/HTTPRoute 추가 | 8888 경로에서도 인증·제한 유지 |

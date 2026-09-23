@@ -2,6 +2,8 @@
 
 [전체 순서](README.md) · 이전: [Compose](01-setup-and-compose.md) · 다음: [kind](03-kind-kubernetes.md)
 
+별첨: [Micrometer와 Actuator의 지표 수집 원리](02-appendix-micrometer-actuator.md) — 각 앱의 측정·응답과 Prometheus의 호출·저장 경로를 설명합니다.
+
 ## 목표 / 구현 위치
 
 로그와 metrics를 연결해 정상 요청·오류·지연을 관찰합니다.
