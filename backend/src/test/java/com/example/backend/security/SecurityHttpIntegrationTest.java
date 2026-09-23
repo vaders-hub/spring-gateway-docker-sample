@@ -64,6 +64,23 @@ class SecurityHttpIntegrationTest {
         registry.add("JWT_SECRET", () -> SECRET);
         registry.add("JWT_AUDIENCE", () -> AUDIENCE);
         registry.add("APP_ENVIRONMENT", () -> "test");
+        registry.add("app.observability.prometheus-public", () -> false);
+    }
+
+    @Test
+    void explicitManagementEndpointsKeepTheirAuthenticationPolicy() throws Exception {
+        for (String path : List.of("/actuator/health", "/actuator/health/liveness",
+                "/actuator/health/readiness", "/actuator/info")) {
+            var response = request("GET", path, null, null);
+            // Gateway readiness는 Redis 상태에 따라 503일 수 있다. 인증 오류와 의존성 장애는 구분한다.
+            assertThat(response.statusCode()).isIn(200, 503);
+            assertThat(response.body()).contains(path.endsWith("/info") ? "app" : "status");
+        }
+        assertProblem(request("GET", "/actuator/prometheus", null, null), 401, "UNAUTHORIZED");
+        var response = request("GET", "/actuator/prometheus",
+                token("api.read", AUDIENCE, ISSUER, SECRET, 300), null);
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("jvm_memory_used_bytes");
     }
 
     @Test
@@ -187,16 +204,31 @@ class SecurityHttpIntegrationTest {
     }
 
     @Test
-    void unknownPathAndDirectErrorAccessFollowNormalSecurityPolicy() throws Exception {
+    void unknownPathAndDirectErrorAccessAreDeniedByDefault() throws Exception {
         assertProblem(request("GET", "/missing", token("api.read", AUDIENCE, ISSUER, SECRET, 300), null),
-                404, "NOT_FOUND");
+                403, "ACCESS_DENIED");
         assertProblem(request("GET", "/error", null, null), 401, "UNAUTHORIZED");
         assertProblem(request("GET", "/error", token("api.read", AUDIENCE, ISSUER, SECRET, 300), null),
-                404, "NOT_FOUND");
+                403, "ACCESS_DENIED");
+    }
+
+    @Test
+    void unmappedMethodsAndNewControllerNeedExplicitAuthorizationRules() throws Exception {
+        String jwt = token("api.read api.write", AUDIENCE, ISSUER, SECRET, 300);
+        assertProblem(request("POST", "/hello", jwt, "{}"), 403, "ACCESS_DENIED");
+        assertProblem(request("GET", "/echo", jwt, null), 403, "ACCESS_DENIED");
+        // 실제 Controller가 있어도 SecurityConfig에 등록하지 않았으면 통과하지 못한다.
+        assertProblem(request("GET", "/new-feature", jwt, null), 403, "ACCESS_DENIED");
+        assertProblem(request("GET", "/actuator/env", jwt, null), 403, "ACCESS_DENIED");
     }
 
     @TestConfiguration(proxyBeanMethods = false)
     static class ErrorFixtures {
+        @Bean
+        NewFeatureController newFeatureController() {
+            return new NewFeatureController();
+        }
+
         // 테스트 컨텍스트에서만 인증 이전 filter 실패/sendError를 만든다. 운영 endpoint는 추가하지 않는다.
         @Bean
         FilterRegistrationBean<Filter> errorFixtureFilter() {
@@ -220,6 +252,15 @@ class SecurityHttpIntegrationTest {
             registration.setDispatcherTypes(DispatcherType.REQUEST);
             registration.addUrlPatterns("/fixture/*");
             return registration;
+        }
+    }
+
+    @org.springframework.boot.test.context.TestComponent
+    @org.springframework.web.bind.annotation.RestController
+    static class NewFeatureController {
+        @org.springframework.web.bind.annotation.GetMapping("/new-feature")
+        Map<String, String> get() {
+            return Map.of("result", "must-not-be-exposed");
         }
     }
 

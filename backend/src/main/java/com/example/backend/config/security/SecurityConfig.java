@@ -40,7 +40,7 @@ class SecurityConfig {
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
                         .accessDeniedHandler(problems.accessDeniedHandler()))
                 .authorizeHttpRequests(authorize -> {
-                    // 컨테이너 내부 오류 dispatch만 허용한다. 외부의 /error 직접 요청은 기존 인증 정책을 따른다.
+                    // 컨테이너 내부 오류 dispatch만 허용한다. 외부의 /error 직접 요청은 아래 기본 거부 정책을 따른다.
                     authorize.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll();
                     authorize.requestMatchers("/actuator/health/**", "/actuator/info").permitAll();
                     if (observabilityProperties.prometheusPublic()) {
@@ -52,7 +52,8 @@ class SecurityConfig {
                     authorize.requestMatchers(HttpMethod.GET, "/hello").access(hasScope("api.read"));
                     authorize.requestMatchers(HttpMethod.HEAD, "/hello").access(hasScope("api.read"));
                     authorize.requestMatchers(HttpMethod.POST, "/echo").access(hasScope("api.write"));
-                    authorize.anyRequest().authenticated();
+                    // 새 endpoint도 경로/메서드/권한을 명시하기 전에는 공개되지 않는다.
+                    authorize.anyRequest().denyAll();
                 })
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(Customizer.withDefaults())

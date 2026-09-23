@@ -23,19 +23,29 @@
 | attribute 이름 | Backend request attribute를 네임스페이스 문자열로 분리. HTTP 헤더 이름 X-Request-Id는 변경하지 않는다. |
 | final Spring Bean | SecurityProblemWriter/ProblemResponseWriter의 final 제거. static 유틸리티 클래스는 final 유지. |
 
-## 보안 정책: 승인 대기
+## 보안 정책: 승인 후 반영
 
-현재 인가 정책은 그대로 유지했다. 다음 변경을 포함한 최초 일괄 수정은 자동 승인 검토가
-기존 API 차단·컴파일 실패·서비스 중단 가능성을 이유로 거부했다. 범위를 줄인 공통 영역
-수정과 검증을 먼저 진행했으며, 아래 동작 변경은 사용자에게 별도 승인을 요청했다.
+사용자 승인 후 다음 두 정책을 반영했다. 업무 토큰의 scope와 관리 경로 접근 범위를 구분한다.
 
-- Gateway: `/api/actuator`, `/api/actuator/**`, `/api/error`, `/api/error/**`를 업무 route 인가보다 먼저 거부.
-- Backend: 명시한 업무/관리 경로와 내부 ERROR dispatch 외에는 denyAll. 인증된 미등록 경로는 404 대신 403.
-- 승인 후 기존 `/hello`·`/echo`·관리 endpoint·401/403·Servlet 오류 dispatch와 upstream 미호출을 검증할 예정.
+- Gateway: `/api/actuator`, `/api/actuator/**`, `/api/error`, `/api/error/**`를 업무 scope 허용보다 먼저 거부한다.
+  토큰이 없으면 401, 유효한 토큰이 있으면 403이며 rate limiter와 Backend까지 전달하지 않는다.
+- Backend: 명시한 업무/관리 경로와 내부 ERROR dispatch 외에는 denyAll을 적용한다.
+  유효한 JWT를 사용한 미등록 경로·메서드는 403이다. 이전 인증된 `/missing`·`/error`의 404가 403으로 바뀐다.
+- `/hello` GET/HEAD와 `/echo` POST는 기존 scope 규칙을 유지한다.
+  새 업무 Controller를 만들 때 경로·메서드·scope를 SecurityConfig에 함께 등록해야 한다.
+- 직접 `/actuator/health/**`·`/actuator/info`와 공개 여부 설정에 따른 `/actuator/prometheus` 정책은 유지한다.
+  학습 Compose의 Prometheus scrape 주소는 `/api`가 붙지 않은 서비스별 `/actuator/prometheus`이다.
+- Backend의 `DispatcherType.ERROR`는 계속 허용한다. Servlet filter 예외/sendError가 인증 오류로
+  가려지지 않고 원래 500/405/503 등과 공통 오류 본문을 유지한다.
+- Gateway의 일반 미등록 경로는 기존 정책을 유지하므로 인증 후 `/missing`은 여전히 404다.
+  두 서비스의 모든 오류가 403으로 바뀌었다는 의미가 아니다.
 
-현재 Backend의 `anyRequest().authenticated()`는 무인증 공개가 아니다. 유효한 JWT가 있는
-요청을 다음 단계로 넘긴다는 의미이다. 또한 `/api/actuator/**` 접근에는 Gateway scope 검증이
-적용되지만, 업무 토큰으로 관리 경로까지 접근할 수 있다는 경계 문제가 남는다.
+회귀 테스트는 실제 JWT로 차단 경로의 GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS,
+인코딩된 경로, rate limiter와 upstream 미호출을 확인한다. 세미콜론 파라미터 URL은 기본
+HTTP firewall이 먼저 400으로 거부하며, 이 경우도 rate limiter와 upstream은 호출되지 않는다.
+Backend는 인가 규칙이 없는 테스트 전용 Controller도 차단하는지 확인하고,
+직접 관리 endpoint·공개/인증 필요 Prometheus·내부 ERROR dispatch를 함께 검증한다.
+일반 CORS preflight는 CORS 필터에서 먼저 처리될 수 있으며 그 자체는 Backend 라우팅을 뜻하지 않는다.
 
 ## 그대로 적용하지 않은 제안
 
@@ -61,7 +71,7 @@
 - 현재 Servlet filter 요청 로그의 종료 시점과 후속 ERROR dispatch의 종료 시점은 다를 수 있다.
   미처리 예외의 최종 상태는 같은 requestId의 servlet_request_error 로그와 오류 응답도 함께 본다.
 
-검증 결과: Backend 26개, Gateway 40개, 총 66개 테스트 통과(실패·오류·건너뜀 0). 두 모듈 컴파일 및 git diff --check도 통과했다.
+검증 결과: Backend 29개, Gateway 45개, 총 74개 테스트 통과(실패·오류·건너뜀 0). 두 모듈 컴파일 및 git diff --check도 통과했다.
 
 검증 명령(WSL 저장소 루트):
 
@@ -72,6 +82,7 @@ MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=false bash ./gradlew --offline --no-daemo
 ```
 
 기존 JWT·scope·DTO 검증·Servlet ERROR dispatch·Gateway 429/502/504·Backend 오류 전달 테스트와,
-새 418/헤더 보존·응답 객체 격리·안전한 cause 진단·고정 시계·data.requestId 제거 검증을 실행한다.
+418/헤더 보존·응답 객체 격리·안전한 cause 진단·고정 시계·data.requestId 제거 검증을 실행했다.
+승인된 보안 정책에 대해 관리 우회 경로 차단·인가 규칙 없는 Controller 차단·공개/인증 필요 Prometheus와 health/info 접근도 통과했다.
 테스트는 별도 로컬 HTTP 서버를 사용하며 실제 Redis 판정은 일부 spy로 고정한다.
 Compose/kind 컨테이너 재기동·이미지 재빌드·부하 검증은 수행하지 않는다.

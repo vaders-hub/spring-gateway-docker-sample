@@ -114,6 +114,31 @@ class GatewayErrorHttpIntegrationTest {
     }
 
     @Test
+    void managementAndErrorPathsAreDeniedBeforeRateLimiterAndBackend() throws Exception {
+        for (String path : List.of("/api/actuator", "/api/actuator/", "/api/actuator/health",
+                "/api/actuator/prometheus", "/api/actuator/info", "/api/error", "/api/error/child",
+                "/api/%61ctuator/health")) {
+            for (String method : List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")) {
+                assertProblem(request(method, path, "gateway-errors"), 403, "ACCESS_DENIED", path);
+            }
+            var head = request("HEAD", path, "gateway-errors");
+            assertThat(head.statusCode()).isEqualTo(403);
+            assertThat(head.body()).isEmpty();
+        }
+        assertThat(UPSTREAM_CALLS.get()).isZero();
+        org.mockito.Mockito.verify(limiter, org.mockito.Mockito.never()).isAllowed(anyString(), anyString());
+    }
+
+    @Test
+    void semicolonPathIsRejectedBeforeRouting() throws Exception {
+        // 기본 HTTP firewall이 세미콜론을 인가 규칙보다 먼저 400으로 거절한다.
+        var response = request("GET", "/api/actuator;v=1/health", "gateway-errors");
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(UPSTREAM_CALLS.get()).isZero();
+        org.mockito.Mockito.verify(limiter, org.mockito.Mockito.never()).isAllowed(anyString(), anyString());
+    }
+
+    @Test
     void quotaDenialReturnsProblemPreservesHeadersAndDoesNotReachBackend() throws Exception {
         doReturn(Mono.just(new RateLimiter.Response(false,
                 Map.of("X-RateLimit-Remaining", "0", "X-RateLimit-Burst-Capacity", "5"))))

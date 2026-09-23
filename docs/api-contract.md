@@ -106,8 +106,9 @@ Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으�
 | Gateway 요청 제한 거절 | YAML의 `throw-on-limit: true` → 공통 `GatewayErrorResponses` | 429 본문 작성, rate-limit 헤더 유지, Backend 미호출 |
 
 Backend는 Boot 4의 `spring.web.error.path`(기본 `/error`)를 사용하며, Security에서
-`DispatcherType.ERROR`만 허용합니다. 외부의 `/error` 직접 호출에는 기존 인증 정책이 적용되고,
-인증된 직접 호출은 오류 dispatch가 아니므로 404입니다. 오류 상태를 모두 500이나 200으로 바꾸지 않습니다.
+`DispatcherType.ERROR`를 명시적으로 허용합니다. 외부의 `/error` 직접 호출은 기본 거부 정책을
+따르므로 토큰이 없으면 401, 유효한 토큰이 있으면 403입니다. 내부 오류 dispatch의 원래
+500/405/503 등은 그대로 보존하며 모든 오류 상태를 403으로 바꾸지는 않습니다.
 
 Gateway 라우팅 예외는 `GlobalExceptionHandler`에 전달되기도 하므로, Advice와 전역 handler가
 [GatewayErrorResponses](../gateway/src/main/java/com/example/gateway/common/error/GatewayErrorResponses.java)의 상태·헤더 매핑을 함께 사용합니다.
@@ -137,6 +138,15 @@ audience가 없거나 다른 토큰은 401입니다. 기존 토큰은 재발급�
 | Gateway POST/PUT/PATCH/DELETE `/api/**` | `api.write` |
 | Backend GET/HEAD `/hello` | `api.read` |
 | Backend POST `/echo` | `api.write` |
+
+Gateway는 위 scope 허용 규칙보다 먼저 `/api/actuator`·`/api/actuator/**`와
+`/api/error`·`/api/error/**`를 거부합니다. 업무 토큰으로 Backend 관리 endpoint를 호출하는 우회를
+차단하며, rate limiter와 Backend 호출 전에 종료합니다. 토큰 누락은 401, 유효한 토큰은 403입니다.
+
+Backend는 위 업무 경로·메서드와 명시한 관리 경로/내부 ERROR dispatch 외에는 기본 거부합니다.
+인증된 `/missing`, `/error`, GET `/echo`, POST `/hello` 등은 403입니다.
+새 Controller를 추가할 때 SecurityConfig의 경로·메서드·scope도 함께 등록해야 합니다.
+직접 `/actuator/health/**`·`/actuator/info`와 공개 여부 설정에 따른 `/actuator/prometheus` 접근은 유지합니다.
 
 Gateway의 위 목록 밖 API 메서드는 deny이며 CORS preflight는 CORS 정책으로 처리합니다.
 echo는 영속 쓰기가 아니지만 메서드별 권한 분리 학습을 위해 write scope를 요구합니다.

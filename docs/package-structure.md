@@ -82,6 +82,9 @@ Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties
   audience는 표준 `JwtClaimValidator`로 검증합니다.
 - JWT 키, 데모 비밀번호, 토큰 DTO의 toString은 민감값을 가립니다.
 - 토큰 발급 응답은 Cache-Control: no-store, Pragma: no-cache를 보냅니다.
+- Gateway는 `/api/actuator/**`·`/api/error/**`의 Backend 우회 접근을 scope 허용 전에 차단합니다.
+- Backend는 명시한 경로·메서드 외에 기본 거부합니다. 새 Controller에는 명시적 인가 규칙도 필요합니다.
+  내부 ERROR dispatch는 허용하여 최종 오류 응답이 401/403으로 가려지지 않게 합니다.
 - 인증은 stateless로 유지하며, 인증 전 요청을 세션에 저장하는 request cache도 비활성화합니다.
 - CORS는 경로/와일드카드가 없는 정확한 HTTP(S) Origin만 받습니다.
 - JWT TTL은 1초 이상의 정수 초만 허용합니다.
@@ -107,7 +110,7 @@ layered JAR, Foojay 자동 JDK 다운로드는 이번 변경에 포함하지 않
 
 ## 검증 범위
 
-2026-09-23 AA/SWA 검토에서는 Java 컴파일과 두 모듈의 회귀 테스트 66개가 통과했습니다.
+2026-09-23 AA/SWA 검토에서는 Java 컴파일과 두 모듈의 회귀 테스트 74개가 통과했습니다.
 설정 보호, JWT/권한, DTO 검증, 오류 상태·헤더, 실제 Servlet ERROR dispatch와 Netty 라우팅을
 검증합니다. Compose/kind 재배포는 이 검증과 별개이며 실행 중인 컨테이너는 변경하지 않습니다.
 세부 반영·보류 이유는 [AA/SWA 검토 기록](aa-swa-review.md)을 참고합니다.

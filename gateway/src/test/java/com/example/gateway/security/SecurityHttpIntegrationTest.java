@@ -60,9 +60,26 @@ class SecurityHttpIntegrationTest {
         registry.add("JWT_SECRET", () -> SECRET);
         registry.add("JWT_AUDIENCE", () -> AUDIENCE);
         registry.add("APP_ENVIRONMENT", () -> "test");
+        registry.add("app.observability.prometheus-public", () -> false);
         registry.add("DEMO_USERNAME", () -> "demo");
         registry.add("DEMO_PASSWORD", () -> DEMO_PASSWORD);
         registry.add("BACKEND_URL", () -> "http://127.0.0.1:1");
+    }
+
+    @Test
+    void explicitManagementEndpointsKeepTheirAuthenticationPolicy() throws Exception {
+        for (String path : List.of("/actuator/health", "/actuator/health/liveness",
+                "/actuator/health/readiness", "/actuator/info")) {
+            var response = request("GET", path, null, null);
+            // Gateway readiness는 Redis 상태에 따라 503일 수 있다. 인증 오류와 의존성 장애는 구분한다.
+            assertThat(response.statusCode()).isIn(200, 503);
+            assertThat(response.body()).contains(path.endsWith("/info") ? "app" : "status");
+        }
+        assertProblem(request("GET", "/actuator/prometheus", null, null), 401, "UNAUTHORIZED");
+        var response = request("GET", "/actuator/prometheus",
+                token("api.read", AUDIENCE, ISSUER, SECRET, 300), null);
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("jvm_memory_used_bytes");
     }
 
     @Test
@@ -70,6 +87,12 @@ class SecurityHttpIntegrationTest {
         var response = request("GET", PATH, null, null);
         assertProblem(response, 401, "UNAUTHORIZED");
         assertThat(response.headers().firstValue("WWW-Authenticate")).contains("Bearer");
+    }
+
+    @Test
+    void managementProxyWithoutTokenStillReturns401() throws Exception {
+        assertProblem(request("GET", "/api/actuator/health", null, null), 401, "UNAUTHORIZED");
+        assertProblem(request("GET", "/api/error", null, null), 401, "UNAUTHORIZED");
     }
 
     @Test

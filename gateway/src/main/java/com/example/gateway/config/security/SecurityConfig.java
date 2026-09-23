@@ -46,6 +46,9 @@ class SecurityConfig {
                     else {
                         authorize.pathMatchers("/actuator/prometheus").authenticated();
                     }
+                    // 업무 토큰으로 Backend 관리/오류 경로에 우회 접근하지 못하게 scope 허용보다 먼저 거부한다.
+                    authorize.pathMatchers("/api/actuator", "/api/actuator/**", "/api/error", "/api/error/**")
+                            .denyAll();
                     // read/write scope로 HTTP 동작을 구분한다. 토큰은 있으나 scope가 부족하면 403이다.
                     authorize.pathMatchers(HttpMethod.GET, "/api/**").access(hasScope("api.read"));
                     authorize.pathMatchers(HttpMethod.HEAD, "/api/**").access(hasScope("api.read"));
