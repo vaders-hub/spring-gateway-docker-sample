@@ -1,5 +1,6 @@
 package com.example.gateway.common.error;
 
+import com.example.gateway.common.util.ErrorDiagnostics;
 import com.example.gateway.common.web.RequestContext;
 import io.netty.channel.ConnectTimeoutException;
 import java.net.ConnectException;
@@ -13,8 +14,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.netty.http.client.PrematureCloseException;
 

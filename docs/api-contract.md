@@ -97,6 +97,8 @@ Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으�
 
 `ApiResponses.fail`도 같은 `ProblemDetails.forCode`로 위임합니다. 오류 처리기는 `common/api`를
 참조하지 않으므로 의존 방향은 `common/api → common/error` 한 방향입니다.
+응답 enum인 `SuccessCode`/`ErrorCode`는 각 모듈의 `common/code`에 모으고,
+오류 진단 유틸리티 `ErrorDiagnostics`는 `common/util`에 둡니다. 코드·메시지·HTTP 계약은 동일합니다.
 프레임워크 상태는 `ProblemDetails.forStatus`가 처리합니다. `ErrorCode`에 없는 418 같은 상태도
 그대로 유지하고, 응답 본문을 새로 만들면서 기존 Content-Length/Content-Encoding은 제거합니다.
 `Allow`/`Retry-After`/rate-limit 헤더는 보존합니다. WebFlux writer는 생성된 본문을 다시 수정하지 않습니다.

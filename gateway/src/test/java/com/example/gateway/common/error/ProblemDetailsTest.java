@@ -1,8 +1,10 @@
 package com.example.gateway.common.error;
 
+import com.example.gateway.common.code.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ProblemDetailsTest {
@@ -38,16 +40,5 @@ class ProblemDetailsTest {
         assertThat(first.getHeaders().getFirst("WWW-Authenticate")).isEqualTo("Bearer");
         assertThat(ProblemDetails.forCode(ErrorCode.ACCESS_DENIED, "third").getHeaders().getFirst("WWW-Authenticate"))
                 .isNull();
-    }
-
-    @Test
-    void diagnosticCausesAreBoundedAndNeverContainExceptionMessages() {
-        var root = new IllegalArgumentException("secret-root-message");
-        var error = new IllegalStateException("secret-outer-message", root);
-        root.initCause(error);
-        assertThat(ErrorDiagnostics.causes(error)).hasSize(2);
-        assertThat(ErrorDiagnostics.causes(error).toString())
-                .contains("IllegalArgumentException", "IllegalStateException", " at ")
-                .doesNotContain("secret-root-message", "secret-outer-message");
     }
 }

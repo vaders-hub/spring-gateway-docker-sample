@@ -9,7 +9,7 @@
 |---|---|
 | 1-1 업무 계층의 requestId | Backend Service 인자와 응답 data에서 제거. Controller에서 meta/header를 처리한다. 자동 envelope Advice는 사용하지 않는다. |
 | 1-2 Service와 웹 DTO 결합 | Service는 HelloResult/EchoResult record 반환. Controller가 응답 DTO로 변환하며 Echo 입력/출력 타입도 분리했다. |
-| 1-3 패키지 순환 | ApiResponses.fail을 유지하면서 common.error의 ProblemDetails로 위임. 오류 처리기에서 common.api 참조를 제거했다. 파일 이동/삭제 없이 의존 방향을 단순화했다. |
+| 1-3 패키지 순환 | ApiResponses.fail을 유지하면서 common.error의 ProblemDetails로 위임. 오류 처리기에서 common.api 참조를 제거했다. 의존 방향을 단순화했다. 이후 공통 enum은 common.code로 분리했다. |
 | 2-1 오류 상태 복원 중복 | ProblemDetails.forStatus가 실제 HTTP 상태와 안전한 본문/헤더를 함께 생성. 매핑되지 않은 418도 보존하며 Gateway writer의 본문 재수정을 제거했다. |
 | 2-2 혼동되는 설정 | Backend의 중복 spring.mvc.problemdetails.enabled를 제거. 실제 오류 계약은 프로젝트 Advice/ErrorController가 담당한다. |
 | 2-3 5xx 원인 추적 | 예외 타입과 cause별 첫 stack frame을 최대 8개 기록. 순환 cause를 방어하고 예외 메시지/전체 stack은 기록하지 않는다. |
@@ -72,6 +72,13 @@ Backend는 인가 규칙이 없는 테스트 전용 Controller도 차단하는�
   현재 `/api/**` 인증 정책은 유지하며, Principal이 없는 경우에도 필터 체인을 정확히 한 번 이어간다.
 - 검증: Hello/Echo가 기존 gatewayUser 없이 username을 반환하고 위조 헤더를 무시하는지 확인했다.
   Gateway의 Principal 있음/없음/조회 실패와 체인 호출 횟수도 회귀 테스트로 확인했다.
+
+## enum과 util 패키지 분리
+
+- 양쪽 모듈의 SuccessCode/ErrorCode는 `common.code`, ErrorDiagnostics는 `common.util`로 이동했다.
+- 호출부와 테스트 import를 변경하고 기존 진단 테스트를 `common.util.ErrorDiagnosticsTest`로 분리했다.
+- ApiResponses/ProblemDetails/RequestContext는 HTTP 역할에 맞는 api/error/web 패키지를 유지한다.
+- 코드값·메시지·응답 JSON·인가 정책은 변경하지 않았다. Java에서 이전 패키지를 직접 참조하는 코드는 새 import를 사용해야 한다.
 
 ## 호환성과 검증
 

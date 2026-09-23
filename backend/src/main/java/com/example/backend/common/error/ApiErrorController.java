@@ -1,16 +1,17 @@
 package com.example.backend.common.error;
 
+import com.example.backend.common.util.ErrorDiagnostics;
 import com.example.backend.common.web.RequestContext;
 import jakarta.servlet.DispatcherType;
-import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.RequestDispatcher;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.webmvc.error.ErrorController;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;

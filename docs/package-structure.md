@@ -12,8 +12,10 @@ application YAML은 각 모듈의 src/main/resources에 유지합니다.
 | config/gateway | Gateway 사용자별 rate-limit key resolver |
 | filter | Gateway 라우팅 단계의 인증 사용자 헤더 전달 |
 | common/web | 라우팅 전 Request ID 정규화와 요청 로그, HTTP 헤더 상수 |
-| common/error | ControllerAdvice, 오류 코드, Security writer, Backend `ApiErrorController`, Gateway `GatewayErrorHandler`/`GatewayErrorResponses`/`ProblemResponseWriter` |
-| common/api | `ApiResponse` 본문, `SuccessCode` 정책, `ApiResponses.success`/`fail` HTTP 응답 생성 |
+| common/error | ControllerAdvice, 오류 응답 생성/전달, Security writer, Backend `ApiErrorController`, Gateway `GatewayErrorHandler`/`GatewayErrorResponses`/`ProblemResponseWriter` |
+| common/api | `ApiResponse` 본문, `ApiResponses.success`/`fail` HTTP 응답 생성 |
+| common/code | 공통 응답 enum인 `SuccessCode`, `ErrorCode`와 상태/메시지 정책 |
+| common/util | 프레임워크에 의존하지 않는 보조 기능. 현재 `ErrorDiagnostics`의 안전한 예외 진단 |
 | auth/controller, auth/service, auth/dto | Gateway 인증 HTTP 경계, 토큰 발급 use case, DTO |
 | controller, service, dto | Backend HTTP 경계, use case, DTO |
 
@@ -35,8 +37,27 @@ Actuator/Prometheus와 스트리밍까지 자동으로 감싸는 전역 Advice�
 두 서비스가 공유하는 HTTP 응답 계약은 api-contract.md로 관리합니다.
 새 코드의 기준: 업무 Controller는 `ApiResponses`를, 오류 처리기(Advice·ErrorController·Security writer·전역 handler)는 `ProblemDetails`를 사용합니다.
 `ApiResponses.fail → common/error/ProblemDetails`로 위임하고 오류 처리기는 `common/api`를
-참조하지 않습니다. 코드 파일을 옮기지 않고 패키지 순환을 제거했습니다.
+참조하지 않습니다. 공통 enum은 `common/code`, 프레임워크 독립 유틸리티는 `common/util`로 모았습니다.
 각 모듈의 `ProblemDetailsTest`는 실제 상태·헤더 보존과 응답 객체 간 격리를 검증합니다.
+
+## 공통 코드와 유틸리티 배치 기준
+
+각 모듈은 다음 구조를 사용합니다. 두 서비스의 독립 빌드 경계는 유지합니다.
+
+```text
+common/
+├── code/   SuccessCode, ErrorCode
+├── util/   ErrorDiagnostics
+├── api/    ApiResponse, ApiResponses
+├── error/  ProblemDetails, Advice, 오류 writer/handler
+└── web/    RequestContext, 요청 추적 filter
+```
+
+- 공통 응답 enum은 `common.code`에 둡니다. 주문 상태처럼 특정 업무에 속하는 enum은 해당 업무 패키지에 둡니다.
+- 재사용 가능한 순수 보조 함수는 `common.util`에 둡니다. `ErrorDiagnostics`는 Throwable을 받아 안전한 진단 값만 반환하고 직접 로그를 쓰지 않습니다.
+- static 메서드가 있다는 이유만으로 util로 옮기지는 않습니다. HTTP 응답 생성은 api/error, HTTP 요청 문맥은 web에 둡니다.
+- `code`와 `util`은 Controller/Service/응답 팩토리를 참조하지 않습니다. `api → error`, `api/error → code`, `error → util` 방향을 유지합니다.
+- `ErrorDiagnostics`와 `causes`는 다른 패키지에서 사용하므로 public입니다. 생성자는 private으로 유지합니다.
 
 ## 설정 객체와 애너테이션
 

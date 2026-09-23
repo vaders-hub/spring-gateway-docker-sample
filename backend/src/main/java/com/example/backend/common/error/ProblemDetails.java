@@ -1,5 +1,6 @@
 package com.example.backend.common.error;
 
+import com.example.backend.common.code.ErrorCode;
 import java.net.URI;
 import java.util.Locale;
 import org.springframework.http.CacheControl;

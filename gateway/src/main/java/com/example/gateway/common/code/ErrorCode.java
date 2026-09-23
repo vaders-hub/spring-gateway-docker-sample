@@ -1,4 +1,4 @@
-package com.example.gateway.common.error;
+package com.example.gateway.common.code;
 
 import org.springframework.http.HttpStatus;
 

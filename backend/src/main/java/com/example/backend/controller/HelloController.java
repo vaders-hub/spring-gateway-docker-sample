@@ -2,7 +2,7 @@ package com.example.backend.controller;
 
 import com.example.backend.common.api.ApiResponse;
 import com.example.backend.common.api.ApiResponses;
-import com.example.backend.common.api.SuccessCode;
+import com.example.backend.common.code.SuccessCode;
 import com.example.backend.common.web.RequestContext;
 import com.example.backend.dto.EchoRequest;
 import com.example.backend.dto.EchoResponse;

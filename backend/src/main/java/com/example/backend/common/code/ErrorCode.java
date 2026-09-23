@@ -1,4 +1,4 @@
-package com.example.backend.common.error;
+package com.example.backend.common.code;
 
 import org.springframework.http.HttpStatus;
 

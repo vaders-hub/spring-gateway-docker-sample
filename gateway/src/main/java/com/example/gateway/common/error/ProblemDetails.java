@@ -1,5 +1,6 @@
 package com.example.gateway.common.error;
 
+import com.example.gateway.common.code.ErrorCode;
 import java.net.URI;
 import java.util.Locale;
 import org.springframework.http.CacheControl;

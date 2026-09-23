@@ -1,13 +1,13 @@
 package com.example.gateway.auth.controller;
 
-import com.example.gateway.config.security.ConditionalOnDemoIssuer;
 import com.example.gateway.auth.dto.TokenRequest;
 import com.example.gateway.auth.dto.TokenResponse;
 import com.example.gateway.auth.service.TokenService;
 import com.example.gateway.common.api.ApiResponse;
 import com.example.gateway.common.api.ApiResponses;
-import com.example.gateway.common.api.SuccessCode;
+import com.example.gateway.common.code.SuccessCode;
 import com.example.gateway.common.web.RequestContext;
+import com.example.gateway.config.security.ConditionalOnDemoIssuer;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
