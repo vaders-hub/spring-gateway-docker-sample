@@ -61,9 +61,21 @@ Backend는 인가 규칙이 없는 테스트 전용 Controller도 차단하는�
 | ApiResponses의 Clock Bean 주입 | 메타데이터는 정책 계산 시각이 아닌 응답 생성 시각이다. static success/fail API를 유지하며 정밀 시간 검증이 필요한 Service에 우선 Clock을 도입했다. |
 | 공통 JSON fixture와 slice 테스트 추가 | 독립 모듈/Docker build 경계를 유지하고 현재 실제 HTTP 테스트를 보강했다. 공유 fixture 배포와 별도 slice context는 CI/계약 모듈 도입 시 검토한다. |
 
+## 잔여 사항 보완
+
+- HelloResponse/EchoResponse의 `gatewayUser`를 `username`으로 변경했다. 실제 값은 Backend가 검증한
+  Principal의 이름이며 Gateway 전달 헤더를 의미하지 않는다. 기존 필드의 별칭은 유지하지 않는다.
+- 새 업무 Controller는 `ApiResponses`, 오류 처리기는 `ProblemDetails`를 사용하도록 기준을 명시했다.
+  구현은 하나의 ProblemDetails 팩토리를 사용하면서 Controller용 success/fail 인터페이스를 유지한다.
+- RequestHeadersFilter는 Principal이 없으면 `X-Gateway-User`를 생략한다. `anonymous`를 만들지 않고,
+  클라이언트가 보낸 사용자 헤더는 먼저 제거한다. Principal이 있으면 그 이름으로 헤더를 설정한다.
+  현재 `/api/**` 인증 정책은 유지하며, Principal이 없는 경우에도 필터 체인을 정확히 한 번 이어간다.
+- 검증: Hello/Echo가 기존 gatewayUser 없이 username을 반환하고 위조 헤더를 무시하는지 확인했다.
+  Gateway의 Principal 있음/없음/조회 실패와 체인 호출 횟수도 회귀 테스트로 확인했다.
+
 ## 호환성과 검증
 
-- 응답 변경: `data.requestId` 소비자는 `meta.requestId`로 전환. `data.time`은 UTC Instant 문자열.
+- 응답 변경: `data.requestId` → `meta.requestId`, `data.gatewayUser` → `data.username`. `data.time`은 UTC Instant 문자열.
 - 유지: 성공 data/meta envelope, success/fail 두 메서드, JWT 알고리즘·키 형식, Redis 제한 정책.
 - 오류 분류와 실제 HTTP 상태는 구분한다. 예를 들어 418은 INVALID_REQUEST 범주지만 status는 418이다.
 - Servlet filter 오류는 ERROR dispatch, WebFlux filter/route 오류는 전역 handler가 담당한다.
@@ -71,7 +83,7 @@ Backend는 인가 규칙이 없는 테스트 전용 Controller도 차단하는�
 - 현재 Servlet filter 요청 로그의 종료 시점과 후속 ERROR dispatch의 종료 시점은 다를 수 있다.
   미처리 예외의 최종 상태는 같은 requestId의 servlet_request_error 로그와 오류 응답도 함께 본다.
 
-검증 결과: Backend 29개, Gateway 45개, 총 74개 테스트 통과(실패·오류·건너뜀 0). 두 모듈 컴파일 및 git diff --check도 통과했다.
+검증 결과: Backend 29개, Gateway 48개, 총 77개 테스트 통과(실패·오류·건너뜀 0). 두 모듈 컴파일 및 git diff --check도 통과했다.
 
 검증 명령(WSL 저장소 루트):
 

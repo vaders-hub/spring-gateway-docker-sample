@@ -90,7 +90,7 @@ lab_api GET /api/hello
 lab_api POST /api/echo '{"name":"gateway-test","value":25}'
 ```
 
-Backend 응답의 `data.gatewayUser`와 `meta.requestId`로 인증 사용자와 요청 추적 ID를 확인할 수
+Backend 응답의 `data.username`와 `meta.requestId`로 인증 사용자와 요청 추적 ID를 확인할 수
 있습니다. 클라이언트가 `X-Gateway-User`를 보내면 Gateway가 덮어쓰지만, Backend는
 그 헤더를 신뢰하지 않고 전달된 JWT를 다시 검증해 subject를 사용합니다.
 

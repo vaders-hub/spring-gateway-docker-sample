@@ -106,7 +106,8 @@ class SecurityHttpIntegrationTest {
         assertThat(body.get("data")).isInstanceOf(Map.class);
         Map<?, ?> data = (Map<?, ?>) body.get("data");
         assertThat(data.containsKey("requestId")).isFalse();
-        assertThat(data.get("gatewayUser")).isEqualTo("test-user");
+        assertThat(data.get("username")).isEqualTo("test-user");
+        assertThat(data.containsKey("gatewayUser")).isFalse();
         assertThat(Instant.parse((String) data.get("time"))).isNotNull();
         Map<?, ?> meta = (Map<?, ?>) body.get("meta");
         assertThat(meta.get("requestId")).isEqualTo("security-http-test");
@@ -152,6 +153,8 @@ class SecurityHttpIntegrationTest {
         Map<?, ?> data = (Map<?, ?>) envelope.get("data");
         assertThat(data.containsKey("requestId")).isFalse();
         assertThat(data.get("received")).isEqualTo(Map.of("name", "test", "value", 25));
+        assertThat(data.get("username")).isEqualTo("test-user");
+        assertThat(data.containsKey("gatewayUser")).isFalse();
     }
 
     @Test
@@ -267,7 +270,9 @@ class SecurityHttpIntegrationTest {
     private HttpResponse<String> request(String method, String path, String token, String body) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(5))
-                .header("X-Request-Id", "security-http-test");
+                .header("X-Request-Id", "security-http-test")
+                // Backend 응답의 username은 이 헤더가 아니라 검증된 JWT Principal에서 와야 한다.
+                .header("X-Gateway-User", "forged-user");
         if (token != null) {
             builder.header("Authorization", "Bearer " + token);
         }

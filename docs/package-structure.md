@@ -33,6 +33,7 @@ Actuator/Prometheus와 스트리밍까지 자동으로 감싸는 전역 Advice�
 공통화는 각 서비스 내부에서 수행합니다. Gateway는 WebFlux, Backend는 Servlet
 기반이며 서로 독립적으로 빌드하므로 공통 Java 모듈을 새로 만들지 않았습니다.
 두 서비스가 공유하는 HTTP 응답 계약은 api-contract.md로 관리합니다.
+새 코드의 기준: 업무 Controller는 `ApiResponses`를, 오류 처리기(Advice·ErrorController·Security writer·전역 handler)는 `ProblemDetails`를 사용합니다.
 `ApiResponses.fail → common/error/ProblemDetails`로 위임하고 오류 처리기는 `common/api`를
 참조하지 않습니다. 코드 파일을 옮기지 않고 패키지 순환을 제거했습니다.
 각 모듈의 `ProblemDetailsTest`는 실제 상태·헤더 보존과 응답 객체 간 격리를 검증합니다.
@@ -110,7 +111,7 @@ layered JAR, Foojay 자동 JDK 다운로드는 이번 변경에 포함하지 않
 
 ## 검증 범위
 
-2026-09-23 AA/SWA 검토에서는 Java 컴파일과 두 모듈의 회귀 테스트 74개가 통과했습니다.
+2026-09-23 AA/SWA 검토에서는 Java 컴파일과 두 모듈의 회귀 테스트 77개가 통과했습니다.
 설정 보호, JWT/권한, DTO 검증, 오류 상태·헤더, 실제 Servlet ERROR dispatch와 Netty 라우팅을
 검증합니다. Compose/kind 재배포는 이 검증과 별개이며 실행 중인 컨테이너는 변경하지 않습니다.
 세부 반영·보류 이유는 [AA/SWA 검토 기록](aa-swa-review.md)을 참고합니다.

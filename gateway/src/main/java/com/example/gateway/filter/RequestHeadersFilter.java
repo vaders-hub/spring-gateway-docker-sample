@@ -1,7 +1,6 @@
 package com.example.gateway.filter;
 
 import com.example.gateway.common.web.RequestContext;
-import java.security.Principal;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -19,20 +18,22 @@ class RequestHeadersFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String requestId = RequestContext.requestId(exchange);
 
+        ServerHttpRequest sanitizedRequest = exchange.getRequest().mutate()
+                .headers(headers -> {
+                    headers.set(RequestContext.REQUEST_ID_HEADER, requestId);
+                    // 미인증 경로가 추가되더라도 클라이언트가 주입한 사용자 헤더는 전달하지 않는다.
+                    headers.remove(RequestContext.GATEWAY_USER_HEADER);
+                })
+                .build();
+        exchange.getResponse().getHeaders().set(RequestContext.REQUEST_ID_HEADER, requestId);
+
         return exchange.getPrincipal()
-                .map(Principal::getName)
-                .defaultIfEmpty("anonymous")
-                .flatMap(username -> {
-                    ServerHttpRequest request = exchange.getRequest().mutate()
-                            .headers(headers -> {
-                                headers.set(RequestContext.REQUEST_ID_HEADER, requestId);
-                                // 외부에서 주입한 사용자 헤더를 검증된 Principal 값으로 덮어쓴다. Backend 인증 근거는 JWT이다.
-                                headers.set(RequestContext.GATEWAY_USER_HEADER, username);
-                            })
-                            .build();
-                    exchange.getResponse().getHeaders().set(RequestContext.REQUEST_ID_HEADER, requestId);
-                    return chain.filter(exchange.mutate().request(request).build());
-                });
+                .map(principal -> sanitizedRequest.mutate()
+                        .headers(headers -> headers.set(RequestContext.GATEWAY_USER_HEADER, principal.getName()))
+                        .build())
+                // Principal이 없으면 사용자 헤더를 생략한다. Backend 인증 근거는 여전히 JWT이다.
+                .defaultIfEmpty(sanitizedRequest)
+                .flatMap(request -> chain.filter(exchange.mutate().request(request).build()));
     }
 
     @Override

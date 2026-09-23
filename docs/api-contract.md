@@ -22,6 +22,9 @@
 별도 타입입니다. `requestId`는 업무 Service 인자와 `data`에서 제거했고 `meta.requestId`와
 `X-Request-Id` 헤더에 유지합니다. 기존 `data.requestId` 소비자는 `meta.requestId`로 변경해야 합니다.
 `data.time`은 UTC `Instant`이며 JSON은 `Z`로 끝나는 ISO-8601 형식입니다.
+Hello/Echo의 `data.username`은 Backend가 JWT를 검증한 Principal의 이름입니다.
+기존 `data.gatewayUser` 필드는 제거했습니다. 소비자는 `data.username`으로 변경해야 합니다.
+`X-Gateway-User` 전달 헤더와 응답의 `username`은 별개이며 Backend는 그 헤더를 인증 근거로 삼지 않습니다.
 
 ## 오류 응답
 
@@ -55,6 +58,9 @@
 예외 메시지, stack trace, JWT, 비밀번호, 내부 클래스명은 응답에 포함하지 않습니다.
 
 ## 공통 응답 생성
+
+새 업무 Controller는 `ApiResponses`, 오류 처리기(Advice·ErrorController·Security writer·전역 handler)는
+`ProblemDetails`를 사용합니다. `ApiResponses.fail`은 같은 팩토리로 위임하는 Controller용 진입점입니다.
 
 각 모듈의 `common/api/ApiResponses`는 `success`와 `fail` 두 메서드만 제공합니다.
 `ApiResponse`는 성공 JSON 본문을 표현하는 record이며, HTTP 상태·헤더는 `ApiResponses`가 결정합니다.
