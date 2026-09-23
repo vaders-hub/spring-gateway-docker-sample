@@ -18,9 +18,6 @@ server:
 spring:
   application:
     name: backend
-  mvc:
-    problemdetails:
-      enabled: true
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
@@ -91,3 +88,8 @@ info:
     environment: ${APP_ENVIRONMENT:unknown}
     # 실행 위치(docker-compose/kubernetes)이며 Spring lifecycle profile(local 등)과 구분한다.
     deployment-platform: ${DEPLOYMENT_PLATFORM:unknown}
+
+logging:
+  pattern:
+    # SLF4J addKeyValue 필드를 local/dev 콘솔에서도 표시한다. ECS 출력은 자체 encoder를 사용한다.
+    level: "%5p %kvp"

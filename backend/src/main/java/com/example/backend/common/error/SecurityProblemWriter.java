@@ -1,6 +1,5 @@
 package com.example.backend.common.error;
 
-import com.example.backend.common.api.ApiResponses;
 import com.example.backend.common.web.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,7 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
 // 1단계: Controller 진입 전 Security에서 발생한 401/403을 JSON 오류로 작성한다.
 // ControllerAdvice와 별도 경로이며 requestId로 같은 요청을 추적한다.
 @Component
-public final class SecurityProblemWriter {
+public class SecurityProblemWriter {
     private final JsonMapper jsonMapper;
 
     public SecurityProblemWriter(JsonMapper jsonMapper) {
@@ -36,8 +35,8 @@ public final class SecurityProblemWriter {
         if (response.isCommitted()) {
             return;
         }
-        Object requestId = request.getAttribute(RequestContext.REQUEST_ID);
-        var entity = ApiResponses.fail(errorCode, requestId == null ? null : requestId.toString());
+        Object requestId = request.getAttribute(RequestContext.REQUEST_ID_ATTRIBUTE);
+        var entity = ProblemDetails.forCode(errorCode, requestId == null ? null : requestId.toString());
         // Boot의 JsonMapper가 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화한다.
         byte[] body = jsonMapper.writeValueAsBytes(entity.getBody());
         response.setStatus(entity.getStatusCode().value());

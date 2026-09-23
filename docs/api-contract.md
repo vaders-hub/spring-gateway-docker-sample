@@ -17,7 +17,11 @@
 ```
 
 `data`는 API별 DTO이고 `meta`는 공통 요청 추적 정보입니다. Entity를 API 응답으로
-직접 노출하지 않습니다.
+직접 노출하지 않습니다. Backend의 `HelloService`는 HTTP DTO 대신 업무 결과 record를
+반환하며 Controller에서 출력 DTO로 변환합니다. `EchoResponse.received`는 입력 `EchoRequest`와
+별도 타입입니다. `requestId`는 업무 Service 인자와 `data`에서 제거했고 `meta.requestId`와
+`X-Request-Id` 헤더에 유지합니다. 기존 `data.requestId` 소비자는 `meta.requestId`로 변경해야 합니다.
+`data.time`은 UTC `Instant`이며 JSON은 `Z`로 끝나는 ISO-8601 형식입니다.
 
 ## 오류 응답
 
@@ -62,7 +66,7 @@ return ApiResponses.success(SuccessCode.OK, result, requestId);
 // 토큰 발급: 200 + Cache-Control: no-store, Pragma: no-cache
 return ApiResponses.success(SuccessCode.TOKEN_ISSUED, token, requestId);
 
-// 예외 처리기 또는 Security writer: 코드에 해당하는 HTTP 상태 + ProblemDetail
+// Controller에서 명시적으로 오류 응답을 반환하는 경우: 코드에 해당하는 상태 + ProblemDetail
 return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 ```
 
@@ -82,8 +86,14 @@ return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 Service는 응답 팩터리를 호출하지 않고 업무 결과를 반환하거나 예외를 던집니다.
 
 인증/인가 오류는 Controller 전에 발생하므로 `SecurityProblemWriter`를 유지합니다.
-writer는 `ApiResponses.fail`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
+writer는 `common/error/ProblemDetails`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
 Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화합니다.
+
+`ApiResponses.fail`도 같은 `ProblemDetails.forCode`로 위임합니다. 오류 처리기는 `common/api`를
+참조하지 않으므로 의존 방향은 `common/api → common/error` 한 방향입니다.
+프레임워크 상태는 `ProblemDetails.forStatus`가 처리합니다. `ErrorCode`에 없는 418 같은 상태도
+그대로 유지하고, 응답 본문을 새로 만들면서 기존 Content-Length/Content-Encoding은 제거합니다.
+`Allow`/`Retry-After`/rate-limit 헤더는 보존합니다. WebFlux writer는 생성된 본문을 다시 수정하지 않습니다.
 
 ## 시스템별 오류 처리 경계
 

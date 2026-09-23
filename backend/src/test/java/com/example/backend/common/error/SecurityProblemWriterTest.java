@@ -20,7 +20,7 @@ class SecurityProblemWriterTest {
                 .addMixIn(ProblemDetail.class, ProblemDetailJacksonMixin.class).build();
         var request = new MockHttpServletRequest();
         var response = new MockHttpServletResponse();
-        request.setAttribute(RequestContext.REQUEST_ID, "id-with-\"quote");
+        request.setAttribute(RequestContext.REQUEST_ID_ATTRIBUTE, "id-with-\"quote");
         new SecurityProblemWriter(mapper).authenticationEntryPoint()
                 .commence(request, response, new BadCredentialsException("private-token"));
         Map<?, ?> body = mapper.readValue(response.getContentAsByteArray(), Map.class);

@@ -87,6 +87,10 @@ class SecurityHttpIntegrationTest {
         Map<?, ?> body = jsonMapper.readValue(response.body(), Map.class);
         assertThat(body.size()).isEqualTo(2);
         assertThat(body.get("data")).isInstanceOf(Map.class);
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+        assertThat(data.containsKey("requestId")).isFalse();
+        assertThat(data.get("gatewayUser")).isEqualTo("test-user");
+        assertThat(Instant.parse((String) data.get("time"))).isNotNull();
         Map<?, ?> meta = (Map<?, ?>) body.get("meta");
         assertThat(meta.get("requestId")).isEqualTo("security-http-test");
         assertThat(meta.get("timestamp")).isNotNull();
@@ -125,8 +129,12 @@ class SecurityHttpIntegrationTest {
         String path = "/echo";
         assertProblem(request("POST", path, token("api.read", AUDIENCE, ISSUER, SECRET, 300), body),
                 403, "ACCESS_DENIED");
-        assertThat(request("POST", path, token("api.write", AUDIENCE, ISSUER, SECRET, 300), body).statusCode())
-                .isEqualTo(200);
+        var response = request("POST", path, token("api.write", AUDIENCE, ISSUER, SECRET, 300), body);
+        assertThat(response.statusCode()).isEqualTo(200);
+        Map<?, ?> envelope = jsonMapper.readValue(response.body(), Map.class);
+        Map<?, ?> data = (Map<?, ?>) envelope.get("data");
+        assertThat(data.containsKey("requestId")).isFalse();
+        assertThat(data.get("received")).isEqualTo(Map.of("name", "test", "value", 25));
     }
 
     @Test

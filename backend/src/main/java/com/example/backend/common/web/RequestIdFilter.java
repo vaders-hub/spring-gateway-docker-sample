@@ -30,13 +30,13 @@ class RequestIdFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
-        String requestId = Optional.ofNullable(request.getHeader(RequestContext.REQUEST_ID))
+        String requestId = Optional.ofNullable(request.getHeader(RequestContext.REQUEST_ID_HEADER))
                 .filter(SAFE_REQUEST_ID.asMatchPredicate())
                 .orElseGet(() -> UUID.randomUUID().toString());
         long startedAt = System.nanoTime();
 
-        response.setHeader(RequestContext.REQUEST_ID, requestId);
-        request.setAttribute(RequestContext.REQUEST_ID, requestId);
+        response.setHeader(RequestContext.REQUEST_ID_HEADER, requestId);
+        request.setAttribute(RequestContext.REQUEST_ID_ATTRIBUTE, requestId);
 
         try {
             filterChain.doFilter(request, response);
@@ -44,7 +44,10 @@ class RequestIdFilter extends OncePerRequestFilter {
         // 예외가 나도 요청 종료 로그를 남긴다. WebFlux doFinally와 달리 Servlet의 동기 호출 경계이다.
         finally {
             long durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
-            log.atInfo()
+            // 정상 health probe는 DEBUG로 내려 업무 요청 로그의 잡음을 줄인다.
+            ((request.getRequestURI().equals("/actuator/health")
+                    || request.getRequestURI().startsWith("/actuator/health/"))
+                    && response.getStatus() < 400 ? log.atDebug() : log.atInfo())
                     .addKeyValue("requestId", requestId)
                     .addKeyValue("method", request.getMethod())
                     .addKeyValue("path", request.getRequestURI())

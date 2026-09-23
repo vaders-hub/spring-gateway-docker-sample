@@ -21,6 +21,9 @@ HTTP 진입점은 controller, 업무 로직과 transaction 경계는 service로 
 새 업무는 기능별 패키지 아래 controller/service/dto를 배치합니다.
 common/api는 Controller가 아니라 공통 응답 계약이므로 이름을 유지합니다.
 Service 인터페이스와 Impl은 구현 교체 등 실제 필요가 있을 때만 분리합니다.
+Backend Service는 HTTP 요청/응답 DTO나 requestId를 받지 않고 업무 결과 record를 반환합니다.
+Controller가 입력 필드를 전달하고 업무 결과를 응답 DTO로 변환한 뒤 명시적으로 envelope를 만듭니다.
+Actuator/Prometheus와 스트리밍까지 자동으로 감싸는 전역 Advice는 사용하지 않습니다.
 
 설정 클래스는 직접 Bean 메서드를 호출하지 않으므로 proxyBeanMethods=false를 사용합니다.
 설정 클래스와 내부 guard는 package-private이며, 다른 패키지가 참조해야 하는
@@ -30,6 +33,9 @@ Service 인터페이스와 Impl은 구현 교체 등 실제 필요가 있을 때
 공통화는 각 서비스 내부에서 수행합니다. Gateway는 WebFlux, Backend는 Servlet
 기반이며 서로 독립적으로 빌드하므로 공통 Java 모듈을 새로 만들지 않았습니다.
 두 서비스가 공유하는 HTTP 응답 계약은 api-contract.md로 관리합니다.
+`ApiResponses.fail → common/error/ProblemDetails`로 위임하고 오류 처리기는 `common/api`를
+참조하지 않습니다. 코드 파일을 옮기지 않고 패키지 순환을 제거했습니다.
+각 모듈의 `ProblemDetailsTest`는 실제 상태·헤더 보존과 응답 객체 간 격리를 검증합니다.
 
 ## 설정 객체와 애너테이션
 
@@ -65,15 +71,22 @@ Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties
 - Gateway 429는 `throw-on-limit`으로 예외를 전달하고 Advice/전역 handler가 같은 `GatewayErrorResponses`를 사용하며, 이미 수신한 Backend 오류 본문은 그대로 전달합니다.
   [처리 범위와 예외](api-contract.md#시스템별-오류-처리-경계)를 참고합니다.
 - ControllerAdvice는 Spring ErrorResponse의 4xx/5xx 상태와 Allow 같은 응답 헤더를 보존합니다.
-- 예상하지 못한 오류는 requestId와 예외 타입을 남기며, 비밀값이 들어갈 수 있는 원문
-  메시지/stack trace는 기본 로그에 쓰지 않습니다.
+- 예상하지 못한 오류는 requestId·예외 타입·원인별 첫 발생 위치를 남깁니다.
+  cause는 순환 방지와 최대 8개 제한을 적용하며, 비밀값이 들어갈 수 있는 원문 메시지와
+  전체 stack trace는 DEBUG에서도 출력하지 않습니다.
+- local/dev 콘솔은 `%kvp`로 SLF4J key-value 필드를 표시합니다. staging/prod는 기존 ECS 출력입니다.
+- 정상 health 요청 로그는 DEBUG, 오류 health 요청은 INFO로 남깁니다.
+- `TimeConfig`의 UTC Clock을 HelloService/TokenService에 주입해 시간 계산을 테스트할 수 있습니다.
+  static 응답 팩토리의 `meta.timestamp`는 응답 생성 시각으로 기존 `Instant.now()`를 유지합니다.
+- JWT SecretKey는 주입 가능한 Bean 대신 JwtConfig 내부에서 생성합니다. HS256과 UTF-8 키 형식은 유지합니다.
+  audience는 표준 `JwtClaimValidator`로 검증합니다.
 - JWT 키, 데모 비밀번호, 토큰 DTO의 toString은 민감값을 가립니다.
 - 토큰 발급 응답은 Cache-Control: no-store, Pragma: no-cache를 보냅니다.
 - 인증은 stateless로 유지하며, 인증 전 요청을 세션에 저장하는 request cache도 비활성화합니다.
 - CORS는 경로/와일드카드가 없는 정확한 HTTP(S) Origin만 받습니다.
 - JWT TTL은 1초 이상의 정수 초만 허용합니다.
 - staging/prod에서 데모 토큰 발급을 켜면 시작에 실패합니다. 발급 Controller,
-  Service, encoder에도 local/dev/test Profile 제한이 있습니다.
+  Service, encoder에도 같은 `@ConditionalOnDemoIssuer` 제한이 있습니다.
 - 공개 Prometheus는 local/test만 허용하며 dev/staging/prod에서 켜면 시작에 실패합니다.
 
 ## Gradle과 Docker 빌드 경계
@@ -94,6 +107,7 @@ layered JAR, Foojay 자동 JDK 다운로드는 이번 변경에 포함하지 않
 
 ## 검증 범위
 
-이번 변경은 경로/패키지/import 정적 점검을 수행했습니다. 설정 보호, 민감값 마스킹,
-405 응답 보존, Security JSON 직렬화에 대한 회귀 테스트를 추가했지만 사용자의
-요청에 따라 컴파일/테스트 및 컨테이너 재기동은 실행하지 않았습니다.
+2026-09-23 AA/SWA 검토에서는 Java 컴파일과 두 모듈의 회귀 테스트 66개가 통과했습니다.
+설정 보호, JWT/권한, DTO 검증, 오류 상태·헤더, 실제 Servlet ERROR dispatch와 Netty 라우팅을
+검증합니다. Compose/kind 재배포는 이 검증과 별개이며 실행 중인 컨테이너는 변경하지 않습니다.
+세부 반영·보류 이유는 [AA/SWA 검토 기록](aa-swa-review.md)을 참고합니다.

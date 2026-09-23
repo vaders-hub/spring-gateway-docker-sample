@@ -1,9 +1,7 @@
 package com.example.gateway.common.error;
 
-import com.example.gateway.common.api.ApiResponses;
 import com.example.gateway.common.web.RequestContext;
 import io.netty.channel.ConnectTimeoutException;
-import java.net.URI;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeoutException;
@@ -11,7 +9,7 @@ import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -53,23 +51,15 @@ final class GatewayErrorResponses {
             status = 500;
         }
         String requestId = RequestContext.requestId(exchange);
-        var entity = ApiResponses.fail(ErrorCode.fromStatus(status), requestId);
-        ProblemDetail body = entity.getBody();
-        body.setStatus(status);
-        body.setInstance(URI.create(exchange.getAttributeOrDefault(RequestContext.REQUEST_PATH_ATTRIBUTE,
-                exchange.getRequest().getPath().value())));
-        HttpStatus knownStatus = HttpStatus.resolve(status);
-        body.setTitle(knownStatus == null ? "Request failed" : knownStatus.getReasonPhrase());
-        if (ErrorCode.fromStatus(status) == ErrorCode.INVALID_REQUEST) {
-            body.setDetail("The request could not be processed.");
-        }
         if (status >= 500) {
             log.atError().addKeyValue("requestId", requestId).addKeyValue("status", status)
                     .addKeyValue("exceptionType", exception.getClass().getName())
+                    .addKeyValue("causes", ErrorDiagnostics.causes(exception))
                     .log("gateway_request_error");
         }
-        return ResponseEntity.status(status).headers(headers)
-                .headers(entity.getHeaders()).body(body);
+        return ProblemDetails.forStatus(HttpStatusCode.valueOf(status), requestId,
+                exchange.getAttributeOrDefault(RequestContext.REQUEST_PATH_ATTRIBUTE,
+                        exchange.getRequest().getPath().value()), headers);
     }
 
     private static int transportStatus(Throwable exception) {

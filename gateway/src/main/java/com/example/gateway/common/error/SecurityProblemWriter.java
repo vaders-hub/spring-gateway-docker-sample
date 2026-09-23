@@ -1,6 +1,5 @@
 package com.example.gateway.common.error;
 
-import com.example.gateway.common.api.ApiResponses;
 import com.example.gateway.common.web.RequestContext;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
@@ -11,7 +10,7 @@ import reactor.core.publisher.Mono;
 // 1단계: Controller 진입 전 Security에서 발생한 401/403을 JSON 오류로 작성한다.
 // ControllerAdvice와 별도 경로이며 requestId로 같은 요청을 추적한다.
 @Component
-public final class SecurityProblemWriter {
+public class SecurityProblemWriter {
     private final ProblemResponseWriter writer;
 
     public SecurityProblemWriter(ProblemResponseWriter writer) {
@@ -34,6 +33,8 @@ public final class SecurityProblemWriter {
         if (exchange.getResponse().isCommitted()) {
             return Mono.empty();
         }
-        return writer.write(exchange, ApiResponses.fail(errorCode, RequestContext.requestId(exchange)));
+        return writer.write(exchange, ProblemDetails.forCode(errorCode, RequestContext.requestId(exchange),
+                exchange.getAttributeOrDefault(RequestContext.REQUEST_PATH_ATTRIBUTE,
+                        exchange.getRequest().getPath().value())));
     }
 }

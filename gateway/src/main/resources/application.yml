@@ -143,5 +143,8 @@ info:
     deployment-platform: ${DEPLOYMENT_PLATFORM:unknown}
 
 logging:
+  pattern:
+    # SLF4J addKeyValue 필드를 local/dev 콘솔에서도 표시한다. ECS 출력은 자체 encoder를 사용한다.
+    level: "%5p %kvp"
   level:
     org.springframework.cloud.gateway: INFO

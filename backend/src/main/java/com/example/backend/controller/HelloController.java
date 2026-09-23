@@ -30,21 +30,22 @@ public class HelloController {
     // 사용자는 X-Gateway-User가 아니라 Backend Security가 검증한 Principal에서 얻는다.
     @GetMapping("/hello")
     public ResponseEntity<ApiResponse<HelloResponse>> hello(
-            @RequestAttribute(RequestContext.REQUEST_ID) String requestId,
+            @RequestAttribute(RequestContext.REQUEST_ID_ATTRIBUTE) String requestId,
             Principal principal) {
+        var result = helloService.hello(principal.getName());
         return ApiResponses.success(SuccessCode.OK,
-                helloService.hello(principal.getName(), requestId),
-                requestId);
+                new HelloResponse(result.service(), result.message(), result.time(), result.username()), requestId);
     }
 
     // @Valid가 EchoRequest 제약을 검사한다. 실패하면 Service 호출 전 400 오류로 처리된다.
     @PostMapping("/echo")
     public ResponseEntity<ApiResponse<EchoResponse>> echo(
             @Valid @RequestBody EchoRequest request,
-            @RequestAttribute(RequestContext.REQUEST_ID) String requestId,
+            @RequestAttribute(RequestContext.REQUEST_ID_ATTRIBUTE) String requestId,
             Principal principal) {
+        var result = helloService.echo(request.name(), request.value(), principal.getName());
         return ApiResponses.success(SuccessCode.OK,
-                helloService.echo(request, principal.getName(), requestId),
-                requestId);
+                new EchoResponse(result.service(), new EchoResponse.Received(result.name(), result.value()),
+                        result.username()), requestId);
     }
 }

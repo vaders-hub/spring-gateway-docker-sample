@@ -17,8 +17,7 @@ class RequestHeadersFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String requestId = RequestContext.normalizeRequestId(
-                exchange.getRequest().getHeaders().getFirst(RequestContext.REQUEST_ID_HEADER));
+        String requestId = RequestContext.requestId(exchange);
 
         return exchange.getPrincipal()
                 .map(Principal::getName)

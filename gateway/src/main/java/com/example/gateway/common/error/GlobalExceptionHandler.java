@@ -1,9 +1,7 @@
 package com.example.gateway.common.error;
 
 import com.example.gateway.auth.service.InvalidCredentialsException;
-import com.example.gateway.common.api.ApiResponses;
 import com.example.gateway.common.web.RequestContext;
-import java.net.URI;
 import java.util.Map;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -59,9 +57,7 @@ class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ProblemDetail> problem(ErrorCode code, ServerWebExchange exchange) {
-        var response = ApiResponses.fail(code, requestId(exchange));
-        response.getBody().setInstance(URI.create(exchange.getRequest().getPath().value()));
-        return response;
+        return ProblemDetails.forCode(code, requestId(exchange), exchange.getRequest().getPath().value());
     }
 
     private String requestId(ServerWebExchange exchange) {

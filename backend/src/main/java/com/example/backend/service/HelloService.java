@@ -1,30 +1,26 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.EchoRequest;
-import com.example.backend.dto.EchoResponse;
-import com.example.backend.dto.HelloResponse;
-import java.time.OffsetDateTime;
+import java.time.Clock;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
 
-// 1·6단계: HTTP 입출력과 분리된 샘플 업무 계층. Controller가 넘긴 인증 사용자와 요청 ID를 응답에 반영한다.
-// 현재 DB/트랜잭션은 없으며 업무 확장 시 이 계층에서 저장소 호출과 트랜잭션 경계를 설계한다.
+// 업무 결과만 반환한다. HTTP DTO 변환과 requestId/envelope 처리는 Controller 책임이다.
 @Service
 public class HelloService {
+    private final Clock clock;
 
-    public HelloResponse hello(String username, String requestId) {
-        return new HelloResponse(
-                "backend",
-                "Hello through Spring Cloud Gateway",
-                OffsetDateTime.now(),
-                requestId,
-                username);
+    public HelloService(Clock clock) {
+        this.clock = clock;
     }
 
-    public EchoResponse echo(EchoRequest request, String username, String requestId) {
-        return new EchoResponse(
-                "backend",
-                request,
-                requestId,
-                username);
+    public HelloResult hello(String username) {
+        return new HelloResult("backend", "Hello through Spring Cloud Gateway", clock.instant(), username);
     }
+
+    public EchoResult echo(String name, Integer value, String username) {
+        return new EchoResult("backend", name, value, username);
+    }
+
+    public record HelloResult(String service, String message, Instant time, String username) {}
+    public record EchoResult(String service, String name, Integer value, String username) {}
 }

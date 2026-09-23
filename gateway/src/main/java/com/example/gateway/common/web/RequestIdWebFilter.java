@@ -41,7 +41,10 @@ class RequestIdWebFilter implements WebFilter {
                     HttpStatusCode status = mutatedExchange.getResponse().getStatusCode();
                     long durationMs = TimeUnit.NANOSECONDS.toMillis(
                             System.nanoTime() - startedAt);
-                    log.atInfo()
+                    // 정상 health probe는 DEBUG로 내려 업무 요청 로그의 잡음을 줄인다.
+                    ((request.getPath().value().equals("/actuator/health")
+                            || request.getPath().value().startsWith("/actuator/health/"))
+                            && status != null && !status.isError() ? log.atDebug() : log.atInfo())
                             .addKeyValue("requestId", requestId)
                             .addKeyValue("method", request.getMethod())
                             .addKeyValue("path", request.getPath().value())

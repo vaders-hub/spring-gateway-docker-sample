@@ -1,14 +1,14 @@
 package com.example.gateway.auth.service;
 
+import com.example.gateway.config.security.ConditionalOnDemoIssuer;
 import com.example.gateway.auth.dto.TokenRequest;
 import com.example.gateway.auth.dto.TokenResponse;
 import com.example.gateway.config.properties.SecurityProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.time.Clock;
 import java.util.List;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -17,22 +17,20 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile({"local", "dev", "test"})
-@ConditionalOnProperty(
-        prefix = "app.security.demo-user",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnDemoIssuer
 public class TokenService {
 
     private final JwtEncoder jwtEncoder;
+    private final Clock clock;
     private final String issuer;
     private final String audience;
     private final long ttlSeconds;
     private final String demoUsername;
     private final String demoPassword;
 
-    public TokenService(JwtEncoder jwtEncoder, SecurityProperties properties) {
+    public TokenService(JwtEncoder jwtEncoder, SecurityProperties properties, Clock clock) {
         this.jwtEncoder = jwtEncoder;
+        this.clock = clock;
         this.issuer = properties.jwt().issuer();
         this.audience = properties.jwt().audience();
         this.ttlSeconds = properties.jwt().ttl().toSeconds();
@@ -48,7 +46,7 @@ public class TokenService {
             throw new InvalidCredentialsException();
         }
 
-        Instant issuedAt = Instant.now();
+        Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plusSeconds(ttlSeconds);
         // subject는 인증 사용자/Redis 버킷 key가 되고 scope는 GET·쓰기 API 인가에 사용된다.
         // issuer·audience·만료는 양쪽 JwtConfig의 검증 조건과 일치해야 한다.

@@ -103,7 +103,7 @@ lab_api POST /api/echo '{"name":"learning","value":25}'
 `.env`의 데모 자격증명은 생성 스크립트 형식인 따옴표 없는 `KEY=value`를 사용합니다.
 `set -x`, `curl -v`, 토큰 변수 출력은 사용하지 않습니다. 새 터미널에서는 source/login부터 반복합니다.
 토큰/로그인 응답 전체를 출력하지 않습니다. 정상 응답의 `data.gatewayUser`,
-`data.requestId`, `meta.requestId`를 확인합니다. Gateway는 `/api`를 제거해 Backend의
+`meta.requestId`와 응답 헤더 `X-Request-Id`가 일치하는지 확인합니다. 추적 ID는 업무 `data`에 중복 저장하지 않습니다. Gateway는 `/api`를 제거해 Backend의
 `/hello`, `/echo`로 전달하며, Backend도 JWT를 검증합니다.
 
 ## 1-3. 실패와 요청 제한 확인

@@ -1,11 +1,6 @@
 package com.example.backend.dto;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
-public record HelloResponse(
-        String service,
-        String message,
-        OffsetDateTime time,
-        String requestId,
-        String gatewayUser) {
+public record HelloResponse(String service, String message, Instant time, String gatewayUser) {
 }

@@ -3,6 +3,8 @@
 Java 25, Gradle 9.7.1, Spring Cloud Gateway, Redis 및 kind Kubernetes를
 사용하는 로컬 학습용 예제입니다.
 
+[AA/SWA 검토와 반영 범위](docs/aa-swa-review.md)에서 공통 응답·계층 분리·설정·로그의 설계 판단을 확인할 수 있습니다.
+
 [학습 시스템 구성도](docs/system-architecture.md)에서 현재 Compose 구성과 이후 Kubernetes 학습 구성을 한눈에 볼 수 있습니다.
 
 처음 시작한다면 [무료 로컬 AWS/EKS 학습 로드맵](docs/learning/README.md)을 먼저 읽으세요.
@@ -85,7 +87,7 @@ lab_api GET /api/hello
 lab_api POST /api/echo '{"name":"gateway-test","value":25}'
 ```
 
-Backend 응답의 `data.gatewayUser`와 `data.requestId`로 인증 사용자와 요청 추적 ID를 확인할 수
+Backend 응답의 `data.gatewayUser`와 `meta.requestId`로 인증 사용자와 요청 추적 ID를 확인할 수
 있습니다. 클라이언트가 `X-Gateway-User`를 보내면 Gateway가 덮어쓰지만, Backend는
 그 헤더를 신뢰하지 않고 전달된 JWT를 다시 검증해 subject를 사용합니다.
 

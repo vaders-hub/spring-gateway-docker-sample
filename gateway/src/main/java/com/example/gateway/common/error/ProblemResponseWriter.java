@@ -1,7 +1,6 @@
 package com.example.gateway.common.error;
 
 import com.example.gateway.common.web.RequestContext;
-import java.net.URI;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ProblemDetail;
@@ -13,7 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 // WebFlux의 Security/전역 오류 처리에서 HTTP 쓰기 방식을 공유한다.
 @Component
-public final class ProblemResponseWriter {
+public class ProblemResponseWriter {
     private final JsonMapper jsonMapper;
 
     public ProblemResponseWriter(JsonMapper jsonMapper) {
@@ -28,9 +27,6 @@ public final class ProblemResponseWriter {
             }
             String requestId = RequestContext.requestId(exchange);
             ProblemDetail body = entity.getBody();
-            body.setProperty("requestId", requestId);
-            body.setInstance(URI.create(exchange.getAttributeOrDefault(RequestContext.REQUEST_PATH_ATTRIBUTE,
-                    exchange.getRequest().getPath().value())));
             byte[] bytes = jsonMapper.writeValueAsBytes(body);
             response.setStatusCode(entity.getStatusCode());
             response.getHeaders().putAll(entity.getHeaders());
