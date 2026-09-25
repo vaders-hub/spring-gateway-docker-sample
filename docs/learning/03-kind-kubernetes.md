@@ -2,6 +2,22 @@
 
 [전체 순서](README.md) · 이전: [관측성](02-observability.md) · 다음: [운영 실습](04-operations-and-recovery.md)
 
+## 이번 단계의 목적 / kind를 사용하는 이유
+
+이번 단계는 **Compose에서 실행했던 Gateway·Backend·Redis를 로컬 Kubernetes로 옮겨,
+앱은 유지하면서 배포·운영 방식이 어떻게 달라지는지 배우는 과정**입니다.
+Deployment/Pod로 앱을 실행하고, Service로 연결하며, ConfigMap/Secret으로 설정을 주입하고,
+readiness로 요청을 받을 준비가 됐는지 확인합니다.
+
+**kind(Kubernetes IN Docker)**는 Docker 컨테이너를 Kubernetes 노드로 사용해 로컬 클러스터를 만듭니다.
+이미 사용하는 Docker Desktop을 활용하므로 별도 서버나 AWS 리소스를 만들지 않고,
+AWS 사용료 없이 Kubernetes의 기본 배포 흐름을 실습할 수 있습니다.
+이 실습은 노트북 자원 사용과 구성을 단순하게 유지하기 위해 **단일 control-plane 노드에 앱도 함께 실행**합니다.
+
+목표는 AWS EKS 자체를 복제하는 것이 아니라, **나중에 EKS에서도 사용할 Kubernetes 기본기를 익히는 것**입니다.
+IAM, ALB, EBS 같은 AWS 연동과 다중 노드·다중 AZ 고가용성은 이 단계에서 재현하지 않습니다.
+완료 기준은 기존 JWT/API 호출이 Kubernetes에서도 동작하고, 앱의 배포·연결·설정 경로를 설명할 수 있는 것입니다.
+
 ## 목표 / 매니페스트 읽기
 
 | 파일 | 학습할 내용 |
