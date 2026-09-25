@@ -2,10 +2,16 @@
 
 [전체 순서](README.md) · 이전: [운영 실습](04-operations-and-recovery.md) · 다음: [AWS/Spring 확장](06-aws-and-spring-expansion.md)
 
-## 목표
+## 이번 단계의 목적 / 왜 Gateway API를 추가하나요?
 
-Kubernetes의 진입 설정과 Spring의 API 정책을 분리합니다. AWS API Gateway 서비스는
-생성하지 않습니다. Envoy 컨트롤러/프록시는 로컬 kind에서 실행합니다.
+이름에 모두 Gateway가 들어가도 **Kubernetes의 진입 경로 설정과 Spring의 인증·요청 제한은 서로 다른 책임**입니다.
+이번 단계는 기존 앱 앞에 Envoy 진입 경로를 추가해, 어떤 계층에서 요청을 연결하거나 거절하는지 구분하는 실습입니다.
+나중에 AWS 진입점을 선택할 때 어떤 정책을 유지하고 옮길지 판단하기 위한 기초가 됩니다.
+
+**SCG를 제거하거나 JWT·Redis Rate Limit을 Envoy로 이전하는 단계는 아닙니다.**
+Envoy 컨트롤러/프록시는 로컬 kind에서 실행하며 Amazon API Gateway 서비스나 ALB는 생성하지 않습니다.
+완료 기준은 8080과 8888 경로를 비교해 인증·요청 제한이 유지됨을 확인하고,
+Envoy의 경로 불일치 404와 Spring의 인증 실패 401 등 응답을 처리 계층별로 설명하는 것입니다.
 
 ```text
 GatewayClass → 사용할 컨트롤러 선택
