@@ -12,6 +12,14 @@ Kubernetes에 올리기 전에 앱 자체를 이해합니다. `docker-compose.ym
 API 실습에는 curl/jq/OpenSSL이 필요합니다. IDE 개발은 WSL JDK 25가 필요하며 Gradle은
 저장소 Wrapper를 사용합니다. kind/kubectl/Helm은 3·5단계 전에 준비하면 됩니다.
 
+### 명령 주석 읽는 방법
+
+`#`로 시작하는 줄은 설명이므로 명령과 함께 복사해도 실행되지 않습니다.
+`[조회]`는 상태 확인, `[준비]`는 로컬 파일/셸 준비, `[기동]`은 컨테이너 생성·실행,
+`[호출 확인]`은 실제 HTTP 요청입니다. 실행 전에 대상과 기대 결과를 먼저 읽습니다.
+코드 블록은 위에서부터 순서대로 실행하고, 실패하면 다음 명령 전에 원인을 확인합니다.
+줄 끝의 `\`는 다음 줄까지 하나의 명령이라는 뜻이므로 뒤에 공백이나 주석을 붙이지 않습니다.
+
 ## 0-1. 도구 설치와 확인
 
 처음 설치하거나 `kind`/`helm` 명령을 찾지 못한다면
@@ -26,15 +34,21 @@ WSL2, Docker Desktop·Compose, kubectl, kind, Helm, JDK 25, Gradle Wrapper의
 4. kind/kubectl/Helm은 Linux용 도구를 WSL에 설치합니다. 저장소 루트로 이동합니다.
 
 ```bash
+# [조회] CLI(Client)와 엔진(Server) 버전 확인. Client만 나오면 Docker 연결부터 해결합니다.
 docker version
+# [조회] 엔진의 컨테이너 운영체제만 출력. 기대값은 linux입니다.
 docker info --format '{{.OSType}}'
+# [조회] Compose 사용 가능 여부와 버전 확인. 컨테이너를 생성하지 않습니다.
 docker compose version
+# [조회] PATH에서 찾은 실행 경로를 모두 표시. 맨 위 경로가 우선이며 중복 자체는 설치 실패가 아닙니다.
 type -a docker kubectl kind helm
+# [조회] API 호출/JSON 처리/비밀값 생성에 사용할 도구의 실행 경로 확인.
 command -v curl jq openssl
-# 3단계 전에 확인
+# [조회/3단계 전] 로컬 Kubernetes 생성 도구인 kind의 버전 확인.
 kind version
+# [조회/3단계 전] kubectl 클라이언트만 확인. 아직 클러스터에 연결하거나 만들지 않습니다.
 kubectl version --client
-# 5단계 전에 확인
+# [조회/5단계 전] Envoy 설치에 사용할 Helm의 버전 확인.
 helm version
 ```
 
@@ -53,11 +67,16 @@ RAM 여유가 작으면 관측 스택·kind·Oracle을 동시에 실행하지 �
 ## 0-2. 포트와 비밀값 준비
 
 ```bash
+# [준비] 이후 상대 경로가 저장소 기준으로 해석되도록 이동합니다.
 cd /mnt/c/dev/personal/infra/spring-gateway-docker-sample
+# [조회] WSL의 TCP 수신 대기 포트 확인. -l: listen, -t: TCP, -n: 숫자로 표시.
 ss -ltn
+# [조회] 실행 중인 Docker 컨테이너의 이름/포트만 확인. 다른 프로젝트의 포트 점유 여부를 봅니다.
 docker ps --format 'table {{.Names}}\t{{.Ports}}'
+# [준비/파일 생성] 랜덤 JWT 키·데모/Grafana 비밀번호를 .env에 저장. 실제 값은 출력하지 않습니다.
+# 기존 .env가 있으면 변경하지 않습니다. 이 명령은 앱을 실행하지 않습니다.
 bash scripts/new-local-env.sh
-# 기존 .env가 있으면 스크립트는 변경하지 않음
+# [검증] Compose 설정과 필수 변수 해석 확인. --quiet는 비밀값이 펼쳐진 설정 전체의 출력을 막습니다.
 docker compose config --quiet
 ```
 
@@ -74,10 +93,17 @@ kind의 8080과 관측 포트도 각각 loopback 바인딩 설정을 사용합�
 ## 1-1. 기동
 
 ```bash
+# [기동] 이미지를 빌드(--build)하고 컨테이너를 생성/필요 시 재생성해 백그라운드(-d) 실행합니다.
+# up 성공만으로 모든 앱이 healthy라고 가정하지 않고 아래 상태/HTTP 확인까지 수행합니다.
 docker compose up -d --build
+# 직전 명령의 종료 코드($?)가 0이 아니면 현재 셸을 종료. 이 사이에 다른 명령을 넣지 않습니다.
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Compose startup failed.' >&2; exit 1; fi
+# [조회] 이 Compose 프로젝트의 컨테이너 상태와 health/포트 확인.
 docker compose ps
+# [조회] 세 서비스의 최근 로그 80줄씩 확인. 공유 전에 비밀값 유무를 확인합니다.
 docker compose logs --tail 80 gateway backend redis
+# [호출 확인] Gateway의 요청 수신 준비 상태 확인. 기대값은 HTTP 200입니다.
+# -sS: 진행 표시 숨김/오류 표시, -o /dev/null: 본문 버림, -w: 상태 코드만 출력.
 curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health/readiness
 ```
 
@@ -90,11 +116,15 @@ Gateway 호스트 포트는 `127.0.0.1:8080`에만 바인딩합니다.
 ## 1-2. JWT 발급 및 정상 API
 
 ```bash
+# [보안] 셸 명령 추적을 꺼 비밀번호/JWT가 확장 출력되지 않게 합니다.
 set +x
+# [준비] 로그인/API 호출 함수를 현재 셸에 로드. 별도 서버나 컨테이너를 띄우지 않습니다.
 source scripts/local-api.sh
+# [인증 호출] .env 자격증명으로 데모 JWT 발급. 토큰과 호출 주소를 현재 셸 변수에 보관합니다.
 lab_login http://localhost:8080
-# 로그인 성공 후 실행; 토큰은 현재 셸 메모리에만 보관
+# [호출 확인] 로그인 성공 후 저장한 JWT로 hello 조회. 정상 응답의 사용자/요청 ID를 확인합니다.
 lab_api GET /api/hello
+# [호출 확인] JSON 본문을 보내 echo 처리 확인. 유효 토큰/요청과 버킷 여유가 있으면 200입니다.
 lab_api POST /api/echo '{"name":"learning","value":25}'
 ```
 
@@ -109,12 +139,13 @@ lab_api POST /api/echo '{"name":"learning","value":25}'
 ## 1-3. 실패와 요청 제한 확인
 
 ```bash
-# 인증 누락: 401
+# [실패 확인] Authorization 없이 요청. 인증 누락 401을 예상합니다. LAB_BASE_URL은 로그인 때 설정됩니다.
 curl -sS -o /dev/null -w '%{http_code}\n' "$LAB_BASE_URL/api/hello"
-# 위조 토큰: 401 (실제 토큰이 아님)
+# [실패 확인] -H로 잘못된 인증 헤더를 추가. 실제 JWT가 아닌 invalid-token에 대해 401을 예상합니다.
 curl -sS -o /dev/null -w '%{http_code}\n' -H 'Authorization: Bearer invalid-token' "$LAB_BASE_URL/api/hello"
 
-# API 응답 본문 대신 상태 코드만 출력
+# [제한 확인] 인증된 요청을 순차적으로 20번만 전송. 버킷 초과 시 429가 섞이는지 확인합니다.
+# lab_api의 ''는 GET 본문 없음, status는 응답 본문 대신 HTTP 코드만 출력하는 선택값입니다.
 for i in {1..20}; do
   lab_api GET /api/hello '' status
 done
@@ -125,7 +156,9 @@ done
 버킷이 회복된 뒤 다음 요청을 보내면 400이 기대됩니다.
 
 ```bash
+# [대기] 앞선 burst 실험의 버킷 회복을 위해 3초 대기. 다른 동시 요청이 있으면 결과가 달라질 수 있습니다.
 sleep 3
+# [실패 확인] 빈 name/음수 value로 DTO 검증을 의도적으로 실패시킵니다. 인증/제한 통과 후 400을 예상합니다.
 lab_api POST /api/echo '{"name":"","value":-1}' status
 ```
 

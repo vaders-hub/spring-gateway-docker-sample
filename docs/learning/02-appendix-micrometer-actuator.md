@@ -93,6 +93,7 @@ runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 [Backend application.yml](../../backend/src/main/resources/application.yml)의 설정입니다.
 
 ```yaml
+# [설정 예시] 앱이 HTTP로 제공할 Actuator 엔드포인트를 선택합니다. 익명 접근 허용은 별도 보안 설정입니다.
 management:
   endpoints:
     web:
@@ -111,14 +112,17 @@ management:
 
 ```yaml
 global:
+  # [수집 주기] Prometheus가 각 대상의 현재 지표를 가져오는 기본 간격. 업무 API 호출 간격이 아닙니다.
   scrape_interval: 15s
 
 scrape_configs:
+  # [대상 등록] gateway라는 job label로 구분하고 Compose 내부 주소를 직접 호출합니다.
   - job_name: gateway
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ["gateway:8080"]
 
+  # [대상 등록] Backend는 Gateway를 거치지 않고 자신의 Actuator 지표를 응답합니다.
   - job_name: backend
     metrics_path: /actuator/prometheus
     static_configs:
@@ -151,6 +155,8 @@ Prometheus에 이미 저장된 이전 샘플은 별개로 유지되며 `rate()`�
 Gauge는 순간값이므로 수집 사이에 잠깐 발생했다 사라진 최고값까지 항상 포착하는 것은 아닙니다.
 
 ```promql
+# [조회식] Bash가 아니라 Prometheus/Grafana의 PromQL 입력창에서 실행합니다.
+# 라벨 조합별로 최근 5분 카운터 샘플의 초당 평균 증가량을 계산. 샘플이 부족하면 결과가 없을 수 있습니다.
 rate(http_server_requests_seconds_count[5m])
 ```
 
