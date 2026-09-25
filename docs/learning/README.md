@@ -22,7 +22,7 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 
 ## 시스템 구성도
 
-[현재 Compose 구성과 후속 Kubernetes 학습 구성도](../system-architecture.md)를 먼저 보면 API·Redis·관측 경로와 단계별 실행 범위를 연결할 수 있습니다. SVG 원본과 PNG를 함께 제공합니다.
+[03단계 kind 구성과 전후 학습 구성도](../system-architecture.md)를 먼저 보면 NodePort·Service·Pod의 연결과 이전 Compose 관측 구성, 이후 학습 범위를 구분할 수 있습니다. SVG 원본과 PNG를 함께 제공합니다.
 
 ## 학습 순서
 

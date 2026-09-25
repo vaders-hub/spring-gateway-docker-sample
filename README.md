@@ -5,7 +5,7 @@ Java 25, Gradle 9.7.1, Spring Cloud Gateway, Redis 및 kind Kubernetes를
 
 [AA/SWA 검토와 반영 범위](docs/aa-swa-review.md)에서 공통 응답·계층 분리·설정·로그의 설계 판단을 확인할 수 있습니다.
 
-[학습 시스템 구성도](docs/system-architecture.md)에서 현재 Compose 구성과 이후 Kubernetes 학습 구성을 한눈에 볼 수 있습니다.
+[학습 시스템 구성도](docs/system-architecture.md)에서 03단계 kind 구성과 NodePort 접속 경로, 이전 Compose 관측 구성 및 이후 학습 범위를 한눈에 볼 수 있습니다.
 
 처음 시작한다면 [무료 로컬 AWS/EKS 학습 로드맵](docs/learning/README.md)을 먼저 읽으세요.
 kind 배포·운영 실습 후에는 [9단계 PV·PVC와 저장·복원](docs/learning/09-storage-and-persistence.md)으로

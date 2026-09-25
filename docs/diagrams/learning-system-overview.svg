@@ -1,141 +1,140 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1540" viewBox="0 0 1800 1540" role="img" aria-labelledby="title desc">
-<title id="title">Spring Gateway Lab — 현재 Compose 구성과 후속 Kubernetes 학습 구성</title>
-<desc id="desc">클라이언트에서 Spring Cloud Gateway를 거쳐 Backend로 전달되는 API, Redis 요청 제한, Prometheus의 Actuator 지표 수집, Grafana 조회와 영속 볼륨을 나타낸다. 하단은 현재 실행하지 않는 kind, Envoy Gateway API, PVC 학습 확장이다.</desc>
-<defs>
-<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/></marker>
-<marker id="purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8955c7"/></marker>
-<marker id="green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#13866b"/></marker>
-<marker id="amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#ba7414"/></marker>
-<marker id="slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#78879c"/></marker>
-</defs><g font-family="Segoe UI, Malgun Gothic, Apple SD Gothic Neo, sans-serif">
-<rect x="0" y="0" width="1800" height="1540" rx="0" fill="#f3f6fb" stroke="#f3f6fb" stroke-width="1.5"/>
-<text x="48" y="53" font-size="17" fill="#2563eb" font-weight="700" text-anchor="start">SPRING GATEWAY LAB</text>
-<text x="48" y="103" font-size="42" fill="#14243b" font-weight="750" text-anchor="start">학습 시스템 구성도</text>
-<text x="48" y="140" font-size="23" fill="#52627a" font-weight="400" text-anchor="start">현재 01–02단계 · Docker Compose 애플리케이션 + Prometheus / Grafana</text>
-<rect x="1440" y="47" width="312" height="30" rx="15" fill="#e6f5ec" stroke="#e6f5ec" stroke-width="1.5"/>
-<text x="1596.0" y="68" font-size="15" fill="#16734b" font-weight="700" text-anchor="middle">2026.09.23  ·  소스 / 실행 상태 확인</text>
-<text x="1750" y="103" font-size="18" fill="#52627a" font-weight="500" text-anchor="end">Java 25  /  Spring Boot</text>
-<text x="1750" y="134" font-size="18" fill="#52627a" font-weight="500" text-anchor="end">Windows · Docker Desktop · WSL2</text>
-<rect x="40" y="177" width="1720" height="883" rx="24" fill="#ffffff" stroke="#cbd8e8" stroke-width="1.5"/>
-<text x="70" y="219" font-size="19" fill="#2563eb" font-weight="700" text-anchor="start">01 / 02</text>
-<text x="180" y="219" font-size="25" fill="#14243b" font-weight="700" text-anchor="start">현재 실행 구성</text>
-<rect x="385" y="195" width="156" height="30" rx="15" fill="#e6f5ec" stroke="#e6f5ec" stroke-width="1.5"/>
-<text x="463.0" y="216" font-size="15" fill="#16734b" font-weight="700" text-anchor="middle">컨테이너 5개</text>
-<path d="M660 211 H708" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#blue)"/>
-<text x="721" y="217" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">API 요청</text>
-<path d="M888 211 H936" fill="none" stroke="#8955c7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#purple)"/>
-<text x="949" y="217" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">제한 판정</text>
-<path d="M1116 211 H1164" fill="none" stroke="#13866b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#green)"/>
-<text x="1177" y="217" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">지표 수집 요청</text>
-<path d="M1393 211 H1441" fill="none" stroke="#ba7414" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#amber)"/>
-<text x="1454" y="217" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">PromQL 조회</text>
-<rect x="390" y="249" width="1340" height="789" rx="20" fill="#f8faff" stroke="#d1ddec" stroke-width="1.5"/>
-<text x="415" y="282" font-size="21" fill="#14243b" font-weight="700" text-anchor="start">Docker Compose · app-net</text>
-<text x="1704" y="281" font-size="17" fill="#52627a" font-weight="400" text-anchor="end">서비스 이름은 컨테이너 내부 DNS</text>
-<rect x="70" y="319" width="270" height="236" rx="18" fill="#fff" stroke="#d7e1ee" stroke-width="1.5"/>
-<path d="M90 320 H320" stroke="#2563eb" stroke-width="4"/>
-<text x="94" y="362" font-size="28" fill="#14243b" font-weight="700" text-anchor="start">API 클라이언트</text>
-<text x="94" y="392" font-size="18" fill="#2563eb" font-weight="600" text-anchor="start">WSL curl / 브라우저</text>
-<text x="92" y="434" font-size="18" fill="#334155" font-weight="400" text-anchor="start">① POST /auth/token</text>
-<text x="92" y="468" font-size="18" fill="#334155" font-weight="400" text-anchor="start">    데모 JWT 발급</text>
-<text x="92" y="502" font-size="18" fill="#334155" font-weight="400" text-anchor="start">② /api/** + Bearer JWT</text>
-<text x="92" y="530" font-size="17" fill="#2563eb" font-weight="600" text-anchor="start">호스트 127.0.0.1:8080</text>
-<rect x="450" y="320" width="380" height="218" rx="18" fill="#fff" stroke="#d7e1ee" stroke-width="1.5"/>
-<path d="M470 321 H810" stroke="#2563eb" stroke-width="4"/>
-<text x="474" y="363" font-size="28" fill="#14243b" font-weight="700" text-anchor="start">Spring Cloud Gateway</text>
-<text x="474" y="393" font-size="18" fill="#2563eb" font-weight="600" text-anchor="start">gateway:8080 · WebFlux / Netty</text>
-<text x="474" y="426" font-size="20" fill="#334155" font-weight="400" text-anchor="start">JWT · scope · CORS 검증</text>
-<text x="474" y="460" font-size="20" fill="#334155" font-weight="400" text-anchor="start">사용자별 Redis Rate Limit</text>
-<text x="474" y="494" font-size="20" fill="#334155" font-weight="400" text-anchor="start">요청 ID 전달 · /api prefix 제거</text>
-<rect x="1230" y="320" width="460" height="218" rx="18" fill="#fff" stroke="#d7e1ee" stroke-width="1.5"/>
-<path d="M1250 321 H1670" stroke="#2563eb" stroke-width="4"/>
-<text x="1254" y="363" font-size="28" fill="#14243b" font-weight="700" text-anchor="start">Backend</text>
-<text x="1254" y="393" font-size="18" fill="#2563eb" font-weight="600" text-anchor="start">backend:8081 · Spring MVC / Tomcat</text>
-<text x="1254" y="426" font-size="20" fill="#334155" font-weight="400" text-anchor="start">JWT 재검증 · DTO 입력 검증</text>
-<text x="1254" y="460" font-size="20" fill="#334155" font-weight="400" text-anchor="start">Controller → Service → DTO</text>
-<text x="1254" y="494" font-size="20" fill="#334155" font-weight="400" text-anchor="start">GET /hello · POST /echo</text>
-<path d="M340 401 H450" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#blue)"/>
-<path d="M830 400 H1230" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#blue)"/>
-<text x="1027" y="365" font-size="20" fill="#2563eb" font-weight="650" text-anchor="middle">③ 허용된 요청만 전달</text>
-<text x="1027" y="439" font-size="19" fill="#52627a" font-weight="400" text-anchor="middle">/api/hello → /hello</text>
-<text x="1027" y="475" font-size="18" fill="#8955c7" font-weight="600" text-anchor="middle">429이면 Backend 미호출</text>
-<rect x="900" y="649" width="260" height="153" rx="18" fill="#fcfaff" stroke="#d7e1ee" stroke-width="1.5"/>
-<path d="M920 650 H1140" stroke="#8955c7" stroke-width="4"/>
-<text x="924" y="692" font-size="28" fill="#14243b" font-weight="700" text-anchor="start">Redis</text>
-<text x="924" y="722" font-size="18" fill="#8955c7" font-weight="600" text-anchor="start">redis:6379</text>
-<text x="924" y="751" font-size="17" fill="#334155" font-weight="400" text-anchor="start">요청 제한 버킷 공유</text>
-<text x="924" y="778" font-size="17" fill="#334155" font-weight="400" text-anchor="start">휘발성 · 영속 저장 OFF</text>
-<path d="M830 494 H862 V713 H900" fill="none" stroke="#8955c7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#purple)"/>
-<text x="875" y="614" font-size="16" fill="#8955c7" font-weight="400" text-anchor="start">사용자별</text>
-<text x="875" y="637" font-size="16" fill="#8955c7" font-weight="400" text-anchor="start">허용 / 거절</text>
-<rect x="450" y="749" width="380" height="191" rx="18" fill="#fff" stroke="#d7e1ee" stroke-width="1.5"/>
-<path d="M470 750 H810" stroke="#ba7414" stroke-width="4"/>
-<text x="474" y="792" font-size="28" fill="#14243b" font-weight="700" text-anchor="start">Grafana</text>
-<text x="474" y="822" font-size="18" fill="#ba7414" font-weight="600" text-anchor="start">grafana:3000 · 시각화</text>
-<text x="474" y="853" font-size="20" fill="#334155" font-weight="400" text-anchor="start">PromQL · 패널 · 대시보드</text>
-<rect x="474" y="876" width="332" height="40" rx="9" fill="#fff4e4" stroke="#fff4e4" stroke-width="1.5"/>
-<text x="489" y="902" font-size="17" fill="#8d5c15" font-weight="600" text-anchor="start">named volume · grafana-data</text>
-<rect x="1230" y="749" width="460" height="191" rx="18" fill="#fff" stroke="#d7e1ee" stroke-width="1.5"/>
-<path d="M1250 750 H1670" stroke="#13866b" stroke-width="4"/>
-<text x="1254" y="792" font-size="28" fill="#14243b" font-weight="700" text-anchor="start">Prometheus</text>
-<text x="1254" y="822" font-size="18" fill="#13866b" font-weight="600" text-anchor="start">prometheus:9090 · 지표 수집 / 저장</text>
-<text x="1254" y="853" font-size="19" fill="#334155" font-weight="400" text-anchor="start">15초마다 /actuator/prometheus 수집</text>
-<rect x="1254" y="876" width="412" height="40" rx="9" fill="#e7f5ef" stroke="#e7f5ef" stroke-width="1.5"/>
-<text x="1269" y="902" font-size="17" fill="#16734b" font-weight="600" text-anchor="start">named volume · prometheus-data</text>
-<circle cx="862" cy="579" r="7" fill="#f8faff"/>
-<path d="M1230 796 H1193 V579 H641 V538" fill="none" stroke="#13866b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#green)"/>
-<text x="910" y="568" font-size="18" fill="#13866b" font-weight="600" text-anchor="start">④ 지표 수집 (pull)</text>
-<path d="M1490 749 V538" fill="none" stroke="#13866b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#green)"/>
-<text x="1510" y="623" font-size="18" fill="#13866b" font-weight="600" text-anchor="start">④ scrape</text>
-<text x="1510" y="655" font-size="16" fill="#52627a" font-weight="400" text-anchor="start">응답은 반대 방향</text>
-<path d="M830 862 H1230" fill="none" stroke="#ba7414" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#amber)"/>
-<text x="1028" y="846" font-size="20" fill="#ba7414" font-weight="600" text-anchor="middle">⑤ PromQL 조회</text>
-<text x="1028" y="894" font-size="17" fill="#52627a" font-weight="400" text-anchor="middle">Grafana → Prometheus</text>
-<rect x="70" y="749" width="270" height="191" rx="18" fill="#fff" stroke="#d7e1ee" stroke-width="1.5"/>
-<path d="M90 750 H320" stroke="#ba7414" stroke-width="4"/>
-<text x="94" y="792" font-size="28" fill="#14243b" font-weight="700" text-anchor="start">관측 브라우저</text>
-<text x="94" y="822" font-size="18" fill="#ba7414" font-weight="600" text-anchor="start">Windows · localhost</text>
-<text x="94" y="850" font-size="18" fill="#334155" font-weight="400" text-anchor="start">:3000  Grafana UI</text>
-<text x="94" y="882" font-size="18" fill="#334155" font-weight="400" text-anchor="start">:9090  Prometheus UI</text>
-<path d="M340 812 H450" fill="none" stroke="#ba7414" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#amber)"/>
-<text x="394" y="794" font-size="16" fill="#ba7414" font-weight="600" text-anchor="middle">:3000</text>
-<rect x="70" y="593" width="270" height="116" rx="12" fill="#f2f5fa" stroke="#e4eaf3" stroke-width="1.5"/>
-<text x="90" y="624" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">Backend · Redis는</text>
-<text x="90" y="654" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">호스트 포트 비공개</text>
-<text x="90" y="684" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">backend:8081은 내부 주소</text>
-<rect x="416" y="966" width="1288" height="50" rx="12" fill="#eaf0f8" stroke="#eaf0f8" stroke-width="1.5"/>
-<text x="434" y="997" font-size="18" fill="#334155" font-weight="600" text-anchor="start">.env → Compose 환경변수 → Spring 설정</text>
-<text x="927" y="997" font-size="18" fill="#334155" font-weight="400" text-anchor="start">stdout 로그 · X-Request-Id · healthcheck · graceful shutdown</text>
-<text x="48" y="1110" font-size="27" fill="#14243b" font-weight="700" text-anchor="start">03–10  /  후속 학습 구성</text>
-<rect x="440" y="1085" width="270" height="30" rx="15" fill="#edf0f6" stroke="#edf0f6" stroke-width="1.5"/>
-<text x="575.0" y="1106" font-size="15" fill="#65748b" font-weight="700" text-anchor="middle">아래 리소스는 현재 실행 아님</text>
-<text x="1750" y="1109" font-size="18" fill="#65748b" font-weight="500" text-anchor="end">Compose 종료 후 kind 진행 · 기본 8080 포트 중복</text>
-<rect x="40" y="1134" width="1130" height="287" rx="20" fill="#fff" stroke="#b9c8dc" stroke-width="1.5" stroke-dasharray="7 6"/>
-<text x="65" y="1170" font-size="23" fill="#14243b" font-weight="700" text-anchor="start">kind Kubernetes · gateway-lab</text>
-<text x="65" y="1204" font-size="18" fill="#52627a" font-weight="400" text-anchor="start">기본: localhost:8080 → kind 노드:30080 → Gateway Service (NodePort)</text>
-<text x="65" y="1236" font-size="18" fill="#52627a" font-weight="400" text-anchor="start">선택: localhost:8888 → port-forward → Envoy Proxy → Gateway Service</text>
-<rect x="68" y="1260" width="270" height="66" rx="12" fill="#edf3ff" stroke="#d7e4fa" stroke-width="1.5"/>
-<text x="203" y="1287" font-size="17" fill="#2563eb" font-weight="600" text-anchor="middle">Gateway Deployment / Pod</text>
-<text x="203" y="1313" font-size="17" fill="#52627a" font-weight="400" text-anchor="middle">JWT · CORS · Redis 제한</text>
-<rect x="434" y="1260" width="308" height="66" rx="12" fill="#edf3ff" stroke="#d7e4fa" stroke-width="1.5"/>
-<text x="588" y="1287" font-size="18" fill="#2563eb" font-weight="600" text-anchor="middle">Backend Service → Pod</text>
-<text x="588" y="1313" font-size="17" fill="#52627a" font-weight="400" text-anchor="middle">업무 API · JWT 재검증</text>
-<path d="M338 1280 H434" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#blue)"/>
-<rect x="840" y="1260" width="300" height="66" rx="12" fill="#f5effb" stroke="#e7ddf3" stroke-width="1.5"/>
-<text x="990" y="1287" font-size="18" fill="#8955c7" font-weight="600" text-anchor="middle">Redis Service → Pod</text>
-<text x="990" y="1313" font-size="17" fill="#52627a" font-weight="400" text-anchor="middle">공유 버킷 · 영속 저장 OFF</text>
-<path d="M202 1326 V1345 H991 V1326" fill="none" stroke="#8955c7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#purple)"/>
-<text x="66" y="1383" font-size="17" fill="#52627a" font-weight="400" text-anchor="start">ConfigMap / Secret · probes · rollout · Pod 복제 · NetworkPolicy (CNI 집행 확인)</text>
-<text x="66" y="1407" font-size="16" fill="#65748b" font-weight="400" text-anchor="start">Envoy 설정: GatewayClass / Gateway / HTTPRoute · Spring Gateway 애플리케이션과 별개</text>
-<rect x="1190" y="1134" width="570" height="287" rx="20" fill="#fff" stroke="#b9c8dc" stroke-width="1.5" stroke-dasharray="7 6"/>
-<text x="1215" y="1170" font-size="23" fill="#14243b" font-weight="700" text-anchor="start">09 · 저장소 독립 실습</text>
-<text x="1215" y="1203" font-size="18" fill="#52627a" font-weight="400" text-anchor="start">namespace: gateway-storage-lab</text>
-<rect x="1215" y="1230" width="520" height="53" rx="10" fill="#f0f4fa" stroke="#e3eaf4" stroke-width="1.5"/>
-<text x="1475" y="1264" font-size="18" fill="#334155" font-weight="600" text-anchor="middle">BusyBox Pod → PVC → PV → 노드 디렉터리</text>
-<text x="1215" y="1320" font-size="18" fill="#52627a" font-weight="400" text-anchor="start">StorageClass + provisioner로 동적 생성</text>
-<text x="1215" y="1353" font-size="18" fill="#52627a" font-weight="400" text-anchor="start">emptyDir / PVC 수명 비교 · 호스트 백업 / 복원</text>
-<text x="1215" y="1386" font-size="18" fill="#52627a" font-weight="400" text-anchor="start">기존 앱·Redis에 PVC를 붙이는 단계는 아님</text>
-<text x="48" y="1468" font-size="18" fill="#14243b" font-weight="700" text-anchor="start">아직 없는 구성</text>
-<text x="231" y="1468" font-size="18" fill="#52627a" font-weight="400" text-anchor="start">Oracle / JPA / MyBatis · OTel Collector / trace 저장소 · 실제 AWS EKS / ALB / EBS</text>
-<text x="48" y="1507" font-size="16" fill="#718098" font-weight="400" text-anchor="start">기준: 저장소 Compose·K8s 매니페스트 / 학습 01–10 문서 / 2026.09.23 Docker 상태 · 화살표는 호출·수집 요청 방향</text>
-</g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1750" viewBox="0 0 1800 1750" role="img" aria-labelledby="title desc">
+  <title id="title">Spring Gateway Lab — 03단계 kind Kubernetes 구성</title>
+  <desc id="desc">03단계 완료 사용자 보고와 저장소 설정을 기준으로 한 구성도이며 실시간 상태 검사는 아니다. Docker Desktop에서 실행하는 단일 kind 노드 안에 Gateway, Backend, Redis의 Service와 Pod가 있다. localhost 8080은 노드 30080에 매핑되어 Gateway NodePort로 연결된다. Backend와 Redis는 ClusterIP다. 하단에 이전 Compose 관측 구성과 이후 학습을 분리한다.</desc>
+  <defs>
+    <marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker>
+    <marker id="purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#8955c7"/></marker>
+    <style>
+      text { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; fill: #14243b; }
+      .title { font-size: 42px; font-weight: 700; }
+      .heading { font-size: 26px; font-weight: 700; }
+      .label { font-size: 22px; font-weight: 700; }
+      .body { font-size: 20px; }
+      .small { font-size: 18px; }
+      .muted { fill: #52627a; }
+      .blue { fill: #2563eb; }
+      .purple { fill: #7845b7; }
+      .green { fill: #16734b; }
+      .card { fill: #fff; stroke: #cbd8e8; stroke-width: 1.5; }
+      .api { fill: none; stroke: #2563eb; stroke-width: 3; stroke-linejoin: round; marker-end: url(#blue); }
+      .limit { fill: none; stroke: #8955c7; stroke-width: 3; stroke-linejoin: round; marker-end: url(#purple); }
+    </style>
+  </defs>
+  <rect width="1800" height="1750" fill="#f3f6fb"/>
+  <text x="48" y="50" class="small blue" font-weight="700">SPRING GATEWAY LAB</text>
+  <text x="48" y="105" class="title">학습 시스템 구성도</text>
+  <text x="48" y="145" class="label muted">현재 학습 기준: 03 완료 · 같은 앱을 Compose에서 kind Kubernetes로 이동</text>
+  <rect x="1280" y="40" width="470" height="38" rx="19" fill="#e6f5ec"/>
+  <text x="1515" y="66" class="small green" text-anchor="middle">2026.09.25 · 사용자 진행 보고 + 소스 기준</text>
+  <text x="1750" y="110" class="small muted" text-anchor="end">실시간 상태 / 전체 테스트 완료 표시는 아님</text>
+
+  <!-- Current stage: host, kind node and logical application namespace. -->
+  <rect x="40" y="180" width="1720" height="1040" rx="24" class="card"/>
+  <text x="70" y="227" class="heading blue">03 / 현재 구성</text>
+  <text x="350" y="227" class="label">Windows 노트북 · Docker Desktop의 Linux 엔진</text>
+  <text x="1730" y="265" class="small muted" text-anchor="end">클러스터: gateway-lab  |  kubectl 접속 설정: kind-gateway-lab</text>
+  <rect x="70" y="355" width="260" height="230" rx="18" class="card"/>
+  <text x="94" y="400" class="heading">API 클라이언트</text>
+  <text x="94" y="442" class="body blue">WSL curl / 브라우저</text>
+  <text x="94" y="484" class="small">POST /auth/token</text>
+  <text x="94" y="520" class="small">/api/** + Bearer JWT</text>
+  <text x="94" y="558" class="body blue" font-weight="700">localhost:8080</text>
+
+  <rect x="370" y="300" width="1360" height="875" rx="20" fill="#f8faff" stroke="#b9cce7" stroke-width="2"/>
+  <text x="400" y="344" class="heading">kind 노드 = Docker 컨테이너</text>
+  <text x="1700" y="344" class="label blue" text-anchor="end">gateway-lab-control-plane</text>
+  <rect x="450" y="387" width="310" height="60" rx="12" fill="#e7efff"/>
+  <text x="605" y="425" class="label blue" text-anchor="middle">노드 포트 :30080</text>
+  <text x="820" y="407" class="body muted">관리 구성 요소: API Server · etcd · scheduler 등</text>
+  <text x="820" y="440" class="small muted">노드 내부 containerd가 Pod의 컨테이너 실행 · 시스템 Pod는 생략</text>
+  <path d="M330 420 H450" class="api"/>
+  <text x="388" y="394" class="small blue" text-anchor="middle">포트 매핑</text>
+
+  <rect x="405" y="470" width="1290" height="570" rx="18" fill="#fff" stroke="#d6e1ef" stroke-width="1.5"/>
+  <text x="870" y="507" class="label muted">namespace: gateway-lab</text>
+  <text x="1665" y="507" class="small muted" text-anchor="end">앱 리소스의 논리적 범위</text>
+  <path d="M605 447 V540" class="api"/>
+
+  <!-- Service and application Pod are separate resources. -->
+  <rect x="430" y="540" width="350" height="100" rx="14" fill="#edf3ff" stroke="#b9d0f5"/>
+  <text x="450" y="576" class="label blue">Service / gateway</text>
+  <text x="450" y="612" class="body">NodePort · 8080:30080/TCP</text>
+  <path d="M605 640 V690" class="api"/>
+  <text x="627" y="674" class="small muted">Ready Pod 선택</text>
+  <rect x="430" y="690" width="350" height="240" rx="16" class="card"/>
+  <text x="450" y="731" class="label">Gateway Pod · :8080</text>
+  <text x="450" y="769" class="body blue">Spring Cloud Gateway</text>
+  <text x="450" y="806" class="small">JWT · scope · CORS · 요청 ID</text>
+  <text x="450" y="840" class="small">Redis 요청 제한 · /api 제거</text>
+  <text x="450" y="874" class="small muted">앱 컨테이너: JRE + JAR</text>
+  <text x="450" y="909" class="small muted">Deployment/gateway가 관리</text>
+
+  <!-- API calls and Redis checks originate at the Gateway application. -->
+  <path d="M780 740 H1145 V590 H1190" class="api"/>
+  <text x="958" y="658" class="body blue" text-anchor="middle">허용된 API 요청</text>
+  <text x="958" y="694" class="small muted" text-anchor="middle">backend:8081</text>
+  <text x="958" y="726" class="small muted" text-anchor="middle">/api/hello → /hello</text>
+  <rect x="1190" y="540" width="470" height="100" rx="14" fill="#edf3ff" stroke="#b9d0f5"/>
+  <text x="1215" y="576" class="label blue">Service / backend</text>
+  <text x="1215" y="612" class="body">ClusterIP · backend:8081</text>
+  <path d="M1425 640 V690" class="api"/>
+  <text x="1447" y="674" class="small muted">Ready Pod 선택</text>
+  <rect x="1190" y="690" width="470" height="240" rx="16" class="card"/>
+  <text x="1215" y="731" class="label">Backend Pod · :8081</text>
+  <text x="1215" y="769" class="body blue">Spring MVC / Tomcat</text>
+  <text x="1215" y="806" class="small">JWT 재검증 · DTO 입력 검증</text>
+  <text x="1215" y="840" class="small">Controller → Service → DTO</text>
+  <text x="1215" y="874" class="small muted">앱 컨테이너: JRE + JAR</text>
+  <text x="1215" y="909" class="small muted">Deployment/backend가 관리</text>
+
+  <text x="1000" y="790" class="small purple" text-anchor="middle">사용자별 제한 판정</text>
+  <path d="M780 860 H870" class="limit"/>
+  <rect x="870" y="825" width="260" height="65" rx="12" fill="#f4eefb" stroke="#ddccef"/>
+  <text x="890" y="852" class="body purple" font-weight="700">Service / redis</text>
+  <text x="890" y="879" class="small">ClusterIP · redis:6379</text>
+  <path d="M1000 890 V930" class="limit"/>
+  <rect x="870" y="930" width="260" height="86" rx="12" class="card"/>
+  <text x="890" y="963" class="body" font-weight="700">Redis Pod · :6379</text>
+  <text x="890" y="994" class="small muted">공유 버킷 · 영속 저장 OFF</text>
+  <text x="445" y="982" class="small purple">한도 초과 429 → Backend 미호출</text>
+  <text x="445" y="1011" class="small muted">Redis 오류 시 fail-closed는 후속 과제</text>
+  <text x="1215" y="978" class="small muted">기본 앱 Deployment는 각각 replicas=1</text>
+  <text x="1215" y="1011" class="small muted">Backend / Redis는 호스트 포트 비공개</text>
+
+  <rect x="70" y="650" width="260" height="325" rx="16" fill="#f2f5fa"/>
+  <text x="94" y="694" class="label">WSL 터미널</text>
+  <text x="94" y="738" class="body blue">docker build</text>
+  <text x="94" y="766" class="small muted">호스트에 앱 이미지 생성</text>
+  <text x="94" y="809" class="body blue">kind load</text>
+  <text x="94" y="837" class="small muted">노드로 이미지 전달</text>
+  <text x="94" y="880" class="body blue">kubectl apply</text>
+  <text x="94" y="908" class="small muted">배포 / 설정 선언 반영</text>
+  <text x="94" y="950" class="small muted">파일은 Windows에서 편집</text>
+  <rect x="420" y="1065" width="1260" height="82" rx="12" fill="#eaf0f8"/>
+  <text x="442" y="1099" class="body" font-weight="700">설정 경로: ConfigMap / Secret → Deployment → 앱 컨테이너 환경변수 → Spring 설정</text>
+  <text x="442" y="1132" class="small muted">startup / liveness / readiness · NetworkPolicy 선언 (실제 차단 검증은 08) · namespace 자체는 방화벽이 아님</text>
+  <text x="70" y="1200" class="small muted">화살표는 요청 방향 · 응답은 반대 방향 · Service IP와 Pod 이름은 바뀔 수 있어 고정 숫자 대신 이름으로 표시</text>
+
+  <!-- Previous and future learning are not simultaneous running components. -->
+  <text x="48" y="1274" class="heading">이전 구성과 이후 학습 — 현재 kind 구성과 구분</text>
+  <rect x="40" y="1305" width="835" height="330" rx="20" class="card"/>
+  <text x="65" y="1347" class="label">01–02 / 이전 Compose 관측 구성</text>
+  <text x="65" y="1392" class="body">앱: Gateway → Backend / Redis</text>
+  <text x="65" y="1431" class="body">Prometheus → 각 앱의 /actuator/prometheus</text>
+  <text x="65" y="1468" class="small muted">15초마다 수집 → prometheus-data에 지표 이력 저장</text>
+  <text x="65" y="1507" class="body">Grafana → Prometheus에 PromQL 조회</text>
+  <text x="65" y="1544" class="small muted">대시보드 / 설정은 grafana-data에 저장</text>
+  <text x="65" y="1584" class="body green" font-weight="700">kind에 Prometheus / Grafana는 자동 배포되지 않음</text>
+  <text x="65" y="1614" class="small muted">03 절차는 Compose 종료 후 전환 · 두 구성의 기본 8080 충돌</text>
+  <rect x="900" y="1305" width="860" height="330" rx="20" fill="#fff" stroke="#b9c8dc" stroke-width="1.5" stroke-dasharray="7 6"/>
+  <text x="925" y="1347" class="label">04–08 / 다음 학습 · 완료 / 배포 표시는 아님</text>
+  <text x="925" y="1392" class="body">04  복제본 · 설정 변경 · 장애 관찰 · 정상 복구</text>
+  <text x="925" y="1431" class="body">05  :8888 → port-forward → Envoy → SCG</text>
+  <text x="970" y="1468" class="small muted">Gateway API로 추가 진입점 구성 · JWT / Redis 정책은 SCG 유지</text>
+  <text x="925" y="1507" class="body">06  AWS 대응 / AA 확장 계획 · 07  진단 / 정리</text>
+  <text x="925" y="1546" class="body">08  NetworkPolicy 허용 / 비허용 경로 대조</text>
+  <text x="925" y="1584" class="small muted">08 이후 AA 보강 예정 · Oracle / JPA / MyBatis는 미구현</text>
+  <text x="925" y="1614" class="small muted">09 저장소 · 10 Spring 검증은 필요에 따라 연결하는 후속 실습</text>
+  <text x="48" y="1680" class="body" font-weight="700">범위 밖: 실제 AWS EKS / ALB / EBS · OTel Collector / trace 저장소</text>
+  <text x="48" y="1720" class="small muted">근거: 저장소의 kind / K8s / Compose 설정 · 03 완료 사용자 보고 · 단일 노드는 다중 AZ 고가용성이나 AWS 동작을 재현하지 않음</text>
+</svg>
