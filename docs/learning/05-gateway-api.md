@@ -32,6 +32,10 @@ Spring Cloud Gateway는 JWT·CORS·사용자별 요청 제한을 담당하는 �
 상세 실행 명령의 단일 기준은 [Gateway API 설치/실행 문서](../../k8s/gateway-api/README.md)입니다.
 아래 순서로 해당 문서의 명령을 실행합니다. 기본 kind 앱이 먼저 정상이어야 합니다.
 
+실행 문서의 각 명령 앞에 `[조회]`, `[설치]`, `[적용]`, `[대기]`, `[임시 연결]`, `[호출 확인]`, `[삭제]` 주석을 붙였습니다.
+`apply`는 설정 반영, `wait`는 상태 확인, `port-forward`는 터미널이 열린 동안의 연결이므로
+각 단계의 역할을 읽고 실행합니다. 공통 옵션은 [3단계 wait 해설](03-kind-kubernetes.md#wait-명령을-나누어-읽기)을 참고합니다.
+
 1. `kubectl --context kind-gateway-lab version`으로 서버 버전과 Envoy 호환표 확인.
 2. Helm으로 고정 버전 Envoy Gateway와 CRD 설치. upstream 예제 앱은 설치하지 않음.
 3. `kubectl --context kind-gateway-lab apply -k k8s/gateway-api` 실행.

@@ -76,6 +76,8 @@ API Gateway의 route throttling과 Redis의 subject별 제한을 같은 정책�
 호스트 JDK 25가 준비됐을 때의 선택 검증 명령입니다. 이번 문서 작성 중 실행하지 않았습니다.
 
 ```bash
+# [선택 테스트] WSL의 JDK로 두 모듈의 test 작업 실행. 필요한 컴파일/의존성 다운로드가 포함됩니다.
+# Docker 이미지나 Kubernetes 배포를 만드는 명령은 아니며, JDK 준비 후 테스트할 때만 실행합니다.
 bash ./gradlew gateway:test backend:test
 ```
 

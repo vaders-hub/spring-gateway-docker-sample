@@ -22,8 +22,11 @@ Pod만 Backend 8081 / Redis 6379에 접근하도록 선언합니다. 실제 집�
 [공식 NetworkPolicy 설명](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
 ```bash
+# [조회] 적용된 정책 객체 목록. 객체가 있다는 것만으로 차단됐다고 판단하지 않습니다.
 kubectl --context kind-gateway-lab get networkpolicy -n gateway-lab
+# [조회] 시스템 Pod와 노드/IP를 보고 CNI 구현을 찾습니다. 지원 여부는 버전 문서로 별도 확인합니다.
 kubectl --context kind-gateway-lab get pods -n kube-system -o wide
+# [조회] 앱과 Service 연결 대상이 정상인지 확인해 단순 서버 장애를 차단으로 오해하지 않게 합니다.
 kubectl --context kind-gateway-lab get pods,svc,endpointslices -n gateway-lab
 ```
 
@@ -36,8 +39,11 @@ CNI Pod 이름만 보고 지원 여부를 단정하지 말고 해당 버전의 �
 Service selector/ReplicaSet과 충돌할 수 있으므로 그렇게 하지 않습니다.
 
 ```bash
+# [대조 호출] 실제 Gateway Pod 안에서 Backend의 liveness 확인. -- 뒤 wget은 Pod 안에서 실행됩니다.
 kubectl --context kind-gateway-lab exec -n gateway-lab deployment/gateway -- \
   wget -q -O - http://backend:8081/actuator/health/liveness
+# [대조 호출] Gateway Pod 자신의 readiness 확인. 여기의 127.0.0.1은 노트북이 아니라 해당 Pod입니다.
+# 현재 readiness에 Redis 점검이 포함되어 있으므로 Gateway → Redis 연결의 대조군으로 사용합니다.
 kubectl --context kind-gateway-lab exec -n gateway-lab deployment/gateway -- \
   wget -q -O - http://127.0.0.1:8080/actuator/health/readiness
 ```
@@ -52,24 +58,36 @@ WSL Bash에서 아래 블록 전체를 실행합니다. 임시 Pod 한 개만 �
 삭제합니다. 앱 데이터나 Secret은 읽지 않습니다. BusyBox 이미지 다운로드가 필요할 수 있습니다.
 
 ```bash
+# 블록 전체를 실행합니다. 별도 셸을 사용해 오류 종료와 임시 변수의 영향을 이 블록으로 제한합니다.
 (
+  # 오류/미정의 변수/파이프 오류 시 중단합니다. 아래 || true가 붙은 관찰 명령은 예외입니다.
   set -euo pipefail
+  # 기존 Pod와 이름이 겹칠 가능성을 줄이도록 임시 이름을 만듭니다.
   probe_pod="policy-denied-$RANDOM-$RANDOM"
+  # [임시 생성] 정책상 허용되지 않은 app=policy-denied Pod를 생성합니다.
+  # --restart=Never는 Deployment 없이 Pod만 생성. 마지막 -- 뒤는 600초 대기할 컨테이너 명령입니다.
+  # overrides는 API 토큰 자동 마운트 금지와 비root 실행 등 진단 Pod의 권한을 제한합니다.
   kubectl --context kind-gateway-lab run "$probe_pod" -n gateway-lab \
     --image=busybox:1.37.0 --restart=Never --labels=app=policy-denied \
     --overrides='{"spec":{"automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}}}}' \
     --command -- sleep 600
+  # [자동 정리] 정상/오류로 이 셸이 끝나면 해당 임시 Pod만 삭제 요청. 삭제 완료까지 기다리지는 않습니다.
   trap 'kubectl --context kind-gateway-lab delete pod "$probe_pod" -n gateway-lab --ignore-not-found --wait=false' EXIT
+  # [대기] 임시 Pod가 명령을 실행할 Ready 상태인지 최대 90초 확인합니다.
   kubectl --context kind-gateway-lab wait -n gateway-lab --for=condition=Ready \
     "pod/$probe_pod" --timeout=90s
 
-  # DNS 해석 자체가 정상인지 먼저 확인
+  # [DNS 확인] 임시 Pod 안에서 Service 이름을 찾는지 확인. 이름 해석 성공은 TCP 연결 성공과 다릅니다.
   kubectl --context kind-gateway-lab exec -n gateway-lab "$probe_pod" -- nslookup backend
   kubectl --context kind-gateway-lab exec -n gateway-lab "$probe_pod" -- nslookup redis
 
-  # 응답이 오면 네트워크 접근이 가능하다는 증거. 실패만으로 정책 집행을 단정하지 않음.
+  # [비허용 경로 테스트] Backend HTTP에 접근 시도. 응답(401/403 포함)이 오면 네트워크 접근이 가능합니다.
+  # wget의 -S는 응답 헤더, -O -는 본문 출력, -T 3은 네트워크 대기 제한입니다.
+  # || true는 예상 실패 뒤에도 다음 관찰을 계속하기 위한 것. 차단 성공으로 판정하는 구문이 아닙니다.
   kubectl --context kind-gateway-lab exec -n gateway-lab "$probe_pod" -- \
     wget -S -O - -T 3 http://backend:8081/actuator/health/liveness || true
+  # [비허용 경로 테스트] Redis TCP 포트로 PING 전송. 전체 시도를 5초로 제한합니다.
+  # +PONG/프로토콜 오류 등 응답이 오면 접근 가능. timeout만으로 정책 집행을 확정하지 않습니다.
   kubectl --context kind-gateway-lab exec -n gateway-lab "$probe_pod" -- \
     timeout 5 sh -c 'printf "PING\r\n" | nc -w 3 redis 6379' || true
 )

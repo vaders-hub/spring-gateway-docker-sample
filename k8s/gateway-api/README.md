@@ -52,12 +52,18 @@ EKS 등 관리형 클러스터에 이 로컬 설치 명령을 그대로 적용�
 예제 앱을 포함한 upstream quickstart.yaml은 배포하지 않습니다.
 
 ```bash
+# [설치] gateway-lab-eg라는 Helm release로 Envoy 컨트롤러와 CRD를 설치합니다.
+# --kube-context는 대상 클러스터, --namespace는 설치 공간, --version은 chart 버전입니다.
+# --create-namespace는 공간이 없을 때 생성, --wait/--timeout은 설치 리소스 준비를 최대 5분 기다립니다.
+# 이 단계만으로 우리 앱의 HTTPRoute가 만들어지는 것은 아닙니다.
 helm install gateway-lab-eg oci://docker.io/envoyproxy/gateway-helm \
   --version v1.9.1 \
   --kube-context kind-gateway-lab \
   --namespace envoy-gateway-system --create-namespace \
   --wait --timeout 5m
 
+# [대기] Kubernetes가 네 종류의 사용자 정의 리소스(CRD)를 등록했는지 확인합니다.
+# Established는 리소스 종류의 등록 상태이지 실제 앱 경로의 연결 성공을 뜻하지 않습니다.
 kubectl --context kind-gateway-lab wait --for=condition=Established \
   crd/gatewayclasses.gateway.networking.k8s.io \
   crd/gateways.gateway.networking.k8s.io \
@@ -72,11 +78,15 @@ kubectl --context kind-gateway-lab wait --for=condition=Established \
 ## 3. Gateway와 Route 적용
 
 ```bash
+# [적용] 이 폴더의 GatewayClass/Gateway/HTTPRoute/EnvoyProxy 설정을 반영합니다.
 kubectl --context kind-gateway-lab apply -k k8s/gateway-api
+# [대기] 컨트롤러가 이 GatewayClass를 수락했는지 확인합니다.
 kubectl --context kind-gateway-lab wait --for=condition=Accepted \
   gatewayclass/gateway-lab-envoy --timeout=60s
+# [대기] Gateway 설정이 데이터 플레인에 반영됐음을 나타내는 조건을 확인합니다. API 호출은 아직 별도입니다.
 kubectl --context kind-gateway-lab wait --for=condition=Programmed \
   gateway/edge-gateway -n gateway-lab --timeout=180s
+# [조회] HTTPRoute의 선언과 status를 YAML로 확인. 부모 Gateway의 수락/참조 해석 여부를 봅니다.
 kubectl --context kind-gateway-lab get httproute spring-gateway -n gateway-lab -o yaml
 ```
 
@@ -92,14 +102,20 @@ owning-gateway label로 조회합니다. 컨트롤러 자체의 Service에 연�
 아래 명령은 하나의 WSL Bash 터미널에서 실행하고, 포트 전달이 유지되는 동안 창을 열어둡니다.
 
 ```bash
+# [선택 조건] edge-gateway 소유의 프록시 리소스만 찾기 위한 label 두 개를 변수로 보관합니다.
 edge_selector='gateway.envoyproxy.io/owning-gateway-namespace=gateway-lab,gateway.envoyproxy.io/owning-gateway-name=edge-gateway'
+# [조회] 해당 Service 목록을 JSON으로 받아 변수에 저장. 조회 실패면 현재 셸을 종료합니다.
 edge_service_json=$(kubectl --context kind-gateway-lab get service \
   -n envoy-gateway-system --selector "$edge_selector" -o json) || exit 1
+# [검증/추출] Service가 정확히 하나일 때만 이름을 사용. 0개/여러 개면 추측하지 않고 중단합니다.
 edge_service_name=$(printf '%s' "$edge_service_json" |
   jq -er 'if (.items | length) == 1 then .items[0].metadata.name else error("Expected exactly one Envoy proxy Service") end') || exit 1
 
+# [대기] 컨트롤러가 아닌 Envoy 프록시 Deployment의 Available=True를 기다립니다.
 kubectl --context kind-gateway-lab wait --for=condition=Available deployment \
   -n envoy-gateway-system --selector "$edge_selector" --timeout=180s || exit 1
+# [임시 연결] 노트북 loopback 8888 → 프록시 Service의 80. 열린 이 터미널이 연결을 유지합니다.
+# LAN 전체에 공개하지 않으며 종료는 Ctrl+C입니다. 연결된 Pod 교체 시 다시 실행해야 할 수 있습니다.
 kubectl --context kind-gateway-lab port-forward \
   -n envoy-gateway-system "service/$edge_service_name" 8888:80 --address 127.0.0.1
 ```
@@ -112,10 +128,15 @@ kubectl --context kind-gateway-lab port-forward \
 다른 WSL Bash 터미널에서 실행합니다. secret/token 값은 출력하지 않습니다.
 
 ```bash
+# [보안] 셸 명령 추적을 꺼서 토큰/비밀번호가 확장 출력되지 않게 합니다.
 set +x
+# [셸 준비] 로그인/API 호출 함수를 현재 셸에 로드. source만으로 서버가 실행되지는 않습니다.
 source scripts/local-api.sh
+# [인증 호출] .env의 데모 자격증명으로 8888 경로에서 JWT 발급, 토큰은 현재 셸에만 보관합니다.
 lab_login http://localhost:8888
+# [호출 확인] 저장한 JWT로 hello 조회. 토큰을 직접 출력할 필요는 없습니다.
 lab_api GET /api/hello
+# [호출 확인] JSON을 보내 echo 응답 확인. Envoy → SCG → Backend 경로를 통과합니다.
 lab_api POST /api/echo '{"name":"edge-test","value":25}'
 ```
 
@@ -138,8 +159,9 @@ lab_api POST /api/echo '{"name":"edge-test","value":25}'
 `gateway:8080`을 향하는 Ingress인지 확인한 뒤에만 삭제합니다.
 
 ```bash
+# [조회] 이전 Ingress의 연결 대상/소유권 확인. 없으면 삭제 단계도 필요 없습니다.
 kubectl --context kind-gateway-lab get ingress gateway -n gateway-lab -o yaml
-# 위 리소스가 이 샘플의 이전 Ingress인 경우에만 실행
+# [삭제] 위 리소스가 이 샘플의 이전 Ingress인 경우에만 실행. 앱이나 컨트롤러는 삭제하지 않습니다.
 kubectl --context kind-gateway-lab delete ingress gateway -n gateway-lab --ignore-not-found
 ```
 
@@ -150,6 +172,8 @@ kubectl --context kind-gateway-lab delete ingress gateway -n gateway-lab --ignor
 port-forward를 먼저 종료한 뒤 다음을 실행합니다. 기본 앱, Redis, Secret, NodePort는 유지됩니다.
 
 ```bash
+# [삭제] 이 Kustomization의 선택형 진입 리소스만 제거. Envoy 프록시도 컨트롤러에 의해 정리될 수 있습니다.
+# 기본 Spring 앱/Redis/Secret은 유지하고, Helm 컨트롤러와 공유 CRD는 제거하지 않습니다.
 kubectl --context kind-gateway-lab delete -k k8s/gateway-api --ignore-not-found
 ```
 

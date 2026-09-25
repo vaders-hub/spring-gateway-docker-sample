@@ -39,14 +39,28 @@ Spring `BACKEND_URL`에 하드코딩하지 않습니다. cluster DNS의 `backend
 모든 명령은 WSL Bash에서 실행합니다. Windows에서 생성한 클러스터가 이미 있다면
 [WSL kubeconfig 연결 절차](07-troubleshooting-and-cleanup.md)를 먼저 확인합니다.
 
+### 명령을 복사하기 전에 읽는 방법
+
+명령 앞의 `#` 줄은 설명 주석이므로 함께 복사해도 실행되지 않습니다.
+`[조회]`는 상태 읽기, `[대기]`는 조건 확인, `[적용]`·`[변경]`은 실제 상태 변경,
+`[삭제]`·`[장애 주입]`은 중단/데이터 소실 가능성이 있는 작업입니다.
+후속 문서에서도 **대상 → 동작 → 기대 결과 → 실패 시 확인할 것** 순서로 주석을 읽습니다.
+`if [ "$?" -ne 0 ]`는 바로 앞 명령의 실패를 확인하므로 그 사이에 다른 명령을 끼워 넣지 않습니다.
+`exit 1`은 오류 표시뿐 아니라 현재 Bash 셸도 종료하므로 실패 후에는 원인을 해결하고 다시 접속합니다.
+
 2단계의 종료 명령으로 Compose를 내립니다. `kind get clusters`에 이미 `gateway-lab`이
 있으면 무조건 재생성하지 말고 context/서버 버전/배포 상태를 먼저 확인합니다.
 
 ```bash
+# [조회] 이미 만들어진 kind 클러스터 이름 확인. 있으면 중복 생성하지 않습니다.
 kind get clusters
+# [조회] kubectl 접속 설정 목록 확인. 클러스터 존재와 접속 설정 존재는 별개입니다.
 kubectl config get-contexts
+# [빌드] backend/Dockerfile로 local-backend:dev 이미지 생성. 앱 컨테이너를 실행하지는 않습니다.
 docker build -t local-backend:dev ./backend
+# 직전 명령의 종료 코드($?)가 0이 아니면 현재 셸을 종료해 다음 단계 진행을 막습니다.
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Backend image build failed.' >&2; exit 1; fi
+# [빌드] 같은 방식으로 Spring Cloud Gateway 이미지 생성.
 docker build -t local-gateway:dev ./gateway
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Gateway image build failed.' >&2; exit 1; fi
 ```
@@ -87,12 +101,17 @@ Backend/Gateway/Redis의 Pod와 그 안의 앱 컨테이너는 이후 3-3 단계
 참고: [kind 클러스터 이름과 사용법](https://kind.sigs.k8s.io/docs/user/quick-start/)
 
 ```bash
+# [셸 변수] 앱 이미지가 아니라 Kubernetes 노드용 이미지의 버전·digest를 지정합니다.
 kind_node_image='kindest/node:v1.35.8@sha256:07b2536e30b803ed61d1677a79df6115f798ce64c80f9e22f6ed45afd09323c0'
+# [생성] 설정 파일대로 노드 컨테이너를 만들고 kind-gateway-lab 접속 설정을 등록합니다.
 kind create cluster --name gateway-lab --config k8s/kind-config.yaml --image "$kind_node_image"
 if [ "$?" -ne 0 ]; then printf '%s\n' 'kind creation failed.' >&2; exit 1; fi
+# [조회] Kubernetes API 서버 등에 접속 가능한지 확인. 앱의 정상 동작 검사는 아닙니다.
 kubectl --context kind-gateway-lab cluster-info
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Check WSL networking before continuing.' >&2; exit 1; fi
+# [조회] 노드의 Ready 상태·버전·IP 확인. -o wide는 추가 열을 표시합니다.
 kubectl --context kind-gateway-lab get nodes -o wide
+# [이미지 전달] Docker 호스트의 두 이미지를 kind 노드 저장소에 복사. Pod 생성은 다음 단계입니다.
 kind load docker-image local-backend:dev local-gateway:dev --name gateway-lab
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Image load failed.' >&2; exit 1; fi
 ```
@@ -114,22 +133,48 @@ kubectl은 서버 버전과 지원되는 version skew 범위를 맞추세요.
 “해당 접속 설정으로 연결한 클러스터에서 `gateway-lab` 네임스페이스의 Pod를 조회해줘”라는 뜻입니다.
 
 ```bash
+# [사전 확인] .env 파일 존재만 검사하며 비밀값은 출력하지 않습니다.
 test -f .env || { printf '%s\n' 'Complete local environment setup first.' >&2; exit 1; }
+# 파이프 앞쪽 명령의 실패도 전체 파이프 실패로 처리합니다. 자동 종료 옵션은 아닙니다.
 set -o pipefail
+# [적용] -f는 지정 YAML 파일을 적용. Secret과 앱을 담을 namespace를 먼저 준비합니다.
 kubectl --context kind-gateway-lab apply -f k8s/base/namespace.yaml
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Namespace creation failed.' >&2; exit 1; fi
 
-# 필요한 세 키만 파이프로 전달. tee/파일 저장/콘솔 출력 금지
+# [적용] .env의 필요한 세 키만 Secret으로 전달. tee/파일 저장/콘솔 출력 금지.
 bash scripts/apply-local-secret.sh
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Secret apply failed.' >&2; exit 1; fi
 
+# [미리보기] base와 overlay를 합친 최종 YAML 출력. 아직 클러스터에는 반영하지 않습니다.
 kubectl kustomize k8s
+# [적용] -k는 Kustomize 디렉터리를 적용. Deployment 등에 선언한 상태로 조정이 시작됩니다.
 kubectl --context kind-gateway-lab apply -k k8s
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Application apply failed.' >&2; exit 1; fi
+# [대기] 세 Deployment 각각의 Available=True 조건을 기다립니다. 대기 제한은 180초입니다.
+# 생성/재시작 명령이 아닙니다. 실패하면 다음 단계 전에 Pod·Events·로그로 원인을 확인합니다.
 kubectl --context kind-gateway-lab wait --for=condition=Available \
   deployment/redis deployment/backend deployment/gateway -n gateway-lab --timeout=180s
+# [조회] Pod 준비 상태, Service 주소/포트, Deployment 가용 복제본 수를 함께 확인합니다.
 kubectl --context kind-gateway-lab get pods,svc,deploy -n gateway-lab
 ```
+
+### `wait` 명령을 나누어 읽기
+
+| 명령 조각 | 의미 |
+|---|---|
+| `kubectl --context kind-gateway-lab` | 이 접속 설정의 클러스터를 대상으로 실행 |
+| `wait --for=condition=Available` | 대상의 `Available` 조건이 `True`인지 확인하며 대기 |
+| `deployment/redis deployment/backend deployment/gateway` | 기다릴 Deployment 세 개. Pod 이름이 아님 |
+| `-n gateway-lab` | 위 리소스가 있는 namespace 선택 |
+| `--timeout=180s` | 조건 대기의 제한 시간. 앱의 HTTP 요청 timeout 설정이 아님 |
+| 줄 끝의 `\` | Bash에서 다음 줄까지 하나의 명령으로 연결. 뒤에 공백이나 주석을 붙이지 않음 |
+
+성공 시 대상별로 `condition met`가 표시됩니다. `Available=True`는 Deployment의 최소 가용성 조건이며,
+모든 복제본이 최신 이미지로 교체됐거나 JWT/API 호출까지 성공했다는 뜻은 아닙니다.
+업데이트 완료는 `rollout status`, 실제 기능은 다음 단계의 HTTP 호출로 따로 확인합니다.
+대기가 시간 초과돼도 이미 적용한 리소스를 취소하거나 자동으로 복구하지 않습니다.
+참고: [kubectl wait](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_wait/),
+[Deployment 상태](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 
 `apply-local-secret.sh`는 생성 스크립트의 따옴표 없는 `KEY=value` 형식을 읽으며,
 `JWT_SECRET`, `DEMO_USERNAME`, `DEMO_PASSWORD` 세 키만 전송합니다. `.env`를 source하지 않습니다.
@@ -146,7 +191,10 @@ Kubernetes Secret의 base64는 암호화가 아니며 Secret을 읽을 수 있�
 ## 3-4. 연결 확인
 
 ```bash
+# [호출 확인] 응답 본문은 버리고 HTTP 상태 코드만 출력. 기대값은 200입니다.
+# -sS: 진행 표시 숨김/오류 표시, -o /dev/null: 본문 버림, -w: 출력 형식 지정.
 curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health/readiness
+# [조회] backend Service에 연결되는 endpoint 정보 확인. -l은 해당 label만 선택합니다.
 kubectl --context kind-gateway-lab get endpointslices -n gateway-lab \
   -l kubernetes.io/service-name=backend
 ```

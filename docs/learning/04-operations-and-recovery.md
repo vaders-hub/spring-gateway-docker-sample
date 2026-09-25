@@ -17,9 +17,13 @@
 ## 4-1. 복제본과 Deployment
 
 ```bash
+# [변경] Backend의 원하는 Pod 수를 2개로 설정. YAML 파일 자체는 바뀌지 않습니다.
 kubectl --context kind-gateway-lab scale deployment/backend -n gateway-lab --replicas=2
+# [대기] 현재 Deployment의 rollout 완료 확인. 새 배포를 시작하는 명령은 아닙니다.
 kubectl --context kind-gateway-lab rollout status deployment/backend -n gateway-lab --timeout=180s
+# [조회] app=backend label의 Pod만 선택(-l)해 Ready·노드·IP를 확인합니다.
 kubectl --context kind-gateway-lab get pods -n gateway-lab -l app=backend -o wide
+# [조회] backend Service의 실제 연결 대상이 늘었는지 확인합니다.
 kubectl --context kind-gateway-lab get endpointslices -n gateway-lab \
   -l kubernetes.io/service-name=backend
 ```
@@ -31,7 +35,9 @@ HTTP 연결 재사용 때문에 요청마다 교대로 분산된다고 단정하
 복구:
 
 ```bash
+# [복구] Backend Pod 수를 원래 1개로 줄입니다. 추가 Pod는 종료됩니다.
 kubectl --context kind-gateway-lab scale deployment/backend -n gateway-lab --replicas=1
+# [대기] 복제본 수 조정 후 Deployment가 정상 상태에 도달했는지 확인합니다.
 kubectl --context kind-gateway-lab rollout status deployment/backend -n gateway-lab --timeout=180s
 ```
 
@@ -46,10 +52,15 @@ HPA/`kubectl top`은 metrics API 등 준비가 필요하며 현재 샘플에는 
 바꿉니다. replenish rate는 2로 유지합니다. Secret은 수정하지 않습니다.
 
 ```bash
+# [적용] 편집한 local overlay를 반영합니다. 환경변수로 읽은 값은 기존 프로세스에 자동 갱신되지 않습니다.
 kubectl --context kind-gateway-lab apply -k k8s/overlays/local
+# [조회] Gateway Pod 안에서 비밀이 아닌 변수 하나만 확인. -- 뒤는 컨테이너에서 실행할 명령입니다.
 kubectl --context kind-gateway-lab exec deployment/gateway -n gateway-lab -- printenv RATE_LIMIT_BURST_CAPACITY
+# [변경] Gateway Pod를 순차 교체해 새 설정을 읽게 합니다. 이미지를 다시 빌드하는 명령은 아닙니다.
 kubectl --context kind-gateway-lab rollout restart deployment/gateway -n gateway-lab
+# [대기] 교체 완료 후에 새 값을 확인합니다. timeout이면 다음 단계 전에 원인을 확인합니다.
 kubectl --context kind-gateway-lab rollout status deployment/gateway -n gateway-lab --timeout=180s
+# [조회] 새 Pod의 변수 값이 3인지 확인합니다.
 kubectl --context kind-gateway-lab exec deployment/gateway -n gateway-lab -- printenv RATE_LIMIT_BURST_CAPACITY
 ```
 
@@ -67,6 +78,8 @@ Deployment `rollout undo`만으로 ConfigMap의 내용까지 복구되지는 않
 먼저 별도 WSL Bash 터미널에서 Gateway Pod로 loopback port-forward를 엽니다.
 
 ```bash
+# [임시 연결] 로컬 8889 → 선택된 Gateway Pod의 8080. 이 창은 열어두고 종료는 Ctrl+C입니다.
+# Service의 Ready endpoint에서 제외된 뒤에도 앱의 health 응답을 직접 관찰하기 위한 경로입니다.
 kubectl --context kind-gateway-lab port-forward -n gateway-lab \
   deployment/gateway 8889:8080 --address 127.0.0.1
 ```
@@ -74,10 +87,15 @@ kubectl --context kind-gateway-lab port-forward -n gateway-lab \
 다른 창에서 장애와 관찰:
 
 ```bash
+# [장애 주입] Redis Pod 수를 0으로 만들어 중단. 이 샘플의 휘발성 버킷 데이터는 사라집니다.
 kubectl --context kind-gateway-lab scale deployment/redis -n gateway-lab --replicas=0
+# [조회] Redis 종료와 Gateway의 READY 열 변화를 관찰합니다. 반영까지 시간이 걸릴 수 있습니다.
 kubectl --context kind-gateway-lab get pods -n gateway-lab
+# [호출 확인] liveness는 앱 생존 여부. --max-time 10은 이 curl 호출을 최대 10초로 제한합니다.
 curl -sS --max-time 10 -o /dev/null -w '%{http_code}' http://localhost:8889/actuator/health/liveness
+# [호출 확인] readiness는 요청 수신 준비 상태. Redis 장애 반영 후 503을 예상합니다.
 curl -sS --max-time 10 -o /dev/null -w '%{http_code}' http://localhost:8889/actuator/health/readiness
+# [조회] 최근 3분 로그 중 마지막 80줄로 장애 근거 확인. 공유 전에 민감값 유무를 확인합니다.
 kubectl --context kind-gateway-lab logs deployment/gateway -n gateway-lab --since=3m --tail=80
 ```
 
@@ -97,10 +115,14 @@ Compose 직접 접근, 기존 연결, probe 반영 전 구간도 구분해 관�
 복구 (실패했더라도 반드시 수행):
 
 ```bash
+# [복구] Redis Pod를 다시 1개 생성. 이전 버킷 데이터까지 복구되지는 않습니다.
 kubectl --context kind-gateway-lab scale deployment/redis -n gateway-lab --replicas=1
+# [대기] Redis 배포 준비 후 Gateway의 의존성 상태 회복을 확인합니다.
 kubectl --context kind-gateway-lab rollout status deployment/redis -n gateway-lab --timeout=180s
+# [대기] app=gateway인 Pod의 Ready=True 확인. Deployment Available과는 다른 대상/조건입니다.
 kubectl --context kind-gateway-lab wait --for=condition=Ready pod -l app=gateway \
   -n gateway-lab --timeout=180s
+# [호출 확인] 원래 진입점 8080에서도 readiness 200으로 복귀했는지 확인합니다.
 curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health/readiness
 ```
 
@@ -113,22 +135,28 @@ port-forward 창에서 Ctrl+C. 체크: [ ] 장애/복구 시각 기록 [ ] readi
 Backend의 정상 revision을 먼저 보관합니다. 현재 rollout이 끝난 정상 상태에서만 수행합니다.
 
 ```bash
+# [사전 확인] 정상 rollout이 끝난 상태에서만 장애 실습을 시작합니다.
 kubectl --context kind-gateway-lab rollout status deployment/backend -n gateway-lab --timeout=180s
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Baseline deployment is not healthy. Do not start the failure drill.' >&2; exit 1; fi
+# [기록] 정상 revision 번호만 골라 현재 셸 변수에 저장. 나중에 정확한 버전으로 되돌릴 때 사용합니다.
 backend_revision=$(kubectl --context kind-gateway-lab get deployment backend -n gateway-lab \
   -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}')
+# 조회 실패/빈 값/숫자가 아닌 값을 복구 기준으로 사용하지 않도록 차단합니다.
 if [ "$?" -ne 0 ] || [[ ! "$backend_revision" =~ ^[0-9]+$ ]]; then
   printf '%s\n' 'No healthy baseline revision found.' >&2
   exit 1
 fi
 
-# 정확히 하나의 lifecycle profile 규칙을 의도적으로 위반
+# [장애 주입] Deployment의 환경변수를 바꿔 잘못된 profile로 새 Pod가 시작되게 합니다.
+# 정확히 하나의 lifecycle profile 규칙을 의도적으로 위반합니다. Git YAML은 변경하지 않습니다.
 kubectl --context kind-gateway-lab set env deployment/backend -n gateway-lab 'SPRING_PROFILES_ACTIVE=local,prod'
+# [대기/판정] 60초 내 배포 완료를 기다립니다. 이 실습에서는 실패가 예상 결과입니다.
 if kubectl --context kind-gateway-lab rollout status deployment/backend -n gateway-lab --timeout=60s; then
   printf '%s\n' 'Unexpected success: inspect profile validation.'
 else
   printf '%s\n' 'Expected rollout failure: inspect Pods, then run recovery.'
 fi
+# [조회] 기존/새 Pod와 ReplicaSet(rs)을 함께 보고 실패한 새 Pod를 식별합니다.
 kubectl --context kind-gateway-lab get pods,rs -n gateway-lab -l app=backend
 ```
 
@@ -139,7 +167,9 @@ kubectl --context kind-gateway-lab get pods,rs -n gateway-lab -l app=backend
 복구:
 
 ```bash
+# [복구] 저장한 정상 revision의 Pod 템플릿으로 되돌립니다. ConfigMap 내용까지 되돌리지는 않습니다.
 kubectl --context kind-gateway-lab rollout undo deployment/backend -n gateway-lab --to-revision="$backend_revision"
+# [대기] 복구 rollout이 끝났는지 확인하고 이어서 인증 API도 다시 호출합니다.
 kubectl --context kind-gateway-lab rollout status deployment/backend -n gateway-lab --timeout=180s
 ```
 
@@ -153,12 +183,16 @@ WSL Bash 터미널을 닫아 revision 변수가 사라졌다면 `rollout history
 `dev` 태그를 계속 재사용하기보다 변경마다 새 태그를 붙입니다.
 
 ```bash
+# [빌드] 변경한 소스를 새 태그로 구분해 이미지 생성. 기존 dev 이미지는 덮어쓰지 않습니다.
 docker build -t local-backend:lesson-v2 ./backend
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Image build failed.' >&2; exit 1; fi
+# [이미지 전달] 새 이미지를 kind 노드 안으로 복사. 이것만으로 실행 중인 Pod가 바뀌지는 않습니다.
 kind load docker-image local-backend:lesson-v2 --name gateway-lab
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Image load failed.' >&2; exit 1; fi
+# [변경] Deployment 안의 backend 컨테이너 이미지 변경. Pod 교체가 시작됩니다.
 kubectl --context kind-gateway-lab set image deployment/backend \
   backend=local-backend:lesson-v2 -n gateway-lab
+# [대기] 새 이미지로의 rollout 완료 확인. 업무 API 검증은 별도로 수행합니다.
 kubectl --context kind-gateway-lab rollout status deployment/backend -n gateway-lab --timeout=180s
 ```
 
@@ -173,8 +207,9 @@ kubectl --context kind-gateway-lab rollout status deployment/backend -n gateway-
 루트 `k8s/kustomization.yaml`은 local overlay를 가리켜 기존 명령을 유지합니다.
 
 ```bash
-# 오프라인 렌더링만 수행: 클러스터를 변경하지 않음
+# [미리보기] local의 최종 YAML 출력. 렌더링만 하므로 클러스터를 변경하지 않습니다.
 kubectl kustomize k8s/overlays/local
+# [미리보기] staging의 최종 YAML 출력. 위 결과와 namespace/설정/복제본을 비교합니다.
 kubectl kustomize k8s/overlays/staging
 ```
 

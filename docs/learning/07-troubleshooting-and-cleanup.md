@@ -16,10 +16,15 @@
 Windows에 설치한 .exe가 아니라 Linux 도구가 선택되는지 확인합니다.
 
 ```bash
+# [조회] PATH에서 찾은 실행 경로 전체를 표시. 같은 경로 중복과 별도 설치본을 구분합니다.
 type -a docker kind kubectl helm
+# [조회] Docker CLI가 사용할 접속 설정 이름. Kubernetes context와는 별개입니다.
 docker context show
+# [조회] Client뿐 아니라 Server 정보도 나와야 Docker 엔진까지 연결된 상태입니다.
 docker version
+# [조회] 현재 컨테이너 엔진에서 kind 클러스터를 찾습니다.
 kind get clusters
+# [조회] 이 WSL 사용자의 kubectl 접속 설정 목록. Windows의 목록과 다를 수 있습니다.
 kubectl config get-contexts
 ```
 
@@ -33,18 +38,26 @@ kubeconfig 전체 내용에는 인증 정보가 있으므로 출력하지 않습
 기존 kubeconfig를 덮어쓰지 않도록 새 전용 파일을 사용합니다.
 
 ```bash
+# 괄호 안은 별도 셸에서 실행해 오류 종료와 옵션 변경의 영향을 이 블록으로 제한합니다.
 (
+  # 오류/미정의 변수/파이프 오류 시 중단. 실패한 설정으로 계속 진행하지 않습니다.
   set -euo pipefail
+  # [로컬 준비] kubeconfig 저장 폴더 생성. 이미 있으면 그대로 사용합니다.
   mkdir -p "$HOME/.kube"
+  # 새 파일을 소유자만 읽고 쓸 수 있도록 기본 권한을 제한합니다.
   umask 077
+  # [보호] 기존 전용 설정 파일이 있으면 덮어쓰지 않고 중단합니다.
   test ! -e "$HOME/.kube/gateway-lab-wsl" || {
     printf '%s\n' 'Config exists. Inspect its context instead of overwriting.' >&2
     exit 1
   }
+  # [설정 저장] 기존 클러스터의 접속 정보를 전용 파일에 기록. 클러스터를 새로 만들지 않습니다.
   kind export kubeconfig --name gateway-lab --kubeconfig "$HOME/.kube/gateway-lab-wsl"
 )
-# 위 생성이 성공했거나 이 프로젝트의 기존 파일임을 확인한 뒤 실행
+# [셸 설정] 위 생성이 성공했거나 이 프로젝트의 기존 파일임을 확인한 뒤 실행.
+# 현재 터미널에서 kubectl이 읽을 파일을 선택하며 영구 설정 변경은 아닙니다.
 export KUBECONFIG="$HOME/.kube/gateway-lab-wsl"
+# [접속 확인] 선택한 설정으로 Kubernetes API 서버 등에 접근 가능한지 확인합니다.
 kubectl --context kind-gateway-lab cluster-info
 ```
 
@@ -54,17 +67,23 @@ kubectl --context kind-gateway-lab cluster-info
 ### localhost / 포트 연결 문제
 
 ```bash
+# [조회] WSL에서 수신 대기 중인 TCP 포트. -l: listen, -t: TCP, -n: 숫자로 표시.
 ss -ltn
+# [조회] 실행 중인 Docker 컨테이너 이름과 포트 매핑만 표시합니다.
 docker ps --format 'table {{.Names}}\t{{.Ports}}'
+# [호출 확인] 최대 5초 동안 Gateway readiness를 확인하고 HTTP 코드만 출력합니다.
+# 000/연결 오류는 HTTP 응답을 못 받은 것이므로 앱의 503 응답과 구분합니다.
 curl -sS --max-time 5 -o /dev/null -w '%{http_code}\n' http://localhost:8080/actuator/health/readiness
 ```
 
 Windows 쪽에서만 확인할 때는 **PowerShell**:
 
 ```powershell
+# [조회/Windows 전용] 학습용 포트를 점유한 주소와 프로세스 ID만 확인. 프로세스를 종료하지 않습니다.
 Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
   Where-Object { $_.LocalPort -in 8080,8888,8889,9090,3000 } |
   Select-Object LocalAddress,LocalPort,OwningProcess
+# [호출 확인/Windows 전용] WSL 결과와 비교해 문제 범위를 좁힙니다. NUL은 응답 본문을 버립니다.
 curl.exe -sS --max-time 5 -o NUL -w '%{http_code}' http://localhost:8080/actuator/health/readiness
 ```
 
@@ -123,11 +142,17 @@ Windows의 hiberfil.sys/pagefile.sys 접근 거부는 프로젝트 오류가 아
 ## 기본 진단 명령
 
 ```bash
+# [조회] 앱 Pod 준비 상태·Deployment 가용 수·Service 포트를 함께 확인합니다.
 kubectl --context kind-gateway-lab get pods,deploy,svc -n gateway-lab
+# [조회] namespace의 이벤트를 시간순 정렬. 이미지 pull/스케줄링/probe 실패 등의 근거를 찾습니다.
 kubectl --context kind-gateway-lab get events -n gateway-lab --sort-by=.lastTimestamp
+# [조회] Gateway Deployment의 상세 설정·상태·이벤트 확인. 비밀값이 있으면 공유하지 않습니다.
 kubectl --context kind-gateway-lab describe deployment gateway -n gateway-lab
+# [조회] 선택된 Gateway Pod의 최근 100줄. 모든 복제본의 로그를 합치는 명령은 아닙니다.
 kubectl --context kind-gateway-lab logs deployment/gateway -n gateway-lab --tail=100
+# [조회] Service가 가리키는 endpoint 확인. Pod Ready/Service selector와 대조합니다.
 kubectl --context kind-gateway-lab get endpointslices -n gateway-lab
+# [조회] 노드별 시스템 구성 요소 목록. CNI 구현 확인의 출발점이지 정책 집행 증거는 아닙니다.
 kubectl --context kind-gateway-lab get daemonsets -n kube-system
 ```
 
@@ -144,8 +169,9 @@ Secret 내용의 `get -o yaml`, 전체 `printenv`, 전체 `docker inspect`, 전�
 ### Compose만 일시 정지/재개
 
 ```bash
+# [정지] 현재 Compose 프로젝트의 컨테이너만 멈춥니다. 컨테이너/volume은 삭제하지 않습니다.
 docker compose stop
-# 다시 사용할 때
+# [재개] 다음 학습 때 기존 컨테이너를 다시 시작. 새 소스/설정을 반영하는 재생성은 아닙니다.
 docker compose start
 ```
 
@@ -155,6 +181,7 @@ docker compose start
 ### Compose 제거 (관측 데이터 보존)
 
 ```bash
+# [제거] 이 Compose 구성의 컨테이너/네트워크 제거. -v가 없으므로 named volume은 보존합니다.
 docker compose -f docker-compose.yml -f docker-compose.observability.yml \
   --profile observability down
 ```
@@ -169,10 +196,12 @@ docker compose -f docker-compose.yml -f docker-compose.observability.yml \
 Redis 데이터는 휘발성이므로 소실됩니다.
 
 ```bash
+# [정지] 세 Deployment의 Pod 수를 0으로 변경. kind 자체는 유지되며 휘발성 Redis 데이터는 소실됩니다.
 kubectl --context kind-gateway-lab scale deployment/gateway deployment/backend deployment/redis \
   -n gateway-lab --replicas=0
-# 다시 사용할 때: 선언된 기본 replicas=1로 복구
+# [재개] 다음 학습 때 실행. 선언된 replicas=1 등 YAML 설정으로 다시 조정합니다.
 kubectl --context kind-gateway-lab apply -k k8s
+# [대기] 세 Deployment의 Available=True 조건 확인. 실제 API 정상 여부는 별도로 확인합니다.
 kubectl --context kind-gateway-lab wait --for=condition=Available \
   deployment/redis deployment/backend deployment/gateway -n gateway-lab --timeout=180s
 ```
@@ -186,9 +215,13 @@ Secret은 남아 있으므로 새로 회전하지 않습니다. Envoy를 유지�
 클러스터가 아닌지 `get clusters`와 로컬 context를 먼저 확인합니다.
 
 ```bash
+# [사전 조회] 삭제하려는 클러스터 이름이 맞는지 확인합니다.
 kind get clusters
+# [사전 조회] 해당 클러스터의 namespace를 보고 다른 작업이 섞이지 않았는지 확인합니다.
 kubectl --context kind-gateway-lab get namespaces
+# [삭제/주의] gateway-lab 클러스터 전체 제거. 내부 Secret·Pod·노드 로컬 데이터가 사라집니다.
 kind delete cluster --name gateway-lab
+# [조회] 삭제 후 목록에서 gateway-lab이 사라졌는지 확인합니다.
 kind get clusters
 ```
 
