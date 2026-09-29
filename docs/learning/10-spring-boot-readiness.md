@@ -32,9 +32,9 @@
 
 ## 10-1. 같은 JWT로 Pod 교체 전후 인증 확인
 
-읽을 코드: [Gateway Security](../../gateway/src/main/java/com/example/gateway/config/security/SecurityConfig.java),
-[Backend Security](../../backend/src/main/java/com/example/backend/config/security/SecurityConfig.java),
-[사용자 헤더 처리](../../gateway/src/main/java/com/example/gateway/filter/RequestHeadersFilter.java).
+읽을 코드: [Gateway Security](../../gateway/src/main/java/com/example/gateway/security/config/SecurityConfig.java),
+[Backend Security](../../backend/src/main/java/com/example/backend/security/config/SecurityConfig.java),
+[사용자 헤더 처리](../../gateway/src/main/java/com/example/gateway/routing/filter/RequestHeadersFilter.java).
 
 Gateway는 NoOp SecurityContext 저장소/요청 캐시를 사용하고 Backend는 STATELESS로 동작합니다.
 샘플 요청의 사용자 식별은 JWT Principal에서 가져오며 헤더만 믿지 않습니다.
@@ -102,7 +102,7 @@ rollout 실패 시 [4단계 복구 절차](04-operations-and-recovery.md)를 적
 | 읽을 파일 | 확인할 연결 | 실습과 증거 |
 |---|---|---|
 | [Gateway 공통 설정](../../gateway/src/main/resources/application.yml), [Backend 공통 설정](../../backend/src/main/resources/application.yml) | `RATE_LIMIT_BURST_CAPACITY` → YAML의 route 인자 → Gateway `RequestRateLimiter`/`RedisRateLimiter` 설정 | 4단계의 비밀이 아닌 burst 값 변경 전후 비교 |
-| [속성 검증](../../gateway/src/main/java/com/example/gateway/config/properties/SecurityProperties.java), [profile guard](../../gateway/src/main/java/com/example/gateway/config/runtime/RuntimeProfileGuard.java) | 유효하지 않은 설정 → 기동 실패 | 4단계 profile 실패/복구; 필수값 누락 테스트는 격리된 테스트 환경에서 추가 |
+| [속성 검증](../../gateway/src/main/java/com/example/gateway/security/properties/SecurityProperties.java), [profile guard](../../gateway/src/main/java/com/example/gateway/config/runtime/RuntimeProfileGuard.java) | 유효하지 않은 설정 → 기동 실패 | 4단계 profile 실패/복구; 필수값 누락 테스트는 격리된 테스트 환경에서 추가 |
 | [Gateway 배포](../../k8s/base/gateway.yaml) | startup → readiness/liveness → EndpointSlice | Redis 중단 시 Ready=false, liveness 유지와 재시작 횟수 비교 |
 | [요청 로그](../../gateway/src/main/java/com/example/gateway/common/web/RequestIdWebFilter.java), [Backend 로그](../../backend/src/main/java/com/example/backend/common/web/RequestIdFilter.java) | 같은 requestId의 Gateway/Backend 처리 | 2단계 로그/HTTP·route 지표 비교 |
 | [운영 로그 형식](../../gateway/src/main/resources/application-prod.yml) | SLF4J → stdout → 컨테이너 로그 | ECS 설정 존재 확인; 실제 운영 profile 실행과 수집기는 별도 검증 |

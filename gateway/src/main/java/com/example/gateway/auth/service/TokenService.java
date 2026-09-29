@@ -1,9 +1,9 @@
 package com.example.gateway.auth.service;
 
-import com.example.gateway.config.security.ConditionalOnDemoIssuer;
+import com.example.gateway.auth.config.ConditionalOnDemoIssuer;
 import com.example.gateway.auth.dto.TokenRequest;
 import com.example.gateway.auth.dto.TokenResponse;
-import com.example.gateway.config.properties.SecurityProperties;
+import com.example.gateway.security.properties.SecurityProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;

@@ -164,6 +164,15 @@ class SecurityHttpIntegrationTest {
     }
 
     @Test
+    void authValidationStillFallsBackToCommonAdvice() throws Exception {
+        var invalid = request("POST", "/auth/token", null, "{}");
+        assertProblem(invalid, 400, "INVALID_REQUEST");
+        Map<?, ?> body = jsonMapper.readValue(invalid.body(), Map.class);
+        assertThat((List<?>) body.get("errors")).hasSize(2);
+        assertProblem(request("POST", "/auth/token", null, "{"), 400, "INVALID_REQUEST");
+    }
+
+    @Test
     void invalidCredentialsUseSharedErrorPolicy() throws Exception {
         var response = request("POST", "/auth/token", null,
                 jsonMapper.writeValueAsString(Map.of("username", "demo", "password", "wrong-password")));

@@ -91,7 +91,7 @@ return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 원래 HTTP 상태를 본문의 `status`에도 반영하며 `Allow` 등 원래 헤더를 보존합니다.
 Service는 응답 팩터리를 호출하지 않고 업무 결과를 반환하거나 예외를 던집니다.
 
-인증/인가 오류는 Controller 전에 발생하므로 `SecurityProblemWriter`를 유지합니다.
+인증/인가 오류는 Controller 전에 발생하므로 각 모듈의 `security/web/SecurityProblemWriter`를 사용합니다.
 writer는 `common/error/ProblemDetails`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
 Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화합니다.
 
@@ -107,8 +107,9 @@ Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으�
 
 | 발생 경로 | 처리 코드 | 결과 |
 |---|---|---|
-| Controller/DTO 검증/Service 예외 | 각 모듈 `GlobalExceptionHandler` | 공통 Problem Details, 안전한 메시지, 필드별 `errors` |
-| 인증/인가 거절 | 각 모듈 `SecurityProblemWriter` | 401/403과 인증 헤더 유지 |
+| Controller/DTO 검증/일반 Service 예외 | 각 모듈 `common/error/GlobalExceptionHandler` | 공통 Problem Details, 안전한 메시지, 필드별 `errors` |
+| 데모 자격증명 오류 | Gateway `auth/error/AuthExceptionHandler` | 기존 INVALID_CREDENTIALS 401, Bearer/no-store 유지 |
+| 인증/인가 거절 | 각 모듈 `security/web/SecurityProblemWriter` | 401/403과 인증 헤더 유지 |
 | Backend Servlet filter 예외 또는 `sendError` | [ApiErrorController](../backend/src/main/java/com/example/backend/common/error/ApiErrorController.java) | 컨테이너 ERROR dispatch의 원래 상태·경로·requestId로 JSON 작성 |
 | Gateway WebFilter/라우팅 예외 | Advice 또는 [GatewayErrorHandler](../gateway/src/main/java/com/example/gateway/common/error/GatewayErrorHandler.java) → `GatewayErrorResponses` | 미처리 오류 500, 연결 실패 502, 응답 timeout 504 등 |
 | Gateway 요청 제한 거절 | YAML의 `throw-on-limit: true` → 공통 `GatewayErrorResponses` | 429 본문 작성, rate-limit 헤더 유지, Backend 미호출 |
@@ -172,11 +173,11 @@ committed 응답 보존은 단위 테스트로 확인하며 Compose/kind 재배�
 
 ## 계층 경계
 
-- `controller`: HTTP mapping, validation 시작, `ApiResponses.success` 호출
-- `service`: use case와 업무 로직
-- `dto`: 외부 요청/응답 계약
+- `<feature>/controller`: HTTP mapping, validation 시작, `ApiResponses.success` 호출
+- `<feature>/service`: use case와 업무 로직
+- `<feature>/dto`: 외부 요청/응답 계약
 - `common`: 요청 추적, 공통 응답과 오류 처리
-- `entity`: DB/JPA가 도입될 때만 생성하며 DTO와 분리
+- `<feature>/entity`: DB/JPA가 도입될 때만 생성하며 DTO와 분리
 
 Gateway와 Backend의 envelope 형태는 같지만, 두 배포 단위를 하나의 공유 Java 모듈에
 강하게 결합하지 않기 위해 각 서비스 내부 common 패키지에 둡니다. 세 번째 소비자가

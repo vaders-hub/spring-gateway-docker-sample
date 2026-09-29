@@ -7,7 +7,7 @@ import com.example.gateway.common.api.ApiResponse;
 import com.example.gateway.common.api.ApiResponses;
 import com.example.gateway.common.code.SuccessCode;
 import com.example.gateway.common.web.RequestContext;
-import com.example.gateway.config.security.ConditionalOnDemoIssuer;
+import com.example.gateway.auth.config.ConditionalOnDemoIssuer;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

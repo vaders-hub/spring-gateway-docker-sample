@@ -80,6 +80,16 @@ Backend는 인가 규칙이 없는 테스트 전용 Controller도 차단하는�
 - ApiResponses/ProblemDetails/RequestContext는 HTTP 역할에 맞는 api/error/web 패키지를 유지한다.
 - 코드값·메시지·응답 JSON·인가 정책은 변경하지 않았다. Java에서 이전 패키지를 직접 참조하는 코드는 새 import를 사용해야 한다.
 
+## 2026-09-29 Feature-based Structure 전환
+
+- Backend의 Controller/Service/DTO를 hello 기능 아래로 이동했다.
+- 보안 설정·속성·SecurityProblemWriter를 양쪽 security 기능으로 모았다.
+- Gateway의 필터와 rate-limit 설정은 routing, 데모 발급 조건/encoder/전용 예외 처리는 auth로 모았다.
+- common의 auth 예외 참조를 제거했다. 인증 전용 Advice는 먼저 처리하고 표준 검증 오류는 공통 Advice가 처리한다.
+- 기능별 단위 테스트의 패키지도 함께 이동했다. 부트스트랩 config와 공통 code/util은 유지했다.
+- HTTP URL/JSON·JWT 알고리즘·환경변수·인가·rate-limit 설정은 유지한다. Java 직접 참조는 새 패키지 import를 사용한다.
+- 구체적인 트리와 기능 간 의존 기준은 [패키지 구조](package-structure.md)를 따른다.
+
 ## 호환성과 검증
 
 - 응답 변경: `data.requestId` → `meta.requestId`, `data.gatewayUser` → `data.username`. `data.time`은 UTC Instant 문자열.
@@ -90,7 +100,7 @@ Backend는 인가 규칙이 없는 테스트 전용 Controller도 차단하는�
 - 현재 Servlet filter 요청 로그의 종료 시점과 후속 ERROR dispatch의 종료 시점은 다를 수 있다.
   미처리 예외의 최종 상태는 같은 requestId의 servlet_request_error 로그와 오류 응답도 함께 본다.
 
-검증 결과: Backend 29개, Gateway 48개, 총 77개 테스트 통과(실패·오류·건너뜀 0). 두 모듈 컴파일 및 git diff --check도 통과했다.
+2026-09-29 검증 결과: Backend 29개, Gateway 49개, 총 78개 테스트 통과(실패·오류·건너뜀 0). 두 모듈 컴파일 및 git diff --check도 통과했다.
 
 검증 명령(WSL 저장소 루트):
 
@@ -100,6 +110,7 @@ MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=false bash ./gradlew --offline --no-daemo
   :backend:test :gateway:test
 ```
 
+기능별 패키지 이동 후 토큰 발급 성공·자격증명 오류 401·입력/JSON 검증 오류 400의 Advice 처리 경계도 확인했다.
 기존 JWT·scope·DTO 검증·Servlet ERROR dispatch·Gateway 429/502/504·Backend 오류 전달 테스트와,
 418/헤더 보존·응답 객체 격리·안전한 cause 진단·고정 시계·data.requestId 제거 검증을 실행했다.
 승인된 보안 정책에 대해 관리 우회 경로 차단·인가 규칙 없는 Controller 차단·공개/인증 필요 Prometheus와 health/info 접근도 통과했다.

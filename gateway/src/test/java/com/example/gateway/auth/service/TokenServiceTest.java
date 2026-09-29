@@ -1,7 +1,7 @@
 package com.example.gateway.auth.service;
 
 import com.example.gateway.auth.dto.TokenRequest;
-import com.example.gateway.config.properties.SecurityProperties;
+import com.example.gateway.security.properties.SecurityProperties;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

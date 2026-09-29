@@ -111,11 +111,20 @@ Redis에 만들어집니다.
 
 ## 주요 구현 위치
 
+기능별 구조를 사용합니다. Backend는 hello/security, Gateway는 auth/routing/security로 묶고,
+공통 응답·enum·util은 common에 유지합니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
+
 ```text
-gateway/src/main/java/com/example/gateway/config/security/
+gateway/src/main/java/com/example/gateway/security/config/
   SecurityConfig: 필터 체인과 인가 정책
-  JwtConfig: JWT key/decoder/encoder Bean
+  JwtConfig: JWT 검증 decoder Bean
   CorsConfig: Origin allowlist와 preflight 정책
+
+gateway/src/main/java/com/example/gateway/auth/config/AuthIssuerConfig.java
+  데모 토큰 발급 encoder Bean (local/dev/test + enabled)
+
+gateway/src/main/java/com/example/gateway/auth/error/AuthExceptionHandler.java
+  인증 기능 전용 예외 처리
 
 gateway/src/main/java/com/example/gateway/auth/controller/AuthController.java
   HTTP 요청/응답 경계
@@ -126,28 +135,28 @@ gateway/src/main/java/com/example/gateway/auth/service/TokenService.java
 gateway/src/main/java/com/example/gateway/auth/dto/
   인증 요청/응답 계약
 
-gateway/src/main/java/com/example/gateway/filter/RequestHeadersFilter.java
+gateway/src/main/java/com/example/gateway/routing/filter/RequestHeadersFilter.java
   Request ID 및 인증 사용자 헤더 전달
 
 gateway/src/main/java/com/example/gateway/common/web/RequestIdWebFilter.java
   모든 요청의 안전한 Request ID와 완료 감사 로그
 
-gateway/src/main/java/com/example/gateway/config/gateway/GatewayFilterConfig.java
+gateway/src/main/java/com/example/gateway/routing/config/GatewayFilterConfig.java
   JWT subject 기반 Rate Limit 키 생성
 
-gateway/src/main/java/com/example/gateway/config/properties/SecurityProperties.java
+gateway/src/main/java/com/example/gateway/security/properties/SecurityProperties.java
   app.security 설정 바인딩 및 시작 시 validation
 
 gateway/src/main/resources/application.yml
   Route, Redis, RequestRateLimiter 설정
 
-backend/src/main/java/com/example/backend/controller/
+backend/src/main/java/com/example/backend/hello/controller/
   Backend HTTP 요청/응답 경계
 
-backend/src/main/java/com/example/backend/service/
+backend/src/main/java/com/example/backend/hello/service/
   Backend 업무 로직
 
-backend/src/main/java/com/example/backend/dto/
+backend/src/main/java/com/example/backend/hello/dto/
   Backend 요청/응답 계약
 
 */src/main/java/**/common/
