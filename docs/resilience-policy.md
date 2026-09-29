@@ -2,7 +2,8 @@
 
 Gateway의 429·연결 실패 502·응답 timeout 504 공통 오류 처리는 구현했습니다.
 RedisRateLimiter의 허용/거절 판정과 기본 오류 허용 fallback은 유지하며 `throw-on-limit`만 활성화했습니다.
-Redis fail-closed, CircuitBreaker 의존성/필터와 Retry는 **아직 설계·실습 기준 단계**입니다.
+RateLimiter 자체의 Redis fail-closed, CircuitBreaker 의존성/필터와 Retry는 **아직 설계·실습 기준 단계**입니다.
+14단계의 활성 토큰 조회는 양쪽 서비스에서 이미 fail-closed(503)입니다. 인증 확인 후 rate-limit 명령만 실패하는 경로는 별도입니다.
 기본 connect 2초 / response 5초 timeout은 존재하지만 회로 차단기와 동일하지 않습니다.
 
 ## 학습 단계와의 연결

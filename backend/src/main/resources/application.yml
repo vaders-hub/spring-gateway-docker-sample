@@ -18,6 +18,13 @@ server:
 spring:
   application:
     name: backend
+  # Gateway와 동일한 활성 토큰 목록을 조회한다. 저장소 장애 시 인증을 허용하지 않는다.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:1s}
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
@@ -54,7 +61,7 @@ management:
         liveness:
           include: livenessState
         readiness:
-          include: readinessState
+          include: readinessState,redis
   # HTTP 서버 histogram/SLO로 지연 분포를 수집한다. 건강 검사도 지표에 포함될 수 있다.
   metrics:
     distribution:

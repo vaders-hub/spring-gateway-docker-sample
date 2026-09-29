@@ -203,3 +203,12 @@ GET /orders/{UUID}는 api.read와 JWT subject 일치를 요구합니다. 남의 
 member/product는 같은 조회 계약을 유지하며 JPA로 저장소가 바뀝니다. 회원 예제는 로그인 계정과 별개입니다.
 POST /orders/preview는 계속 저장하지 않고 200을 반환합니다. 같은 주문 POST 재전송은 별도 주문을 만듭니다.
 정확한 요청·응답·실행/검증 범위는 [12단계](learning/12-postgresql-jpa-flyway.md)를 참고하세요.
+
+
+## 로그인·로그아웃 (14단계)
+
+`POST /auth/login`은 기존 `/auth/token`과 같은 JSON 요청/응답 계약입니다. 두 경로 모두 Redis 활성 토큰 등록 성공 후 발급 결과를 반환합니다.
+`POST /auth/logout`은 현재 Bearer 토큰만 삭제하고 200 `data: null` + `meta`를 반환합니다.
+이후 같은 토큰은 Gateway/Backend에서 401입니다. 등록/조회/삭제 저장소 장애는 503이며, 모든 인증 응답은 no-store입니다.
+로그인 없이 로그아웃하거나 이미 종료한 토큰을 재사용하면 401입니다. 다른 로그인 토큰은 유지합니다.
+자세한 상태·호환성·실습은 [14단계](learning/14-login-and-logout.md)를 참고합니다.

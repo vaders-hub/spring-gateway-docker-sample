@@ -17,7 +17,7 @@
 현재 PC에서 차단을 확인했다는 보고가 아닙니다. AWS 리소스는 사용하지 않습니다.
 
 정책은 `k8s/base/network-policy.yaml`에 있습니다. 같은 namespace의 `app=gateway`
-Pod만 Backend 8081 / Redis 6379에 접근하도록 선언합니다. 실제 집행에는 지원 CNI가
+Pod는 Backend 8081 / Redis 6379에, `app=backend` Pod는 활성 토큰 조회를 위해 Redis 6379에 접근하도록 선언합니다. 실제 집행에는 지원 CNI가
 필요합니다. 정책은 가산적이므로 다른 허용 정책이 있으면 결과가 달라집니다.
 [공식 NetworkPolicy 설명](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
@@ -123,7 +123,7 @@ kind 기본 CNI 비활성화와 호환 CNI 설치 계획을 먼저 정합니다.
 
 **읽을 파일:** [NetworkPolicy](../../k8s/base/network-policy.yaml) · [Gateway label](../../k8s/base/gateway.yaml) · [Backend Service](../../k8s/base/backend.yaml) · [Redis Service](../../k8s/base/redis.yaml)
 
-- [ ] `spec.podSelector`는 보호 대상 Backend/Redis이고 `ingress.from.podSelector`는 접근을 허용할 같은 namespace의 Gateway임을 설명한다.
+- [ ] `spec.podSelector`는 보호 대상 Backend/Redis이고 `ingress.from.podSelector`는 접근을 허용할 같은 namespace의 Pod이며, Backend 대상은 Gateway만, Redis 대상은 Gateway/Backend임을 설명한다.
 - [ ] 두 정책의 TCP 8081/6379와 Service targetPort/Pod label을 연결하고 ingress 방향만 제한한다는 범위를 설명한다.
 - [ ] 여러 NetworkPolicy의 허용 규칙은 가산적임을 이해하고 객체 생성 성공과 지원 CNI의 실제 집행을 구분한다.
 - [ ] 실제 Gateway의 허용 경로 → 임시 Pod의 DNS 확인 → 비허용 연결 시도 → 허용 경로 재확인 순서가 필요한 이유를 설명한다.
@@ -134,3 +134,8 @@ kind 기본 CNI 비활성화와 호환 CNI 설치 계획을 먼저 정합니다.
 **학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.
 
 **다음 학습:** 이 문서는 3단계 보충입니다. 결과를 기록한 뒤 [4단계](04-operations-and-recovery.md)로 진행하며, CNI 변경이 필요하면 별도 실습으로 계획합니다.
+
+
+14단계부터 Backend → Redis 허용 경로도 Backend readiness(HTTP 200)로 대조합니다.
+persistence profile이면 DB도 readiness 조건이므로 Redis 원인과 DB 원인을 구분합니다.
+Redis 정책 이름 `redis-from-gateway-only`는 기존 객체를 갱신하기 위해 유지하지만 허용 대상은 Gateway/Backend입니다.

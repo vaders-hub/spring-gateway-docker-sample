@@ -82,7 +82,7 @@ kind의 Redis도 이 단계에서는 영속 저장소를 사용하는 데이터�
 - **05 · 선택형 Envoy**: Gateway API 리소스로 Envoy Proxy를 설정하고 `localhost:8888` port-forward 경로를 추가합니다.
   기본 NodePort 경로도 남으며, 두 진입 경로 모두 Spring Gateway를 통과합니다. Envoy가 JWT·Redis 제한을 중복 수행하지 않습니다.
 - **06 · AWS 비교 / 07 · 진단**: 로컬 구성을 AWS 구성 요소와 비교하고, 장애 상황의 확인 순서를 익힙니다. 실제 AWS 자원을 배포하지 않습니다.
-- **08 · NetworkPolicy**: Backend/Redis로 들어오는 연결을 Gateway Pod에 허용하는 정책입니다. CNI의 실제 집행 여부는 별도 대조 실험으로 확인합니다.
+- **08 · NetworkPolicy**: Backend 연결은 Gateway에, Redis 연결은 Gateway/Backend에 허용하는 정책입니다. CNI의 실제 집행 여부는 별도 대조 실험으로 확인합니다.
 - **09 · 저장소**: 별도 `gateway-storage-lab` namespace에서 BusyBox·PVC·PV로 Pod 교체와 백업·복원을 실습합니다.
   기존 Backend/Redis에 영속 저장소를 붙이는 단계가 아닙니다. StorageClass/local-path provisioner의 조건은 실행 전 확인합니다.
 - **10 · Spring Boot**: Stateless 인증, 설정 외부화, health, stdout 로그, graceful shutdown과 미완료 장애 정책을 함께 검증합니다.

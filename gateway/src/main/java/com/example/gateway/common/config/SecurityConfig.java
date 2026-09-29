@@ -38,7 +38,8 @@ class SecurityConfig {
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
                         .accessDeniedHandler(problems.accessDeniedHandler()))
                 .authorizeExchange(authorize -> {
-                    authorize.pathMatchers(HttpMethod.POST, "/auth/token").permitAll();
+                    authorize.pathMatchers(HttpMethod.POST, "/auth/login", "/auth/token").permitAll();
+                    authorize.pathMatchers(HttpMethod.POST, "/auth/logout").authenticated();
                     authorize.pathMatchers("/actuator/health/**", "/actuator/info").permitAll();
                     if (observabilityProperties.prometheusPublic()) {
                         authorize.pathMatchers("/actuator/prometheus").permitAll();

@@ -127,7 +127,7 @@ curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health/re
 ```
 
 port-forward 창에서 Ctrl+C. 체크: [ ] 장애/복구 시각 기록 [ ] readiness 200 복귀
-[ ] rate-limit 버킷 초기화 이해.
+[ ] rate-limit 버킷 초기화 이해. [ ] `lab_login` 재실행 후 업무 API 200 확인(활성 토큰 기록도 초기화됨).
 [Probe 공식 설명](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 
 ## 4-4. 잘못된 설정으로 rollout 실패시키고 복구
@@ -260,3 +260,12 @@ Redis 요청 단위 차단과 프록시 오류 계약은 10-4 및 장애 정책 
 
 **다음 학습:** 정상 복구 후 [10단계](10-spring-boot-readiness.md)의 기본 검증과 후속 구현 기준을 확인합니다.
 이후 [9단계](09-storage-and-persistence.md) 저장소 또는 [5단계](05-gateway-api.md) 외부 진입 경로로 진행합니다.
+
+
+### 14단계 인증 확장 반영
+
+앱 Pod 교체 시 활성 토큰은 Redis에 남으므로 같은 토큰을 사용할 수 있습니다. Redis 데이터가 유실되면 재로그인이 필요합니다.
+Redis 장애 시 Gateway와 Backend 모두 readiness가 내려가며, 인증 요청은 저장소 장애를 503으로 반환합니다.
+Redis 복구/재생성 후에는 `lab_login`을 다시 실행하고 업무 호출을 확인합니다.
+인증 상태 조회의 fail-closed와 기존 Redis rate limiter 자체의 장애 정책은 구분합니다.
+자세한 내용은 [14단계](14-login-and-logout.md)를 참고합니다.

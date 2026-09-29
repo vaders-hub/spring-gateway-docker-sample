@@ -46,6 +46,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @Import(SecurityHttpIntegrationTest.ErrorFixtures.class)
 class SecurityHttpIntegrationTest {
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.backend.common.security.token.ActiveTokenStore activeTokenStore;
+    private final java.util.Set<String> activeTokens = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    @org.junit.jupiter.api.BeforeEach
+    void configureActiveTokens() {
+        activeTokens.clear();
+        org.mockito.Mockito.when(activeTokenStore.isActive(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(call -> activeTokens.contains(call.getArgument(0)));
+    }
+
     private static final String SECRET = UUID.randomUUID().toString();
     private static final String ISSUER = "security-http-test";
     private static final String AUDIENCE = "test-api";
@@ -279,6 +291,22 @@ class SecurityHttpIntegrationTest {
         }
     }
 
+
+    @Test
+    void inactiveTokenIsRejectedEvenWithValidSignature() throws Exception {
+        String value = token("api.read", AUDIENCE, ISSUER, SECRET, 300);
+        activeTokens.remove(value);
+        assertProblem(request("GET", PATH, value, null), 401, "UNAUTHORIZED");
+    }
+
+    @Test
+    void unavailableTokenStoreFailsClosedWith503() throws Exception {
+        String value = token("api.read", AUDIENCE, ISSUER, SECRET, 300);
+        org.mockito.Mockito.when(activeTokenStore.isActive(value))
+                .thenThrow(new com.example.backend.common.security.token.TokenStoreUnavailableException());
+        assertProblem(request("GET", PATH, value, null), 503, "SERVICE_UNAVAILABLE");
+    }
+
     private HttpResponse<String> request(String method, String path, String token, String body) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(5))
@@ -311,7 +339,7 @@ class SecurityHttpIntegrationTest {
         assertThat(response.body()).doesNotContain(SECRET, DEMO_PASSWORD);
     }
 
-    private static String token(String scope, String audience, String issuer, String secret, long ttl) {
+    private String token(String scope, String audience, String issuer, String secret, long ttl) {
         Instant now = Instant.now();
         var claims = JwtClaimsSet.builder().issuer(issuer).subject("test-user")
                 .issuedAt(now.minusSeconds(600)).expiresAt(now.plusSeconds(ttl)).claim("scope", scope);
@@ -320,7 +348,9 @@ class SecurityHttpIntegrationTest {
         }
         var encoder = new NimbusJwtEncoder(new ImmutableSecret<>(
                 new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256")));
-        return encoder.encode(JwtEncoderParameters.from(
+        String encoded = encoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims.build())).getTokenValue();
+        activeTokens.add(encoded);
+        return encoded;
     }
 }

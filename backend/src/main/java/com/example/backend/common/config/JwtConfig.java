@@ -1,6 +1,11 @@
 package com.example.backend.common.config;
 
 import com.example.backend.common.config.properties.JwtProperties;
+import com.example.backend.common.security.token.ActiveTokenStore;
+import com.example.backend.common.security.token.TokenStoreUnavailableException;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import javax.crypto.SecretKey;
@@ -23,7 +28,7 @@ class JwtConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(JwtProperties properties) {
+    JwtDecoder jwtDecoder(JwtProperties properties, ActiveTokenStore tokens) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
                 .withSecretKey(jwtSecretKey(properties))
                 .macAlgorithm(MacAlgorithm.HS256)
@@ -33,6 +38,14 @@ class JwtConfig {
                 audiences -> audiences != null && audiences.contains(properties.audience()));
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.issuer()), audienceValidator));
-        return decoder;
+        return token -> {
+            var jwt = decoder.decode(token); // 변조/만료 토큰은 Redis 조회 전에 거부한다.
+            try {
+                if (!tokens.isActive(token)) throw new BadJwtException("Inactive access token");
+            } catch (TokenStoreUnavailableException exception) {
+                throw new OAuth2AuthenticationException(new OAuth2Error("temporarily_unavailable"), exception);
+            }
+            return jwt;
+        };
     }
 }

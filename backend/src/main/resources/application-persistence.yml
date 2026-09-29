@@ -31,5 +31,5 @@ management:
     health:
       group:
         readiness:
-          include: readinessState,db
+          include: readinessState,db,redis
 # liveness에는 DB를 넣지 않는다. DB 장애로 앱 재시작이 반복되는 것을 방지한다.

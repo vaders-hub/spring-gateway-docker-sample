@@ -42,6 +42,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @Import(SecurityHttpIntegrationTest.ProbeConfiguration.class)
 class SecurityHttpIntegrationTest {
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.gateway.common.security.token.ActiveTokenStore activeTokenStore;
+    private final java.util.Set<String> activeTokens = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    @org.junit.jupiter.api.BeforeEach
+    void configureActiveTokens() {
+        activeTokens.clear();
+        org.mockito.Mockito.when(activeTokenStore.isActive(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(call -> reactor.core.publisher.Mono.just(activeTokens.contains(call.getArgument(0))));
+        org.mockito.Mockito.when(activeTokenStore.activate(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(call -> reactor.core.publisher.Mono.fromRunnable(() -> activeTokens.add(call.getArgument(0))));
+        org.mockito.Mockito.when(activeTokenStore.deactivate(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(call -> reactor.core.publisher.Mono.fromRunnable(() -> activeTokens.remove(call.getArgument(0))));
+    }
+
     private static final String SECRET = UUID.randomUUID().toString();
     private static final String ISSUER = "security-http-test";
     private static final String AUDIENCE = "test-api";
@@ -203,6 +219,63 @@ class SecurityHttpIntegrationTest {
         }
     }
 
+
+    @Test
+    void inactiveTokenIsRejectedEvenWithValidSignature() throws Exception {
+        String value = token("api.read", AUDIENCE, ISSUER, SECRET, 300);
+        activeTokens.remove(value);
+        assertProblem(request("GET", PATH, value, null), 401, "UNAUTHORIZED");
+    }
+
+    @Test
+    void unavailableTokenStoreFailsClosedWith503() throws Exception {
+        String value = token("api.read", AUDIENCE, ISSUER, SECRET, 300);
+        org.mockito.Mockito.when(activeTokenStore.isActive(value))
+                .thenReturn(reactor.core.publisher.Mono.error(new com.example.gateway.common.security.token.TokenStoreUnavailableException()));
+        assertProblem(request("GET", PATH, value, null), 503, "SERVICE_UNAVAILABLE");
+    }
+
+    @Test
+    void loginAndLogoutInvalidateOnlyTheCurrentToken() throws Exception {
+        String first = login();
+        String second = login();
+        assertThat(first).isNotEqualTo(second);
+        assertThat(request("GET", PATH, first, null).statusCode()).isEqualTo(200);
+        var logout = request("POST", "/auth/logout", first, null);
+        assertThat(logout.statusCode()).isEqualTo(200);
+        assertThat(logout.headers().firstValue("Cache-Control")).contains("no-store");
+        assertThat(logout.body()).contains("meta").doesNotContain(first);
+        assertProblem(request("GET", PATH, first, null), 401, "UNAUTHORIZED");
+        assertProblem(request("POST", "/auth/logout", first, null), 401, "UNAUTHORIZED");
+        assertThat(request("GET", PATH, second, null).statusCode()).isEqualTo(200);
+        assertProblem(request("POST", "/auth/logout", null, null), 401, "UNAUTHORIZED");
+    }
+
+    @Test
+    void loginAndLogoutDoNotReportSuccessWhenStorageFails() throws Exception {
+        String token = login();
+        org.mockito.Mockito.when(activeTokenStore.deactivate(token))
+                .thenReturn(reactor.core.publisher.Mono.error(new com.example.gateway.common.security.token.TokenStoreUnavailableException()));
+        assertProblem(request("POST", "/auth/logout", token, null), 503, "SERVICE_UNAVAILABLE");
+        assertThat(activeTokens).contains(token);
+        org.mockito.Mockito.when(activeTokenStore.activate(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(reactor.core.publisher.Mono.error(new com.example.gateway.common.security.token.TokenStoreUnavailableException()));
+        for (String path : List.of("/auth/login", "/auth/token")) {
+            var response = request("POST", path, null,
+                    jsonMapper.writeValueAsString(Map.of("username", "demo", "password", DEMO_PASSWORD)));
+            assertProblem(response, 503, "SERVICE_UNAVAILABLE");
+            assertThat(response.body()).doesNotContain("accessToken");
+        }
+    }
+
+    private String login() throws Exception {
+        var response = request("POST", "/auth/login", null,
+                jsonMapper.writeValueAsString(Map.of("username", "demo", "password", DEMO_PASSWORD)));
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("Cache-Control")).contains("no-store");
+        return (String) ((Map<?, ?>) jsonMapper.readValue(response.body(), Map.class).get("data")).get("accessToken");
+    }
+
     private HttpResponse<String> request(String method, String path, String token, String body) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(5))
@@ -233,7 +306,7 @@ class SecurityHttpIntegrationTest {
         assertThat(response.body()).doesNotContain(SECRET, DEMO_PASSWORD);
     }
 
-    private static String token(String scope, String audience, String issuer, String secret, long ttl) {
+    private String token(String scope, String audience, String issuer, String secret, long ttl) {
         Instant now = Instant.now();
         var claims = JwtClaimsSet.builder().issuer(issuer).subject("test-user")
                 .issuedAt(now.minusSeconds(600)).expiresAt(now.plusSeconds(ttl)).claim("scope", scope);
@@ -242,7 +315,9 @@ class SecurityHttpIntegrationTest {
         }
         var encoder = new NimbusJwtEncoder(new ImmutableSecret<>(
                 new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256")));
-        return encoder.encode(JwtEncoderParameters.from(
+        String encoded = encoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims.build())).getTokenValue();
+        activeTokens.add(encoded);
+        return encoded;
     }
 }

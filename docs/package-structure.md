@@ -2,7 +2,7 @@
 
 2026-09-29 사용자 제공 샘플을 기준으로 기능을 api/application/domain/infrastructure 기준으로 나누고,
 설정·보안·예외 처리 등 공통 기술 코드는 common 아래로 모았습니다.
-Backend는 hello와 local/test 학습용 member/product/order, Gateway는 데모 토큰 발급 auth 기능을 제공합니다.
+Backend는 hello와 local/test 학습용 member/product/order, Gateway는 학습용 로그인·로그아웃 auth 기능을 제공합니다.
 
 ## 현재 구조
 
@@ -41,7 +41,9 @@ com.example.gateway
 └── auth/
     ├── api/          AuthController, AuthExceptionHandler
     │   └── dto/      TokenRequest, TokenResponse
-    └── application/  TokenService와 IssuedToken, InvalidCredentialsException
+    ├── application/  LoginService, TokenService와 IssuedToken, InvalidCredentialsException
+    │   └── port/     LoginSessions
+    └── infrastructure/security/  RedisLoginSessions
 ```
 
 위 트리는 기본 hello/auth 공통 구조입니다. 11~13단계에서 확장한 실제 학습 기능은 다음과 같습니다.
@@ -186,7 +188,7 @@ Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties
 - Gateway는 `/api/actuator/**`·`/api/error/**`의 Backend 우회 접근을 scope 허용 전에 차단합니다.
 - Backend는 명시한 경로·메서드 외에 기본 거부합니다. 새 Controller에는 명시적 인가 규칙도 필요합니다.
   내부 ERROR dispatch는 허용하여 최종 오류 응답이 401/403으로 가려지지 않게 합니다.
-- 인증은 stateless로 유지하며, 인증 전 요청을 세션에 저장하는 request cache도 비활성화합니다.
+- 앱은 HttpSession/WebSession 없이 유지하며, 인증 전 요청 cache도 비활성화합니다. 활성 토큰 상태는 Redis에서 공유하고 두 서비스의 common/security/token에서 조회합니다. [로그인·로그아웃](learning/14-login-and-logout.md)을 참고합니다.
 - CORS는 경로/와일드카드가 없는 정확한 HTTP(S) Origin만 받습니다.
 - JWT TTL은 1초 이상의 정수 초만 허용합니다.
 - staging/prod에서 데모 토큰 발급을 켜면 시작에 실패합니다. 발급 Controller,

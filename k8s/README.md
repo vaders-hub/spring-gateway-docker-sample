@@ -53,7 +53,7 @@ Secrets 같은 조직 표준 Secret 전달 방식을 사용합니다. 또한 `st
 profile에서는 로컬 `/auth/token` 발급기가 비활성화되므로 Cognito/Keycloak의
 issuer/JWK 설정으로 보안 구성을 교체해야 합니다.
 
-매니페스트의 NetworkPolicy는 Backend와 Redis에 대한 ingress를 Gateway Pod로
+매니페스트의 NetworkPolicy는 Backend ingress를 Gateway로, Redis ingress를 Gateway/Backend로
 제한합니다. 실제 적용 여부는 사용하는 Kubernetes CNI의 NetworkPolicy 지원 여부도
 확인해야 합니다. [허용/차단 대조 검증](../docs/learning/08-network-policy-validation.md)을 수행하기 전에는
 정책이 실제 집행됐다고 기록하지 않습니다.

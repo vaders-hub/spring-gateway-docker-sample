@@ -6,7 +6,8 @@ import org.springframework.http.HttpStatus;
 public enum SuccessCode {
     OK(HttpStatus.OK, false),
     CREATED(HttpStatus.CREATED, false),
-    TOKEN_ISSUED(HttpStatus.OK, true);
+    TOKEN_ISSUED(HttpStatus.OK, true),
+    LOGGED_OUT(HttpStatus.OK, true);
 
     private final HttpStatus status;
     private final boolean noStore;

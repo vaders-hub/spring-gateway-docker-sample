@@ -3,6 +3,7 @@ package com.example.gateway.common.security;
 import com.example.gateway.common.exception.ProblemResponseWriter;
 import com.example.gateway.common.exception.ProblemDetails;
 import com.example.gateway.common.code.ErrorCode;
+import com.example.gateway.common.security.token.TokenStoreUnavailableException;
 import com.example.gateway.common.web.RequestContext;
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
@@ -22,7 +23,8 @@ public class SecurityProblemWriter {
 
     public ServerAuthenticationEntryPoint authenticationEntryPoint() {
         return (exchange, exception) ->
-                write(exchange, ErrorCode.UNAUTHORIZED);
+                write(exchange, TokenStoreUnavailableException.causedBy(exception)
+                        ? ErrorCode.SERVICE_UNAVAILABLE : ErrorCode.UNAUTHORIZED);
     }
 
     public ServerAccessDeniedHandler accessDeniedHandler() {

@@ -1,4 +1,4 @@
-# 08 보충: Backend/Redis의 ingress를 같은 namespace의 Gateway Pod에 허용한다.
+# Backend는 Gateway에서, Redis는 Gateway/Backend에서 접근한다(활성 토큰 확인).
 # 집행에는 지원 CNI가 필요하고 여러 정책의 허용 규칙은 가산적이다.
 # egress·TLS·JWT 인증을 대신하지 않으며 허용/차단 경로를 대조해 실제 동작을 검증한다.
 apiVersion: networking.k8s.io/v1
@@ -38,6 +38,9 @@ spec:
         - podSelector:
             matchLabels:
               app: gateway
+        - podSelector:
+            matchLabels:
+              app: backend
       ports:
         - protocol: TCP
           port: 6379

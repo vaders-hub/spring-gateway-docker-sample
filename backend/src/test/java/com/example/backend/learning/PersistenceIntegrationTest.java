@@ -39,6 +39,13 @@ import static org.assertj.core.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "persistence"})
 class PersistenceIntegrationTest {
+
+    // DB와 인증 저장소 모두 테스트 전용 컨테이너를 사용한다. 실행 중인 Compose에 의존하지 않는다.
+    @Container
+    static final org.testcontainers.containers.GenericContainer<?> redis =
+            new org.testcontainers.containers.GenericContainer<>("redis:7.4-alpine").withExposedPorts(6379);
+    @Autowired org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.11-alpine");
     private static final String SECRET = UUID.randomUUID().toString();
@@ -54,6 +61,8 @@ class PersistenceIntegrationTest {
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         // Testcontainers가 배정한 임시 포트/자격증명은 이 테스트 ApplicationContext에만 전달된다.
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
         registry.add("DB_URL", postgres::getJdbcUrl);
         registry.add("DB_USERNAME", postgres::getUsername);
         registry.add("DB_PASSWORD", postgres::getPassword);
@@ -180,6 +189,8 @@ class PersistenceIntegrationTest {
                 .audience(List.of("learning-api")).issuedAt(Instant.now().minusSeconds(10))
                 .expiresAt(Instant.now().plusSeconds(300)).claim("scope", scope).build();
         var encoder = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256")));
-        return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+        String value = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+        redisTemplate.opsForValue().set(com.example.backend.common.security.token.TokenKey.of(value), "1", Duration.ofMinutes(5));
+        return value;
     }
 }

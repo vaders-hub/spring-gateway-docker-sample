@@ -61,7 +61,7 @@ services:
   redis:
     image: redis:7.4-alpine
     container_name: local-redis
-    # 요청 제한 실습용 휘발성 Redis: 재생성 후 이전 버킷 상태를 보존하지 않는다.
+    # 요청 제한 및 활성 토큰용 휘발성 Redis. 재시작하면 기존 토큰도 비활성화되어 재로그인이 필요하다.
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     user: "999:1000"
     read_only: true
@@ -108,6 +108,8 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-local-gateway}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-gateway-sample-api}
       JWT_SECRET: ${JWT_SECRET:?Run bash scripts/new-local-env.sh first}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       SERVER_TOMCAT_CONNECTION_TIMEOUT: 5s
       SERVER_TOMCAT_KEEP_ALIVE_TIMEOUT: 30s
       SERVER_TOMCAT_MAX_CONNECTIONS: 500
@@ -125,6 +127,9 @@ services:
     networks:
       - app-net
     stop_grace_period: 25s
+    depends_on:
+      redis:
+        condition: service_healthy
 
 networks:
   app-net:

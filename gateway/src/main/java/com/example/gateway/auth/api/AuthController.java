@@ -2,41 +2,44 @@ package com.example.gateway.auth.api;
 
 import com.example.gateway.auth.api.dto.TokenRequest;
 import com.example.gateway.auth.api.dto.TokenResponse;
-import com.example.gateway.auth.application.TokenService;
+import com.example.gateway.auth.application.LoginService;
+import com.example.gateway.common.config.ConditionalOnDemoIssuer;
+import com.example.gateway.common.code.SuccessCode;
 import com.example.gateway.common.response.ApiResponse;
 import com.example.gateway.common.response.ApiResponses;
-import com.example.gateway.common.code.SuccessCode;
 import com.example.gateway.common.web.RequestContext;
-import com.example.gateway.common.config.ConditionalOnDemoIssuer;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
-// 1단계: 데모 인증 HTTP 진입점. profile과 enabled 조건으로 local/dev/test에서만 Bean을 만든다.
-// 운영 OIDC 서버를 구현한 것이 아니며 입력 검증 후 발급 책임은 TokenService에 위임한다.
+/** local/dev/test 학습용 인증 API. 운영 OIDC 서버/사용자 DB 인증은 별도 단계이다. */
 @RestController
 @ConditionalOnDemoIssuer
 @RequestMapping("/auth")
 public class AuthController {
+    private final LoginService loginService;
+    public AuthController(LoginService loginService) { this.loginService = loginService; }
 
-    private final TokenService tokenService;
-
-    public AuthController(TokenService tokenService) {
-        this.tokenService = tokenService;
+    // 기존 실습 호환 경로도 같은 유스케이스를 거쳐 활성 토큰 등록을 반드시 수행한다.
+    @PostMapping({"/login", "/token"})
+    public Mono<ResponseEntity<ApiResponse<TokenResponse>>> login(
+            @Valid @RequestBody TokenRequest request, ServerWebExchange exchange) {
+        String requestId = RequestContext.requestId(exchange);
+        return loginService.login(request.username(), request.password())
+                .map(token -> ApiResponses.success(SuccessCode.TOKEN_ISSUED,
+                        new TokenResponse(token.accessToken(), token.tokenType(), token.expiresIn()), requestId));
     }
 
-    @PostMapping("/token")
-    public ResponseEntity<ApiResponse<TokenResponse>> token(
-            @Valid @RequestBody TokenRequest request,
-            ServerWebExchange exchange) {
+    @PostMapping("/logout")
+    public Mono<ResponseEntity<ApiResponse<Void>>> logout(
+            @AuthenticationPrincipal Jwt principal, ServerWebExchange exchange) {
+        // 사용자 입력으로 다른 토큰을 삭제하지 않는다. Security가 검증한 현재 토큰만 전달한다.
         String requestId = RequestContext.requestId(exchange);
-        var issued = tokenService.issue(request.username(), request.password());
-        var response = new TokenResponse(issued.accessToken(), issued.tokenType(), issued.expiresIn());
-        // TOKEN_ISSUED가 토큰 응답의 no-store/no-cache 헤더를 함께 지정한다.
-        return ApiResponses.success(SuccessCode.TOKEN_ISSUED, response, requestId);
+        return loginService.logout(principal.getTokenValue())
+                .thenReturn(ApiResponses.<Void>success(SuccessCode.LOGGED_OUT, null, requestId));
     }
 }

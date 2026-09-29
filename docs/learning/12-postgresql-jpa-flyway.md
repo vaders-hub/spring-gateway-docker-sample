@@ -41,7 +41,7 @@ FK는 존재하지 않는 회원/상품을 참조한 주문과 참조 중인 부
 | ddl-auto=validate | Hibernate는 일치 여부만 검사; DDL 변경은 Flyway 담당 |
 | open-in-view=false | HTTP 응답을 만들 때 추가 SQL이 발생하지 않도록 transaction 안에서 domain 변환 완료 |
 | Hikari max=5, min=1, timeout=3000ms | 로컬 시작값; 실제 운영은 DB 한도와 Pod 수에 맞춰 조정 |
-| readiness=readinessState,db | DB 접근 불가 시 트래픽 수신을 멈추도록 설계 |
+| readiness=readinessState,db,redis | DB 접근 불가 시 트래픽 수신을 멈추도록 설계 |
 | liveness=livenessState | DB 장애를 앱 재시작 폭주로 전파하지 않음 |
 
 스키마는 `backend/src/main/resources/db/migration/V1__create_learning_catalog_and_orders.sql`에 있습니다.

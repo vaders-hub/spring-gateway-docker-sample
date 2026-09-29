@@ -18,6 +18,12 @@ import org.springframework.web.server.ServerWebExchange;
 @ConditionalOnDemoIssuer
 @Order(Ordered.HIGHEST_PRECEDENCE)
 class AuthExceptionHandler {
+    @ExceptionHandler(com.example.gateway.common.security.token.TokenStoreUnavailableException.class)
+    ResponseEntity<ProblemDetail> handleUnavailable(ServerWebExchange exchange) {
+        return ProblemDetails.forCode(ErrorCode.SERVICE_UNAVAILABLE, RequestContext.requestId(exchange),
+                exchange.getRequest().getPath().value());
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     ResponseEntity<ProblemDetail> handleInvalidCredentials(
             InvalidCredentialsException exception, ServerWebExchange exchange) {

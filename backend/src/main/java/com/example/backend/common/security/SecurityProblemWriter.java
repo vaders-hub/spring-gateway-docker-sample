@@ -2,6 +2,7 @@ package com.example.backend.common.security;
 
 import com.example.backend.common.exception.ProblemDetails;
 import com.example.backend.common.code.ErrorCode;
+import com.example.backend.common.security.token.TokenStoreUnavailableException;
 import com.example.backend.common.web.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,7 +24,8 @@ public class SecurityProblemWriter {
 
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, exception) ->
-                write(request, response, ErrorCode.UNAUTHORIZED);
+                write(request, response, TokenStoreUnavailableException.causedBy(exception)
+                        ? ErrorCode.SERVICE_UNAVAILABLE : ErrorCode.UNAUTHORIZED);
     }
 
     public AccessDeniedHandler accessDeniedHandler() {

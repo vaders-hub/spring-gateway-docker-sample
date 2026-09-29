@@ -18,14 +18,14 @@
 
 | 항목 | 현재 준비된 구성 | 보완할 검증/구현 |
 |---|---|---|
-| Stateless | JWT, Security 세션 저장/요청 캐시 비활성화, Redis에 요청 제한 상태 공유 | 같은 JWT로 Pod 교체 전후 인증, 복제본별 인증 일관성 |
+| Stateless | JWT, Security 세션 저장/요청 캐시 비활성화, Redis에 요청 제한/활성 토큰 상태 공유 | 같은 JWT로 Pod 교체 전후 인증, 복제본별 인증 일관성 |
 | 설정 외부화 | 환경변수 주입, `@ConfigurationProperties` 설정 객체의 값 검증, `RuntimeProfileGuard`의 환경 검사 | 값 누락·잘못된 profile 기동 실패, 동일 이미지의 환경별 실행 |
-| Health probe | startup/liveness/readiness, Gateway readiness에 Redis 포함 | 의존성 장애 시 Ready 제외와 재시작 여부 대조 |
+| Health probe | startup/liveness/readiness, Gateway/Backend readiness에 Redis 포함 | 의존성 장애 시 Ready 제외와 재시작 여부 대조 |
 | 표준 출력 로그 | SLF4J 콘솔 출력, staging/prod ECS 형식, requestId | 로그 연결·민감값 제외, 수집기와 보존 정책은 후속 |
 | Graceful shutdown | graceful, 단계별 20초, Compose 25초, k8s preStop 5초/종료 유예 30초 | 제어 가능한 지연 fixture 추가 후 처리 중 요청 완료 검증 |
 | Timeout/자원 | Backend/Redis 연결·응답·pool 설정, 컨테이너 requests/limits | 계층별 시간 예산, pool 고갈·지연·연결 거절의 분리 검증 |
-| 장애 정책 | Redis readiness 제외, 기본 RedisRateLimiter | 요청 단위 fail-closed, 오류 계약, CircuitBreaker/Retry는 별도 구현 |
-| DB/비동기 작업 | 현재 업무 DB 및 장기 비동기 작업 없음 | 도입 시 트랜잭션·migration·작업 종료/재처리 정책 함께 추가 |
+| 장애 정책 | Redis 장애 시 readiness 제외, 활성 토큰 조회 fail-closed(503) | RateLimiter 자체의 fail-closed, CircuitBreaker/Retry는 후속 |
+| DB/비동기 작업 | 12단계 PostgreSQL/JPA/Flyway 구현, 장기 비동기 작업 없음 | 장기 작업 도입 시 종료/재처리 정책 추가 |
 
 **10-1은 현재 코드로 수행할 수 있는 절차입니다. 10-3의 느린 요청 검증은 fixture 구현 전에는 수행할 수 없습니다.**
 10-4~10-5는 보완할 구현과 통과 기준이며 아직 기능이 추가됐다는 의미가 아닙니다.
@@ -38,7 +38,7 @@
 
 Gateway는 NoOp SecurityContext 저장소/요청 캐시를 사용하고 Backend는 STATELESS로 동작합니다.
 샘플 요청의 사용자 식별은 JWT Principal에서 가져오며 헤더만 믿지 않습니다.
-Stateless는 모든 상태를 없앤다는 뜻이 아닙니다. 사용자별 버킷은 Redis에 있으며
+Stateless는 모든 상태를 없앤다는 뜻이 아닙니다. 사용자별 버킷과 활성 토큰 기록은 Redis에 있으며
 요청 처리 중의 지역 변수/연결 pool과 재시작 후에도 필요한 업무 상태를 구분합니다.
 
 전제: 3~4단계가 정상 복구된 local kind이며 8080으로 접근 가능합니다.
@@ -245,3 +245,12 @@ Backend가 반환한 오류는 그대로 전달하며, 이미 committed된 응�
 재기동 실습은 image/profile/Secret을 변경하지 않지만 rollout restart annotation/revision은 남습니다.
 추가 실습에서 바꾼 replica/환경값이 있다면 원래 상태로 복구하고 API 200을 확인합니다.
 다음 구현은 **10-3 지연 fixture와 종료 검증 → 10-4 요청 단위 Redis 장애 정책/timeout → CircuitBreaker/Retry** 순서입니다.
+
+
+### 14단계 인증 확장 반영
+
+앱 Pod 교체 시 활성 토큰은 Redis에 남으므로 같은 토큰을 사용할 수 있습니다. Redis 데이터가 유실되면 재로그인이 필요합니다.
+Redis 장애 시 Gateway와 Backend 모두 readiness가 내려가며, 인증 요청은 저장소 장애를 503으로 반환합니다.
+Redis 복구/재생성 후에는 `lab_login`을 다시 실행하고 업무 호출을 확인합니다.
+인증 상태 조회의 fail-closed와 기존 Redis rate limiter 자체의 장애 정책은 구분합니다.
+자세한 내용은 [14단계](14-login-and-logout.md)를 참고합니다.

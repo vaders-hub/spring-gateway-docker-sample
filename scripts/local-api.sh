@@ -26,7 +26,7 @@ lab_login() {
       if (.username | length) == 0 or (.password | length) == 0
       then error("Empty demo credentials") else . end
     ' | curl --silent --show-error --fail --max-time 15 \
-      --header 'Content-Type: application/json' --data-binary @- "$LAB_BASE_URL/auth/token"
+      --header 'Content-Type: application/json' --data-binary @- "$LAB_BASE_URL/auth/login"
   ) || { printf '%s\n' 'Login failed; token was not retained.' >&2; return 1; }
   token=$(printf '%s' "$response" | jq -er '.data.accessToken | select(type == "string")') || return 1
   [[ "$token" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]] || {
@@ -58,4 +58,24 @@ lab_api() {
   # Header travels over stdin rather than the process command line.
   printf 'header = "Authorization: Bearer %s"\n' "$LAB_TOKEN" |
     curl --config - "${args[@]}" "$LAB_BASE_URL$path"
+}
+
+
+# 서버에서 현재 토큰을 삭제한 뒤 로컬 복사본도 버린다. 실패 시 재시도할 수 있도록 보관한다.
+lab_logout() {
+  if [[ $- == *x* ]]; then
+    printf '%s\n' 'Disable tracing with set +x before authentication.' >&2; return 1
+  fi
+  [[ -n ${LAB_TOKEN:-} && -n ${LAB_BASE_URL:-} ]] || {
+    printf '%s\n' 'Run lab_login first.' >&2; return 1
+  }
+  local status
+  status=$(printf 'header = "Authorization: Bearer %s"\n' "$LAB_TOKEN" |
+    curl --config - --silent --show-error --max-time 15 --request POST \
+      --output /dev/null --write-out '%{http_code}' "$LAB_BASE_URL/auth/logout") || return 1
+  case "$status" in
+    200) unset LAB_TOKEN; printf '%s\n' 'Logout succeeded; server and local token removed.' ;;
+    401) unset LAB_TOKEN; printf '%s\n' 'Token already inactive or expired; local token removed.' ;;
+    *) printf '%s\n' "Logout failed (HTTP $status); token retained for retry." >&2; return 1 ;;
+  esac
 }

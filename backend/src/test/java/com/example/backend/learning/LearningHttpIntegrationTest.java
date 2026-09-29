@@ -23,6 +23,16 @@ import static org.assertj.core.api.Assertions.*;
     "app.learning.mock-enabled=true", "app.learning.docs-enabled=true"})
 @ActiveProfiles("test")
 class LearningHttpIntegrationTest {
+
+    // 이 테스트의 관심사는 라우팅/업무/DB이다. 로그아웃 검증은 SecurityHttpIntegrationTest에서 수행한다.
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.backend.common.security.token.ActiveTokenStore activeTokenStore;
+    @org.junit.jupiter.api.BeforeEach
+    void configureActiveTokens() {
+        org.mockito.Mockito.when(activeTokenStore.isActive(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(true);
+    }
+
     private static final String SECRET = UUID.randomUUID().toString();
     @LocalServerPort int port;
     @Autowired JsonMapper json;

@@ -49,6 +49,7 @@ public class TokenService {
         // subject는 인증 사용자/Redis 버킷 key가 되고 scope는 GET·쓰기 API 인가에 사용된다.
         // issuer·audience·만료는 양쪽 JwtConfig의 검증 조건과 일치해야 한다.
         JwtClaimsSet claims = JwtClaimsSet.builder()
+                .id(java.util.UUID.randomUUID().toString()) // 같은 초에 로그인해도 토큰별 로그아웃이 가능하다.
                 .issuer(issuer)
                 .subject(username)
                 .audience(List.of(audience))

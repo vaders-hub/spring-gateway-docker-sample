@@ -18,7 +18,7 @@ spring:
     timeout-per-shutdown-phase: 20s
   codec:
     max-in-memory-size: 1MB
-  # Redis는 요청 제한 상태를 공유한다. 연결/명령 timeout과 readiness 의존성을 함께 본다.
+  # Redis는 요청 제한과 활성 토큰 상태를 공유한다. 연결/명령 timeout과 readiness 의존성을 함께 본다.
   data:
     redis:
       host: ${REDIS_HOST:localhost}

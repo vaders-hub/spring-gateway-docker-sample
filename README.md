@@ -116,11 +116,14 @@ MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포�
 [11단계 안내와 후속 로드맵](docs/learning/11-features-and-library-roadmap.md)에서 실행 예제와 선택형 UI overlay를 확인하세요.
 [12단계 PostgreSQL/JPA/Flyway](docs/learning/12-postgresql-jpa-flyway.md)에는 DB 기동·주문 저장·재기동·Testcontainers 검증 절차가 있습니다.
 [13단계 Feature 경계와 확장](docs/learning/13-feature-boundaries-and-growth.md)에는 하위 패키지 분류와 기능 간 공개 계약, 순환 의존을 피하는 설계 기준이 있습니다.
-다음 단계는 PostgreSQL + JPA/Flyway/Testcontainers이며 아직 DB는 추가하지 않았습니다.
+
+[14. 로그인·로그아웃과 공유 토큰 상태](docs/learning/14-login-and-logout.md): 로그인 API, 토큰별 로그아웃, 양쪽 서비스 검증과 Redis 장애 처리.
+
+PostgreSQL + JPA/Flyway/Testcontainers는 12단계에 구현되어 있으며, 인증 계정의 DB 연동은 후속 범위입니다.
 
 ## 주요 구현 위치
 
-기능별 구조를 사용합니다. Backend는 hello/member/product/order, Gateway는 auth 안에 api/application을 두고,
+기능별 구조를 사용합니다. Backend는 hello/member/product/order, Gateway는 auth 안에 api/application/infrastructure를 두고,
 설정·보안·예외 처리와 공통 응답·enum·util은 common 아래에 둡니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
 
 ```text
@@ -172,9 +175,9 @@ backend/src/main/java/com/example/backend/hello/api/dto/
   성공 envelope, 오류 코드, Problem Details, 요청 컨텍스트
 ```
 
-`/auth/token`은 구조 학습을 위한 간이 발급기입니다. 운영에서는 이 엔드포인트와
-공유 HS256 secret 대신 Cognito, Keycloak 같은 OIDC Provider의 issuer/JWK를
-사용해야 합니다. 이 엔드포인트는 `local`, `dev`, `test` profile에서만 기본 활성화되고
+`/auth/login`(호환 별칭 `/auth/token`)과 `/auth/logout`은 구조 학습용 인증 API입니다. 운영에서는 데모 인증과
+공유 HS256 secret 대신 Cognito, Keycloak 같은 OIDC Provider 연동을 설계합니다.
+issuer/JWK 변경과 함께 Redis 활성 토큰 등록/철회 계약도 바꾸어야 합니다. 이 엔드포인트는 `local`, `dev`, `test` profile에서만 기본 활성화되고
 `staging`, `prod`에서는 Bean 자체가 생성되지 않습니다.
 
 ## 설정과 Profile

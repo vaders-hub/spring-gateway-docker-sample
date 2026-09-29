@@ -53,6 +53,16 @@ import static org.mockito.Mockito.doReturn;
 @ActiveProfiles("test")
 @Import(GatewayErrorHttpIntegrationTest.Fixtures.class)
 class GatewayErrorHttpIntegrationTest {
+
+    // 이 테스트의 관심사는 라우팅/업무/DB이다. 로그아웃 검증은 SecurityHttpIntegrationTest에서 수행한다.
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.gateway.common.security.token.ActiveTokenStore activeTokenStore;
+    @org.junit.jupiter.api.BeforeEach
+    void configureActiveTokens() {
+        org.mockito.Mockito.when(activeTokenStore.isActive(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(reactor.core.publisher.Mono.just(true));
+    }
+
     private static final String SECRET = UUID.randomUUID().toString();
     private static final AtomicInteger UPSTREAM_CALLS = new AtomicInteger();
     private static final DisposableServer UPSTREAM = HttpServer.create().host("127.0.0.1").port(0)

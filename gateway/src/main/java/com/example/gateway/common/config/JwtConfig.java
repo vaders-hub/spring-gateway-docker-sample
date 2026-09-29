@@ -1,6 +1,11 @@
 package com.example.gateway.common.config;
 
 import com.example.gateway.common.config.properties.SecurityProperties;
+import com.example.gateway.common.security.token.ActiveTokenStore;
+import com.example.gateway.common.security.token.TokenStoreUnavailableException;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import javax.crypto.SecretKey;
@@ -25,7 +30,7 @@ class JwtConfig {
 
     @Bean
     ReactiveJwtDecoder jwtDecoder(
-            SecurityProperties properties) {
+            SecurityProperties properties, ActiveTokenStore tokens) {
         NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder
                 .withSecretKey(jwtSecretKey(properties))
                 .macAlgorithm(MacAlgorithm.HS256)
@@ -35,7 +40,12 @@ class JwtConfig {
                 audiences -> audiences != null && audiences.contains(properties.jwt().audience()));
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.jwt().issuer()), audienceValidator));
-        return decoder;
+        // 암호학적 검증 후 공유 활성 목록을 확인한다. Netty에서 block()을 호출하지 않는다.
+        return token -> decoder.decode(token).flatMap(jwt -> tokens.isActive(token)
+                .onErrorMap(TokenStoreUnavailableException.class,
+                        error -> new OAuth2AuthenticationException(new OAuth2Error("temporarily_unavailable"), error))
+                .flatMap(active -> active ? reactor.core.publisher.Mono.just(jwt)
+                        : reactor.core.publisher.Mono.error(new BadJwtException("Inactive access token"))));
     }
 
 }

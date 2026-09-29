@@ -20,7 +20,7 @@
 - graceful shutdown과 Kubernetes termination grace 정렬
 - non-root, read-only filesystem, capability drop, resource requests/limits
 - 소스와 매니페스트에서 실제 secret 제외
-- Backend/Redis ingress를 Gateway Pod로 제한하는 NetworkPolicy
+- Backend ingress는 Gateway로, Redis ingress는 Gateway/Backend로 제한하는 NetworkPolicy
 - 기본 NodePort와 분리된 선택형 Gateway API/Envoy 진입점 (매니페스트와 설치 절차)
 - staging/prod ECS JSON 구조화 로그
 - Gateway CORS allowlist와 내부 Backend CORS 비활성화 정책
@@ -54,7 +54,7 @@
   fail-closed는 아직 보장하지 않는다. 직접 접근/기존 연결/반영 지연을 포함한 별도 차단 구현과
   장애 테스트가 필요하다. [상세 실습](learning/04-operations-and-recovery.md)을 참고한다.
 - Backend와 Redis는 외부 포트를 열지 않는다. Gateway Compose 포트도 loopback에만 바인딩한다.
-- `/auth/token`에는 아직 요청 제한이 없다. `/api/**`의 Redis 제한이 발급기를 보호하지 않는다.
+- `/auth/login`과 호환 별칭 `/auth/token`에는 아직 로그인 시도 제한이 없다. `/api/**`의 Redis 제한이 발급기를 보호하지 않는다.
   local/dev/test 학습용이며 운영 발급기는 꺼져 있다. loopback도 로컬 악성 프로세스나
   임의 port-forward까지 막지는 않는다. 공유 환경 노출 전 IP/계정별 시도 제한과
   trusted proxy 정책을 설계한다. 클라이언트가 보낸 X-Forwarded-For를 그대로 신뢰하지 않는다.
