@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.ErrorResponse;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 // 1·6단계: Controller 처리/입력 검증 오류의 공통 응답 계약. Security filter 오류는 별도 writer가 처리한다.
 @RestControllerAdvice
@@ -42,6 +43,16 @@ class GlobalExceptionHandler {
                                 ? "invalid value"
                                 : error.getDefaultMessage()))
                 .toList());
+        return response;
+    }
+
+    // PathVariable/RequestParam 타입 변환 실패도 클라이언트 입력 오류이다. 원문 입력값은 반환하지 않는다.
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ProblemDetail> handleTypeMismatch(
+            MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+        var response = problem(ErrorCode.INVALID_REQUEST, request);
+        response.getBody().setProperty("errors", java.util.List.of(
+                Map.of("field", exception.getName(), "message", "invalid value")));
         return response;
     }
 

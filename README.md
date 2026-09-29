@@ -119,6 +119,8 @@ MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포�
 
 [14. 로그인·로그아웃과 공유 토큰 상태](docs/learning/14-login-and-logout.md): 로그인 API, 토큰별 로그아웃, 양쪽 서비스 검증과 Redis 장애 처리.
 
+[15. 보안 설정 간소화와 member 40x 실습](docs/learning/15-security-rules-and-member-tests.md): 정책 순서, 관리 권한, 재사용 가능한 점검 스크립트.
+
 PostgreSQL + JPA/Flyway/Testcontainers는 12단계에 구현되어 있으며, 인증 계정의 DB 연동은 후속 범위입니다.
 
 ## 주요 구현 위치

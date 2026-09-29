@@ -24,19 +24,27 @@ class SecurityConfig {
             ServerHttpSecurity http,
             ObservabilityProperties observabilityProperties,
             SecurityProblemWriter problems) {
-        // 1단계: 세션/로그인 폼 대신 매 요청의 Bearer JWT로 인증한다.
-        // 인가가 실패하면 route filter와 Backend까지 진행하지 않으므로 지표 수집 범위도 달라진다.
-        return http
+        configureStateless(http);
+        configureAuthorization(http, observabilityProperties);
+        configureJwt(http, problems);
+        return http.build();
+    }
+
+    // Bearer API의 기본 정책. Gateway와 Backend는 각 웹 스택의 API를 그대로 사용한다.
+    private void configureStateless(ServerHttpSecurity http) {
+        http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .logout(ServerHttpSecurity.LogoutSpec::disable)
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
-                .requestCache(cache -> cache.requestCache(NoOpServerRequestCache.getInstance()))
-                .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(problems.authenticationEntryPoint())
-                        .accessDeniedHandler(problems.accessDeniedHandler()))
+                .requestCache(cache -> cache.requestCache(NoOpServerRequestCache.getInstance()));
+    }
+
+    private void configureAuthorization(ServerHttpSecurity http,
+            ObservabilityProperties observabilityProperties) {
+        http
                 .authorizeExchange(authorize -> {
                     authorize.pathMatchers(HttpMethod.POST, "/auth/login", "/auth/token").permitAll();
                     authorize.pathMatchers(HttpMethod.POST, "/auth/logout").authenticated();
@@ -51,20 +59,30 @@ class SecurityConfig {
                     authorize.pathMatchers("/api/actuator", "/api/actuator/**", "/api/error", "/api/error/**")
                             .denyAll();
                     // read/write scope로 HTTP 동작을 구분한다. 토큰은 있으나 scope가 부족하면 403이다.
-                    authorize.pathMatchers(HttpMethod.GET, "/api/**").access(hasScope("api.read"));
-                    authorize.pathMatchers(HttpMethod.HEAD, "/api/**").access(hasScope("api.read"));
-                    authorize.pathMatchers(HttpMethod.POST, "/api/**").access(hasScope("api.write"));
-                    authorize.pathMatchers(HttpMethod.PUT, "/api/**").access(hasScope("api.write"));
-                    authorize.pathMatchers(HttpMethod.PATCH, "/api/**").access(hasScope("api.write"));
-                    authorize.pathMatchers(HttpMethod.DELETE, "/api/**").access(hasScope("api.write"));
+                    requireScope(authorize, "api.read", "/api/**", HttpMethod.GET, HttpMethod.HEAD);
+                    requireScope(authorize, "api.write", "/api/**",
+                            HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE);
                     authorize.pathMatchers("/api/**").denyAll();
                     authorize.anyExchange().authenticated();
-                })
+                });
+    }
+
+    // 일반 인가 실패와 OAuth2 인증 실패는 진입점이 다르므로 같은 writer를 양쪽에 연결한다.
+    private void configureJwt(ServerHttpSecurity http, SecurityProblemWriter problems) {
+        http
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(problems.authenticationEntryPoint())
+                        .accessDeniedHandler(problems.accessDeniedHandler()))
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
-                        .accessDeniedHandler(problems.accessDeniedHandler()))
-                .build();
+                        .accessDeniedHandler(problems.accessDeniedHandler()));
     }
 
+    private void requireScope(ServerHttpSecurity.AuthorizeExchangeSpec authorize,
+            String scope, String path, HttpMethod... methods) {
+        for (HttpMethod method : methods) {
+            authorize.pathMatchers(method, path).access(hasScope(scope));
+        }
+    }
 }

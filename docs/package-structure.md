@@ -238,3 +238,11 @@ ArchUnit은 이전 의존 방향을 유지하고 Entity가 API DTO로 새어 나
 
 단수/복수 이름 변경 대신 실제 책임별 하위 패키지를 추가합니다. 독립 업무가 생길 때 새 feature로 분리합니다.
 [13단계](learning/13-feature-boundaries-and-growth.md)에 판단 예시·contract/port 흐름·순환 해소·거래/조회 제약을 정리했습니다.
+
+
+## 보안 설정 및 member 관리 조회 (15단계)
+
+양쪽 SecurityConfig를 configureStateless/configureAuthorization/configureJwt로 분리하고 반복 scope 등록만 requireScope로 묶었습니다.
+`GET /api/members/admin`은 일반 목록 handler/DTO/서비스를 재사용하며 Backend에서 `api.read`와 `member.admin`을 모두 요구합니다.
+`/members/{id}`보다 관리 경로 규칙을 먼저 선언합니다. 기존 member ID는 양수만 허용하며 0·음수는 400입니다.
+HTTP 권한과 feature 업무 권한을 구분하고, [15단계](learning/15-security-rules-and-member-tests.md)에 테스트 절차와 확장 기준을 기록했습니다.

@@ -82,16 +82,57 @@ class LearningHttpIntegrationTest {
         var spec = request("GET", "/v3/api-docs", null, null);
         assertThat(spec.statusCode()).isEqualTo(200);
         var document = json.readValue(spec.body(), Map.class);
-        assertThat(((Map<?,?>)document.get("paths")).keySet().stream().map(Object::toString).toList()).containsAll(List.of("/members", "/products/{id}", "/orders/preview"));
+        assertThat(((Map<?,?>)document.get("paths")).keySet().stream().map(Object::toString).toList()).containsAll(List.of("/members", "/members/admin", "/products/{id}", "/orders/preview"));
         assertThat(spec.body()).contains("bearerAuth", "OrderPreviewRequest", "OrderPreviewResponse");
         var ui = request("GET", "/swagger-ui/index.html", null, null);
         assertThat(ui.statusCode()).isEqualTo(200);
         assertThat(ui.body()).contains("swagger-ui");
     }
+    @Test
+    void memberAdminRequiresBothScopesBeforeTheGenericMemberPath() throws Exception {
+        assertProblem(request("GET", "/members/admin", null, null), 401, "UNAUTHORIZED");
+        for (String scope : List.of("api.read", "api.write", "member.admin")) {
+            assertProblem(request("GET", "/members/admin", scope, null), 403, "ACCESS_DENIED");
+        }
+        var admin = request("GET", "/members/admin", "api.read member.admin", null);
+        assertThat(admin.statusCode()).isEqualTo(200);
+        assertThat(admin.body()).contains("Sample Member", "meta");
+        assertProblem(request("POST", "/members/admin", "api.read api.write member.admin", "{}"),
+                403, "ACCESS_DENIED");
+    }
+
+    @Test
+    void memberInputErrorsOnlyApplyAfterAuthenticationAndScopeChecks() throws Exception {
+        for (String id : List.of("abc", "0", "-1")) {
+            assertProblem(request("GET", "/members/" + id, null, null), 401, "UNAUTHORIZED");
+            assertProblem(request("GET", "/members/" + id, "api.write", null), 403, "ACCESS_DENIED");
+            assertProblem(request("GET", "/members/" + id, "api.read", null), 400, "INVALID_REQUEST");
+        }
+        assertProblem(request("GET", "/members/999", "api.read", null), 404, "NOT_FOUND");
+    }
+
+    @Test
+    void memberRejectsInvalidJwtAndInactiveTokens() throws Exception {
+        for (String value : List.of("invalid.jwt.value",
+                token("api.read", "wrong-issuer", "learning-api", SECRET, 300),
+                token("api.read", "learning-test", "wrong-audience", SECRET, 300),
+                token("api.read", "learning-test", "learning-api", UUID.randomUUID().toString(), 300),
+                token("api.read", "learning-test", "learning-api", SECRET, -300))) {
+            assertProblem(requestWithToken("GET", "/members", value, null), 401, "UNAUTHORIZED");
+        }
+        String revoked = token("api.read");
+        org.mockito.Mockito.when(activeTokenStore.isActive(revoked)).thenReturn(false);
+        assertProblem(requestWithToken("GET", "/members", revoked, null), 401, "UNAUTHORIZED");
+    }
+
     private HttpResponse<String> request(String method, String path, String scope, String body) throws Exception {
+        return requestWithToken(method, path, scope == null ? null : token(scope), body);
+    }
+
+    private HttpResponse<String> requestWithToken(String method, String path, String jwt, String body) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(20)).header("X-Request-Id", "learning-test");
-        if (scope != null) builder.header("Authorization", "Bearer " + token(scope));
+        if (jwt != null) builder.header("Authorization", "Bearer " + jwt);
         if (body != null) builder.header("Content-Type", "application/json");
         builder.method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
         try (var client = HttpClient.newHttpClient()) {
@@ -107,10 +148,13 @@ class LearningHttpIntegrationTest {
         assertThat(response.body()).doesNotContain(SECRET);
     }
     private String token(String scope) {
-        var claims = JwtClaimsSet.builder().issuer("learning-test").subject("learner")
-                .audience(List.of("learning-api")).issuedAt(Instant.now().minusSeconds(10))
-                .expiresAt(Instant.now().plusSeconds(300)).claim("scope", scope).build();
-        var encoder = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256")));
+        return token(scope, "learning-test", "learning-api", SECRET, 300);
+    }
+    private String token(String scope, String issuer, String audience, String secret, long ttl) {
+        var claims = JwtClaimsSet.builder().issuer(issuer).subject("learner")
+                .audience(List.of(audience)).issuedAt(Instant.now().minusSeconds(600))
+                .expiresAt(Instant.now().plusSeconds(ttl)).claim("scope", scope).build();
+        var encoder = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256")));
         return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
     }
 }

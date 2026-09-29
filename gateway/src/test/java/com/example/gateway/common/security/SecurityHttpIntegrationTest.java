@@ -276,6 +276,15 @@ class SecurityHttpIntegrationTest {
         return (String) ((Map<?, ?>) jsonMapper.readValue(response.body(), Map.class).get("data")).get("accessToken");
     }
 
+    @Test
+    void explicitDenialsPrecedeBroadApiScopeRules() throws Exception {
+        String value = token("api.read api.write", AUDIENCE, ISSUER, SECRET, 300);
+        for (String path : List.of("/api/actuator", "/api/actuator/health", "/api/error", "/api/error/detail")) {
+            assertProblem(request("GET", path, value, null), 403, "ACCESS_DENIED");
+        }
+        assertProblem(request("OPTIONS", PATH, value, null), 403, "ACCESS_DENIED");
+    }
+
     private HttpResponse<String> request(String method, String path, String token, String body) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(5))

@@ -10,6 +10,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
+import static org.springframework.security.authorization.AuthorizationManagers.allOf;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,9 +28,15 @@ class SecurityConfig {
             HttpSecurity http,
             ObservabilityProperties observabilityProperties,
             SecurityProblemWriter problems, Environment environment) throws Exception {
-        // 1단계: 내부 네트워크나 X-Gateway-User만 신뢰하지 않고 Backend도 Bearer JWT를 검증한다.
-        // 인가 경로는 Gateway가 /api를 제거한 이후의 /hello, /echo 기준이다.
-        return http
+        configureStateless(http);
+        configureAuthorization(http, observabilityProperties, environment);
+        configureJwt(http, problems);
+        return http.build();
+    }
+
+    // Bearer API의 기본 정책. Gateway와 Backend는 각 웹 스택의 API를 그대로 사용한다.
+    private void configureStateless(HttpSecurity http) throws Exception {
+        http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -36,10 +44,12 @@ class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .requestCache(AbstractHttpConfigurer::disable)
-                .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(problems.authenticationEntryPoint())
-                        .accessDeniedHandler(problems.accessDeniedHandler()))
+                .requestCache(AbstractHttpConfigurer::disable);
+    }
+
+    private void configureAuthorization(HttpSecurity http,
+            ObservabilityProperties observabilityProperties, Environment environment) throws Exception {
+        http
                 .authorizeHttpRequests(authorize -> {
                     // 컨테이너 내부 오류 dispatch만 허용한다. 외부의 /error 직접 요청은 아래 기본 거부 정책을 따른다.
                     authorize.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll();
@@ -50,15 +60,14 @@ class SecurityConfig {
                     else {
                         authorize.requestMatchers("/actuator/prometheus").authenticated();
                     }
-                    authorize.requestMatchers(HttpMethod.GET, "/hello").access(hasScope("api.read"));
-                    authorize.requestMatchers(HttpMethod.HEAD, "/hello").access(hasScope("api.read"));
-                    authorize.requestMatchers(HttpMethod.POST, "/echo").access(hasScope("api.write"));
-                    // 실제 업무 경로만 명시한다. fixture의 존재 여부는 local/test 조건이 결정한다.
-                    authorize.requestMatchers(HttpMethod.GET, "/members", "/members/{id}", "/products", "/products/{id}")
-                            .access(hasScope("api.read"));
-                    authorize.requestMatchers(HttpMethod.POST, "/orders/preview", "/orders").access(hasScope("api.write"));
-                    // 주문 소유권은 scope 검사 후 서비스에서 JWT subject로 한 번 더 검사한다.
-                    authorize.requestMatchers(HttpMethod.GET, "/orders/{id}").access(hasScope("api.read"));
+                    // 더 구체적인 관리 경로를 /members/{id}보다 먼저 둔다. 두 scope를 모두 요구한다.
+                    authorize.requestMatchers(HttpMethod.GET, "/members/admin")
+                            .access(allOf(hasScope("api.read"), hasScope("member.admin")));
+                    requireScope(authorize, HttpMethod.GET, "api.read",
+                            "/hello", "/members", "/members/{id}", "/products", "/products/{id}", "/orders/{id}");
+                    requireScope(authorize, HttpMethod.HEAD, "api.read", "/hello");
+                    requireScope(authorize, HttpMethod.POST, "api.write", "/echo", "/orders/preview", "/orders");
+                    // URL 권한 뒤의 주문 소유권 등 업무 정책은 각 feature application에서 검사한다.
                     if (environment.getProperty("app.learning.docs-enabled", Boolean.class, false)) {
                         // Backend 로컬 문서 UI 부트스트랩용. 업무 API의 JWT 인가는 그대로 유지한다.
                         authorize.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**",
@@ -66,12 +75,25 @@ class SecurityConfig {
                     }
                     // 새 endpoint도 경로/메서드/권한을 명시하기 전에는 공개되지 않는다.
                     authorize.anyRequest().denyAll();
-                })
+                });
+    }
+
+    // 일반 인가 실패와 OAuth2 인증 실패는 진입점이 다르므로 같은 writer를 양쪽에 연결한다.
+    private void configureJwt(HttpSecurity http, SecurityProblemWriter problems) throws Exception {
+        http
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(problems.authenticationEntryPoint())
+                        .accessDeniedHandler(problems.accessDeniedHandler()))
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
-                        .accessDeniedHandler(problems.accessDeniedHandler()))
-                .build();
+                        .accessDeniedHandler(problems.accessDeniedHandler()));
     }
 
+    private void requireScope(
+            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorize,
+            HttpMethod method, String scope, String... paths) {
+        // 실제 등록된 업무 URL만 나열한다. 편의를 위해 모든 경로를 허용하지 않는다.
+        authorize.requestMatchers(method, paths).access(hasScope(scope));
+    }
 }

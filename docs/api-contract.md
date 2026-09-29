@@ -212,3 +212,11 @@ POST /orders/preview는 계속 저장하지 않고 200을 반환합니다. 같�
 이후 같은 토큰은 Gateway/Backend에서 401입니다. 등록/조회/삭제 저장소 장애는 503이며, 모든 인증 응답은 no-store입니다.
 로그인 없이 로그아웃하거나 이미 종료한 토큰을 재사용하면 401입니다. 다른 로그인 토큰은 유지합니다.
 자세한 상태·호환성·실습은 [14단계](learning/14-login-and-logout.md)를 참고합니다.
+
+
+## 보안 설정 및 member 관리 조회 (15단계)
+
+양쪽 SecurityConfig를 configureStateless/configureAuthorization/configureJwt로 분리하고 반복 scope 등록만 requireScope로 묶었습니다.
+`GET /api/members/admin`은 일반 목록 handler/DTO/서비스를 재사용하며 Backend에서 `api.read`와 `member.admin`을 모두 요구합니다.
+`/members/{id}`보다 관리 경로 규칙을 먼저 선언합니다. 기존 member ID는 양수만 허용하며 0·음수는 400입니다.
+HTTP 권한과 feature 업무 권한을 구분하고, [15단계](learning/15-security-rules-and-member-tests.md)에 테스트 절차와 확장 기준을 기록했습니다.
