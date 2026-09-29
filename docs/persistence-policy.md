@@ -1,8 +1,12 @@
 # Persistence introduction gate
 
-현재 Gateway와 Backend에는 DB/JPA 의존성, Entity, Repository가 없습니다. 따라서
+현재 DB/JPA 의존성과 Entity는 없습니다. Backend에 불변 fixture Repository와 조회 계약만 있습니다. 따라서
 사용되지 않는 DataSource/Hikari/transaction 설정은 활성화하지 않습니다. DB 기능을
 처음 추가하는 변경에서 아래 항목을 한 묶음으로 적용합니다.
+
+후속 DB는 PostgreSQL로 결정했습니다. 2차에서 JPA + Flyway + Testcontainers를 함께 적용합니다.
+현재 fixture는 DB가 아니며 재시작 영속성·transaction 검증을 대신하지 않습니다.
+[11단계 로드맵](learning/11-features-and-library-roadmap.md)을 따릅니다.
 
 ## 패키지와 계층
 

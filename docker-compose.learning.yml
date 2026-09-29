@@ -1,0 +1,6 @@
+# 선택형 학습 UI 접근. 기본 Compose에 덧붙여 Backend 문서 포트만 loopback에 공개한다.
+# docker compose -f docker-compose.yml -f docker-compose.learning.yml up -d --build
+services:
+  backend:
+    ports:
+      - "127.0.0.1:18081:8081"

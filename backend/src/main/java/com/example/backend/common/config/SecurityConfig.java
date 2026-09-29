@@ -4,6 +4,7 @@ import com.example.backend.common.security.SecurityProblemWriter;
 import com.example.backend.common.config.properties.JwtProperties;
 import com.example.backend.common.config.properties.ObservabilityProperties;
 import jakarta.servlet.DispatcherType;
+import org.springframework.core.env.Environment;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,7 @@ class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObservabilityProperties observabilityProperties,
-            SecurityProblemWriter problems) throws Exception {
+            SecurityProblemWriter problems, Environment environment) throws Exception {
         // 1단계: 내부 네트워크나 X-Gateway-User만 신뢰하지 않고 Backend도 Bearer JWT를 검증한다.
         // 인가 경로는 Gateway가 /api를 제거한 이후의 /hello, /echo 기준이다.
         return http
@@ -52,6 +53,15 @@ class SecurityConfig {
                     authorize.requestMatchers(HttpMethod.GET, "/hello").access(hasScope("api.read"));
                     authorize.requestMatchers(HttpMethod.HEAD, "/hello").access(hasScope("api.read"));
                     authorize.requestMatchers(HttpMethod.POST, "/echo").access(hasScope("api.write"));
+                    // 실제 업무 경로만 명시한다. fixture의 존재 여부는 local/test 조건이 결정한다.
+                    authorize.requestMatchers(HttpMethod.GET, "/members", "/members/{id}", "/products", "/products/{id}")
+                            .access(hasScope("api.read"));
+                    authorize.requestMatchers(HttpMethod.POST, "/orders/preview").access(hasScope("api.write"));
+                    if (environment.getProperty("app.learning.docs-enabled", Boolean.class, false)) {
+                        // Backend 로컬 문서 UI 부트스트랩용. 업무 API의 JWT 인가는 그대로 유지한다.
+                        authorize.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**",
+                                "/v3/api-docs.yaml", "/swagger-ui.html", "/swagger-ui/**").permitAll();
+                    }
                     // 새 endpoint도 경로/메서드/권한을 명시하기 전에는 공개되지 않는다.
                     authorize.anyRequest().denyAll();
                 })

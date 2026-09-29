@@ -2,7 +2,7 @@
 
 2026-09-29 사용자 제공 샘플을 기준으로 기능을 api/application/domain/infrastructure 기준으로 나누고,
 설정·보안·예외 처리 등 공통 기술 코드는 common 아래로 모았습니다.
-Backend의 업무 기능은 hello, Gateway의 데모 토큰 발급 기능은 auth입니다.
+Backend는 hello와 local/test 학습용 member/product/order, Gateway는 데모 토큰 발급 auth 기능을 제공합니다.
 
 ## 현재 구조
 
@@ -44,21 +44,31 @@ com.example.gateway
     └── application/  TokenService와 IssuedToken, InvalidCredentialsException
 ```
 
-위 트리는 현재 존재하는 코드입니다. 이미지의 member/order/payment는 예시이므로 빈 기능을 추가하지 않습니다.
-현재 hello/auth에는 독립 업무 모델이나 저장소가 없어 domain/infrastructure 디렉터리도 생성하지 않았습니다.
-기능이 확장되면 다음 기준으로 코드를 배치합니다.
+위 트리는 기본 hello/auth 공통 구조입니다. 11단계에서 추가한 실제 학습 기능은 다음과 같습니다.
 
 ```text
-<feature>/
-├── api/               Controller, 기능 전용 Advice
-│   └── dto/           HTTP 요청·응답
-├── application/       Service, use case, 업무 결과
-├── domain/            업무 모델·규칙 (도입 시)
-└── infrastructure/    Repository, DB·외부 시스템 연동 (도입 시)
+member/                              product도 동일한 계층
+├── api/                             Controller, MapStruct Mapper
+│   └── dto/                         API 응답
+├── application/                     Service, Repository 조회 계약
+├── domain/                          Member / Product 업무 record
+└── infrastructure/                  불변 FixtureRepository
+
+order/
+├── api/                             Controller, MapStruct Mapper
+│   └── dto/                         주문 견적 요청/응답
+├── application/                     OrderService, OrderCatalog 연동 계약
+├── domain/                          OrderQuote 금액 계산
+└── infrastructure/                  LocalOrderCatalog: 회원/상품 application 연동
 ```
 
+common/config에 MappingConfig, OpenApiConfig, ConditionalOnLearningMock,
+common/config/runtime에 LearningProfileGuard, common/exception에 BusinessException이 추가됩니다.
+학습 feature는 local/test에서 명시적으로 켠 경우만 생성하며 저장·결제는 하지 않습니다.
+[11단계](learning/11-features-and-library-roadmap.md)에 검증·확장 순서가 있습니다.
+
 복잡한 HTTP DTO 변환이 필요하면 api/mapper를 추가합니다.
-단순한 변환은 현재처럼 Controller에서 처리하고 불필요한 Mapper 인터페이스는 만들지 않습니다.
+단순한 변환은 현재처럼 Controller에서 처리하고 불필요한 Mapper 인터페이스는 만들지 않습니다. 현재 목업 3개는 MapStruct 학습 대상으로 명시적 Mapper를 둡니다.
 
 ## 계층 책임과 의존 방향
 
@@ -67,8 +77,8 @@ com.example.gateway
 | feature/api | Controller, HTTP 검증 시작, 응답 변환, 기능 전용 Advice |
 | feature/application | Service, use case, 업무 결과와 기능 전용 예외 |
 | feature/api/dto | 해당 기능의 요청/응답 계약 |
-| feature/domain (필요 시) | 업무 모델·규칙. 현재 생성하지 않음 |
-| feature/infrastructure (필요 시) | Repository·JPA/MyBatis·외부 클라이언트 구현. 현재 생성하지 않음 |
+| feature/domain (필요 시) | 업무 모델·규칙. 현재 Member/Product/OrderQuote |
+| feature/infrastructure (필요 시) | 저장소/외부 연동 adapter. 현재 fixture와 LocalOrderCatalog; 실제 DB는 후속 |
 | common/config | 보안·JWT·CORS·Clock·라우팅 구성 및 데모 발급 Bean 조건 |
 | common/config/properties, common/config/runtime | 타입 기반 설정 객체, 시작 시 profile 보호 |
 | common/security | Servlet/WebFlux 인증·인가 오류 응답 adapter |
@@ -77,7 +87,7 @@ com.example.gateway
 | common/response, common/code, common/util | 공통 응답 생성, enum, 순수 진단 유틸리티 |
 
 - 기본 방향은 api → application → domain(도입 시)입니다. application은 api와 api/dto를 참조하지 않습니다. domain은 api/infrastructure를 참조하지 않습니다.
-- 기능은 common을 사용하고, **main의 common은 hello/auth를 직접 참조하지 않습니다.**
+- 기능은 common을 사용하고, **main의 common은 hello/auth/member/product/order를 직접 참조하지 않습니다.**
   공통 설정은 프레임워크 Bean과 설정 객체를 구성하며 업무 Controller/Service를 호출하지 않습니다.
 - 인증 전용 InvalidCredentialsException은 application, HTTP 매핑은 api의 AuthExceptionHandler가 소유합니다.
   이 Advice는 AuthController 패키지로 범위를 제한하고, 먼저 처리하지 않는 DTO/JSON 오류는 공통 Advice가 처리합니다.
@@ -91,7 +101,7 @@ api/dto에는 기존 요청 검증 애너테이션과 JSON 계약이 유지됩�
 양쪽 Service는 API DTO/requestId 대신 업무 인자와 결과 record를 사용하고 Controller가 API DTO로 변환합니다.
 TokenService.issue(username, password)는 IssuedToken을 반환하고 AuthController가 TokenResponse로 변환합니다.
 IssuedToken과 TokenResponse 모두 toString에서 accessToken을 가립니다. JWT 검증·발급 정책은 유지합니다.
-현재 경계는 Java 패키지 기준이며 별도 Gradle 모듈이나 강제 모듈 격리 체계는 아닙니다.
+현재 경계는 Java 패키지이며 ArchUnit 테스트가 의존 방향과 feature 순환을 검사합니다. 별도 Gradle 모듈/JPMS 격리는 아닙니다.
 
 새 코드의 기준: **업무 Controller는 ApiResponses, 오류 처리기는 ProblemDetails**를 사용합니다.
 ApiResponses.fail은 common/exception/ProblemDetails로 위임합니다. Actuator/Prometheus/streaming을 자동으로 감싸지 않습니다.
@@ -186,11 +196,14 @@ Dockerfile은 버전 문자열을 알 필요가 없으며 이미지 태그/diges
 독립 빌드용 plugin/BOM 버전은 두 모듈과 문서를 함께 갱신합니다.
 Gateway의 native-access JVM 플래그는 Netty 경로를 위한 설정으로 Backend에 기계적으로 복사하지 않습니다.
 
-공유 convention plugin, Spotless/Checkstyle/ArchUnit은 CI 도입 시 검토합니다.
+ArchUnit은 11단계에서 적용했습니다. 공유 convention plugin과 Spotless/Checkstyle은 CI 도입 시 검토합니다.
 layered JAR, Foojay 자동 JDK 다운로드는 이번 변경에 포함하지 않았습니다.
 기존 target/bin/Gradle cache는 Git 제외 상태를 유지하며 사용자 산출물을 임의 삭제하지 않습니다.
 
 ## 검증 범위
+
+11단계 목업/라이브러리 추가 후 96개 회귀 테스트가 통과했습니다. [최신 검증 기록](learning/11-features-and-library-roadmap.md#검증과-단계-체크)을 참고합니다.
+아래 78개 기록은 패키지 전환 시점의 이전 검증입니다.
 
 2026-09-29 기능별 구조 전환 후 Java 컴파일과 두 모듈의 회귀 테스트 78개가 통과했습니다.
 Backend 29개, Gateway 49개이며 인증 전용 Advice와 공통 입력 검증 Advice의 처리 순서도 확인했습니다.

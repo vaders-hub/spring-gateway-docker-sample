@@ -22,6 +22,9 @@ spring:
     timeout-per-shutdown-phase: 20s
 
 app:
+  learning:
+    mock-enabled: false
+    docs-enabled: false
   observability:
     prometheus-public: ${PROMETHEUS_PUBLIC:false}
   # 필수 비밀값은 환경변수로 받는다. common/config/properties에서 시작 시 타입·필수값을 검증한다.
@@ -93,3 +96,11 @@ logging:
   pattern:
     # SLF4J addKeyValue 필드를 local/dev 콘솔에서도 표시한다. ECS 출력은 자체 encoder를 사용한다.
     level: "%5p %kvp"
+
+# 명세/UI는 local/test 학습용으로 명시적으로 켠다. Gateway 집계 문서는 별도다.
+springdoc:
+  api-docs:
+    enabled: ${app.learning.docs-enabled}
+  swagger-ui:
+    enabled: ${app.learning.docs-enabled}
+  paths-to-match: /hello,/echo,/members/**,/products/**,/orders/**

@@ -183,3 +183,13 @@ committed 응답 보존은 단위 테스트로 확인하며 Compose/kind 재배�
 Gateway와 Backend의 envelope 형태는 같지만, 두 배포 단위를 하나의 공유 Java 모듈에
 강하게 결합하지 않기 위해 각 서비스 내부 common 패키지에 둡니다. 세 번째 소비자가
 생기거나 독립 계약 배포가 필요해질 때 버전이 있는 contract 모듈로 승격합니다.
+
+
+## 11단계 local/test feature API
+
+app.learning.mock-enabled=true일 때 /members, /members/{id}, /products, /products/{id} GET은 api.read,
+/orders/preview POST는 api.write가 필요합니다. Gateway 경로에는 /api가 붙습니다.
+견적은 저장하지 않고 200 data/meta로 응답합니다. 수량 검증은 400, 없는 회원/상품은 BusinessException → 404 NOT_FOUND입니다.
+허용하지 않은 쓰기 메서드는 기존 기본 거부 403입니다. 고정 fixture에는 사용자별 소유권 정책을 구현하지 않았습니다.
+문서/UI는 별도 app.learning.docs-enabled=true와 local/test에서만 노출합니다.
+실행 예제와 후속 DB 범위는 [11단계](learning/11-features-and-library-roadmap.md)를 참고합니다.

@@ -109,9 +109,16 @@ done
 변경할 수 있습니다. Rate Limit 키는 JWT의 `sub` 값이므로 사용자별 버킷이
 Redis에 만들어집니다.
 
+## Feature와 라이브러리 확장
+
+Backend에 local/test 전용 member/product/order 목업을 추가했습니다. 회원·상품 조회와 주문 견적 계산이며 저장·결제는 하지 않습니다.
+MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포함합니다.
+[11단계 안내와 후속 로드맵](docs/learning/11-features-and-library-roadmap.md)에서 실행 예제와 선택형 UI overlay를 확인하세요.
+다음 단계는 PostgreSQL + JPA/Flyway/Testcontainers이며 아직 DB는 추가하지 않았습니다.
+
 ## 주요 구현 위치
 
-기능별 구조를 사용합니다. Backend는 hello, Gateway는 auth 안에 api/application을 두고,
+기능별 구조를 사용합니다. Backend는 hello/member/product/order, Gateway는 auth 안에 api/application을 두고,
 설정·보안·예외 처리와 공통 응답·enum·util은 common 아래에 둡니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
 
 ```text
@@ -233,8 +240,8 @@ RFC 9457 `application/problem+json` 형식에 `errorCode`, `requestId`를 추가
 ControllerAdvice 밖에서 발생하는 Spring Security 401/403도 동일한 오류 형태로
 반환합니다. 상세 계약은 [API contract](docs/api-contract.md)를 참고합니다.
 
-현재는 DB/JPA 의존성이 없으므로 Entity, Repository, HikariCP, `@Transactional`을
-추가하지 않았습니다. DB 도입 시 Entity와 API DTO를 분리하고 Flyway,
+현재 DB/JPA 의존성·Entity·HikariCP·`@Transactional`은 없습니다.
+학습용 불변 fixture Repository와 조회 계약만 추가했습니다. DB 도입 시 Entity와 API DTO를 분리하고 Flyway,
 `ddl-auto=validate`, Hikari pool/timeout/leak detection, Service 계층 transaction
 경계를 함께 도입합니다. 구체적인 기준은
 [Persistence introduction gate](docs/persistence-policy.md)에 정리했습니다.

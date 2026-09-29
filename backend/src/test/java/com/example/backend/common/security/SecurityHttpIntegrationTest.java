@@ -225,6 +225,16 @@ class SecurityHttpIntegrationTest {
         assertProblem(request("GET", "/actuator/env", jwt, null), 403, "ACCESS_DENIED");
     }
 
+    @Test
+    void learningFeaturesAndDocumentationAreDisabledByDefault() throws Exception {
+        String jwt = token("api.read api.write", AUDIENCE, ISSUER, SECRET, 300);
+        assertProblem(request("GET", "/members", jwt, null), 404, "NOT_FOUND");
+        assertProblem(request("GET", "/products", jwt, null), 404, "NOT_FOUND");
+        assertProblem(request("POST", "/orders/preview", jwt, "{}"), 404, "NOT_FOUND");
+        assertProblem(request("GET", "/v3/api-docs", jwt, null), 403, "ACCESS_DENIED");
+        assertProblem(request("GET", "/swagger-ui/index.html", jwt, null), 403, "ACCESS_DENIED");
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class ErrorFixtures {
         @Bean

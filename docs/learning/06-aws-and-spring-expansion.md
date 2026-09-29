@@ -90,7 +90,10 @@ Redis 오류의 요청 단위 차단과 pool 고갈 검증을 보완합니다. �
 구현했으며 [처리 범위](../api-contract.md#시스템별-오류-처리-경계)를 참고합니다. CircuitBreaker/Retry는 그 이후입니다.
 설정값이 있다는 사실과 자동 테스트/실제 kind 검증 결과를 별도로 기록합니다.
 
-## 6-3. Oracle + JPA + MyBatis 후속 단계
+## 6-3. Oracle + JPA + MyBatis 선택 확장
+
+현재 선택한 기본 DB 후속은 PostgreSQL + JPA/Flyway/Testcontainers입니다.
+[11단계 로드맵](11-features-and-library-roadmap.md)을 먼저 진행하고, 아래 Oracle/MyBatis는 별도 선택 학습으로 유지합니다.
 
 현재 이 세 구성은 **아직 연결/구현되지 않았습니다.** Kubernetes 기초보다 먼저
 추가하지 않습니다. Oracle 버전과 기존 schema 사용 여부부터 결정합니다.
