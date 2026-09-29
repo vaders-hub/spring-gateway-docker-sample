@@ -1,118 +1,109 @@
 # Feature-based Structure와 설정 책임
 
-2026-09-29부터 기능을 최상위 패키지로 묶고, 각 기능 안에서 controller/service/dto 등의
-역할을 나눕니다. Backend의 루트 controller/service/dto와 Gateway의 루트 filter는 사용하지 않습니다.
-기능과 관계없는 앱 전체 설정은 config, 여러 기능이 공유하는 응답/추적 코드는 common에 둡니다.
+2026-09-29 사용자 제공 샘플을 기준으로 기능 내부를 presentation/application으로 나누고,
+설정·보안·예외 처리 등 공통 기술 코드는 common 아래로 모았습니다.
+Backend의 업무 기능은 hello, Gateway의 데모 토큰 발급 기능은 auth입니다.
 
 ## 현재 구조
 
 ```text
 com.example.backend
 ├── BackendApplication
-├── hello/
-│   ├── controller/   HelloController
-│   ├── service/      HelloService와 업무 결과 record
-│   └── dto/          HelloResponse, EchoRequest, EchoResponse
-├── security/
-│   ├── config/       SecurityConfig, JwtConfig
-│   ├── properties/   JwtProperties
-│   └── web/          SecurityProblemWriter
-├── config/           TimeConfig, runtime/RuntimeProfileGuard, properties/ObservabilityProperties
-└── common/           api, code, error, util, web
+├── common/
+│   ├── config/       SecurityConfig, JwtConfig, TimeConfig
+│   │   ├── properties/  JwtProperties, ObservabilityProperties
+│   │   └── runtime/     RuntimeProfileGuard
+│   ├── exception/    GlobalExceptionHandler, ApiErrorController, ProblemDetails
+│   ├── security/     SecurityProblemWriter
+│   ├── api/          ApiResponse, ApiResponses
+│   ├── code/         SuccessCode, ErrorCode
+│   ├── util/         ErrorDiagnostics
+│   └── web/          RequestContext, RequestIdFilter
+└── hello/
+    ├── application/  HelloService와 업무 결과 record
+    │   └── dto/      HelloResponse, EchoRequest, EchoResponse
+    └── presentation/ HelloController
 
 com.example.gateway
 ├── GatewayApplication
-├── auth/
-│   ├── controller/   AuthController
-│   ├── service/      TokenService, InvalidCredentialsException
-│   ├── dto/          TokenRequest, TokenResponse
-│   ├── config/       AuthIssuerConfig, ConditionalOnDemoIssuer
-│   └── error/        AuthExceptionHandler
-├── routing/
-│   ├── config/       GatewayFilterConfig (principalKeyResolver)
-│   └── filter/       RequestHeadersFilter
-├── security/
-│   ├── config/       SecurityConfig, JwtConfig, CorsConfig
-│   ├── properties/   SecurityProperties
-│   └── web/          SecurityProblemWriter
-├── config/           TimeConfig, runtime/RuntimeProfileGuard, properties/ObservabilityProperties
-└── common/           api, code, error, util, web
+├── common/
+│   ├── config/       SecurityConfig, JwtConfig, CorsConfig, TimeConfig,
+│   │                GatewayFilterConfig, AuthIssuerConfig, ConditionalOnDemoIssuer
+│   │   ├── properties/  SecurityProperties, ObservabilityProperties
+│   │   └── runtime/     RuntimeProfileGuard
+│   ├── exception/    GlobalExceptionHandler, ProblemDetails, ProblemResponseWriter,
+│   │                GatewayErrorHandler, GatewayErrorResponses
+│   ├── security/     SecurityProblemWriter
+│   ├── api/          ApiResponse, ApiResponses
+│   ├── code/         SuccessCode, ErrorCode
+│   ├── util/         ErrorDiagnostics
+│   └── web/          RequestContext, RequestIdWebFilter, RequestHeadersFilter
+└── auth/
+    ├── application/  TokenService, InvalidCredentialsException
+    │   └── dto/      TokenRequest, TokenResponse
+    └── presentation/ AuthController, AuthExceptionHandler
 ```
 
-`hello`는 현재 hello/echo 샘플 use case를 함께 소유합니다. 둘을 HTTP endpoint 하나씩 별도 기능으로
-쪼개지 않습니다. Gateway의 `auth`는 데모 토큰 발급, `security`는 요청 인증/인가,
-`routing`은 인증 이후 Backend 전달과 요청 제한 설정을 소유합니다.
+샘플의 member/product/order는 예시이므로 현재 저장소에 빈 기능으로 추가하지 않습니다.
+현재 hello/auth는 영속화할 업무 모델이 없으므로 domain도 만들지 않습니다.
+도메인 모델·Repository가 필요하면 해당 기능의 domain, 복잡한 변환이 필요하면
+application/mapper를 추가합니다. 기존의 간단한 Controller 변환 코드는 유지합니다.
+
+## 계층 책임과 의존 방향
 
 | 패키지 | 책임 |
 |---|---|
-| hello/controller, hello/service, hello/dto | Backend HTTP 경계, 업무 처리, 외부 계약 |
-| auth/controller, auth/service, auth/dto | Gateway 토큰 발급 HTTP 경계, use case, 외부 계약 |
-| auth/config, auth/error | 데모 발급 Bean 조건/encoder, InvalidCredentialsException 처리 |
-| routing/config, routing/filter | rate-limit key resolver, Gateway 라우팅 단계 헤더 전달 |
-| security/config, security/properties, security/web | JWT 검증·인가·CORS, 보안 설정 record, Security 401/403 응답 |
-| config | UTC Clock 등 앱 전체 구성 |
-| config/runtime, config/properties | lifecycle profile guard, 공통 관측 설정 ObservabilityProperties |
-| common/web | Request ID 정규화·요청 로그·HTTP 요청 문맥 |
-| common/error | 표준 입력 오류/예상치 못한 오류의 Advice, ProblemDetails, Servlet/WebFlux 오류 adapter |
-| common/api | ApiResponse와 Controller용 ApiResponses.success/fail |
-| common/code | 공통 응답 enum SuccessCode/ErrorCode |
-| common/util | 프레임워크 독립 보조 함수 ErrorDiagnostics |
+| feature/presentation | Controller, HTTP 검증 시작, 응답 변환, 기능 전용 Advice |
+| feature/application | Service, use case, 업무 결과와 기능 전용 예외 |
+| feature/application/dto | 해당 기능의 요청/응답 계약 |
+| feature/domain (필요 시) | 업무 모델·규칙·Repository 계약. 현재 생성하지 않음 |
+| common/config | 보안·JWT·CORS·Clock·라우팅 구성 및 데모 발급 Bean 조건 |
+| common/config/properties, common/config/runtime | 타입 기반 설정 객체, 시작 시 profile 보호 |
+| common/security | Servlet/WebFlux 인증·인가 오류 응답 adapter |
+| common/exception | 표준 검증·미처리 오류의 Advice, ProblemDetails, 전역 오류 adapter |
+| common/web | 요청 문맥·로그·Request ID·라우팅 헤더 전달 |
+| common/api, common/code, common/util | 공통 응답 생성, enum, 순수 진단 유틸리티 |
 
-## 의존 방향과 기능 경계
+- 기본 방향은 presentation → application → domain(도입 시)입니다. application은 presentation을 참조하지 않습니다.
+- 기능은 common을 사용하고, **main의 common은 hello/auth를 직접 참조하지 않습니다.**
+  공통 설정은 프레임워크 Bean과 설정 객체를 구성하며 업무 Controller/Service를 호출하지 않습니다.
+- 인증 전용 InvalidCredentialsException은 application, HTTP 매핑은 presentation의 AuthExceptionHandler가 소유합니다.
+  이 Advice는 AuthController 패키지로 범위를 제한하고, 먼저 처리하지 않는 DTO/JSON 오류는 공통 Advice가 처리합니다.
+- JwtConfig는 검증 decoder, AuthIssuerConfig는 데모 발급 encoder를 만듭니다.
+  app.security 접두사와 환경변수·local/dev/test 발급 조건은 유지합니다.
+- RequestHeadersFilter는 인증된 Principal을 사용하며 TokenService를 호출해 인증을 재구현하지 않습니다.
+- 기능 간 협력은 상대 기능의 공개 application 서비스/API를 통합니다. 다른 기능의 presentation이나 내부 저장소에 의존하지 않습니다.
 
-- 업무 기능은 common을 사용하며 **common은 hello/auth/security/routing을 직접 참조하지 않습니다.**
-- 인증 전용 예외는 `auth/error/AuthExceptionHandler`에서 처리합니다. 공통 Advice는 auth의 예외 타입을 알지 않습니다.
-  인증 Advice가 먼저 실행되고, DTO/JSON 검증 및 다른 오류는 공통 Advice로 이어집니다.
-- `auth → security.properties`는 JWT·데모 발급 정책을 공유하기 위한 명시적 의존입니다.
-  기존 app.security 설정 접두사와 환경변수 계약을 유지하려고 SecurityProperties record를 공유합니다.
-  `security`는 auth에 의존하지 않으며 JwtConfig는 검증 decoder만, AuthIssuerConfig는 발급 encoder만 만듭니다.
-- routing은 Security가 검증한 Principal을 사용합니다. Controller/TokenService를 호출하여 인증을 재구현하지 않습니다.
-- 앱 전체 구성인 config는 업무 Controller/Service를 직접 호출하지 않습니다. profile guard는 Environment 설정을 검사합니다.
-- 기능 사이 협력이 필요하면 상대 기능의 공개 서비스/API를 사용하고 Controller·DTO·내부 저장소를 공유하지 않습니다.
-  현재는 Java 패키지 경계이며 별도 Gradle 모듈이나 강제 모듈 격리 체계는 아닙니다.
-
-HTTP 진입점은 controller, 업무 로직과 transaction 경계는 service로 이름을 통일합니다.
-Service 인터페이스/Impl, domain/entity/repository는 실제 필요가 생길 때 추가합니다.
-Backend Service는 HTTP DTO/requestId 대신 업무 인자와 결과 record를 사용하고 Controller가 변환합니다.
-Actuator/Prometheus와 streaming까지 자동으로 감싸는 전역 Advice는 사용하지 않습니다.
+application/dto에는 기존 요청 검증 애너테이션과 JSON 계약이 유지됩니다.
+따라서 이번 변경은 패키지 책임을 정리하는 것이며 프레임워크에서 완전히 분리된 도메인 아키텍처를 의미하지 않습니다.
+Backend Service는 HTTP DTO/requestId 대신 업무 인자와 결과 record를 사용하고 presentation이 변환합니다.
+현재 경계는 Java 패키지 기준이며 별도 Gradle 모듈이나 강제 모듈 격리 체계는 아닙니다.
 
 새 코드의 기준: **업무 Controller는 ApiResponses, 오류 처리기는 ProblemDetails**를 사용합니다.
-ApiResponses.fail은 common/error/ProblemDetails로 위임하며 오류 처리기는 common/api를 참조하지 않습니다.
-공통 enum/util을 무조건 기능으로 복제하지 않고 기존 common.code/common.util을 유지합니다.
+ApiResponses.fail은 common/exception/ProblemDetails로 위임합니다. Actuator/Prometheus/streaming을 자동으로 감싸지 않습니다.
 
 ## 새 기능을 추가하는 순서
 
-1. 예를 들어 `order` 기능이라면 `order/controller`, `order/service`, `order/dto`에 필요한 클래스부터 만듭니다.
-2. 기능 전용 설정·예외 처리가 필요할 때만 `order/config`, `order/error`를 추가합니다.
-   전용 Advice는 해당 Controller 범위로 제한하고, 공통 오류 생성 규칙을 재사용합니다.
-3. 새 API의 경로·메서드·scope를 `security/config/SecurityConfig`에 명시합니다. Backend의 기본 거부 정책은 유지합니다.
-4. 단위 테스트는 main과 같은 기능 패키지에 둡니다. 보안 HTTP 테스트는 security, 공통 오류 통합 테스트는 common/error에 유지합니다.
-5. API 계약·관련 학습 문서와 테스트를 함께 갱신합니다. 실제 기능 없이 빈 패키지나 공통 인터페이스를 미리 만들지 않습니다.
+1. 예를 들어 order라면 order/presentation, order/application, order/application/dto에 실제 필요한 코드부터 추가합니다.
+2. 업무 모델·영속화가 필요할 때 order/domain을, 변환이 복잡할 때 order/application/mapper를 추가합니다.
+   아직 구현할 코드가 없는 빈 패키지·Service 인터페이스/Impl은 만들지 않습니다.
+3. 기능 전용 예외는 application 또는 domain, HTTP 예외 처리기는 presentation에 두고 해당 Controller로 범위를 제한합니다.
+4. 경로·메서드·scope를 common/config/SecurityConfig에 등록합니다. Backend의 기본 거부 정책은 유지합니다.
+5. 테스트는 main과 같은 패키지를 따릅니다. 보안 통합 테스트는 common/security, 공통 오류 테스트는 common/exception에 둡니다.
+6. API 계약·학습 문서와 검증을 함께 갱신합니다. 이동 후 남은 빈 src 디렉터리는 비어 있음을 확인한 뒤 삭제합니다.
 
-실행 클래스는 각 앱 루트 패키지에 유지하므로 component scan과 테스트의 Boot 설정 탐색이 하위 기능을 포함합니다.
-설정 클래스는 proxyBeanMethods=false, 생성자/Bean 매개변수 주입을 유지합니다.
-application YAML은 각 모듈의 src/main/resources에 유지하며 URL·Bean 이름·설정 키는 바꾸지 않았습니다.
-Gateway(WebFlux)와 Backend(Servlet)의 독립 빌드 경계와 각자의 common 패키지도 유지합니다.
+각 Application 클래스는 앱 루트에 유지하여 component scan과 Boot 테스트 설정 탐색이 하위 패키지를 포함합니다.
+생성자/Bean 매개변수 주입, proxyBeanMethods=false, application YAML 위치, URL·Bean 이름·설정 키는 유지합니다.
+Gateway(WebFlux)와 Backend(Servlet)의 독립 빌드 경계와 각자의 common도 유지합니다.
 공유 HTTP 계약은 [api-contract.md](api-contract.md)로 관리합니다.
 
 ## 공통 코드와 유틸리티 배치 기준
 
-각 모듈은 다음 구조를 사용합니다. 두 서비스의 독립 빌드 경계는 유지합니다.
-
-```text
-common/
-├── code/   SuccessCode, ErrorCode
-├── util/   ErrorDiagnostics
-├── api/    ApiResponse, ApiResponses
-├── error/  ProblemDetails, Advice, 오류 writer/handler
-└── web/    RequestContext, 요청 추적 filter
-```
-
-- 공통 응답 enum은 `common.code`에 둡니다. 주문 상태처럼 특정 업무에 속하는 enum은 해당 업무 패키지에 둡니다.
-- 재사용 가능한 순수 보조 함수는 `common.util`에 둡니다. `ErrorDiagnostics`는 Throwable을 받아 안전한 진단 값만 반환하고 직접 로그를 쓰지 않습니다.
-- static 메서드가 있다는 이유만으로 util로 옮기지는 않습니다. HTTP 응답 생성은 api/error, HTTP 요청 문맥은 web에 둡니다.
-- `code`와 `util`은 Controller/Service/응답 팩토리를 참조하지 않습니다. `api → error`, `api/error → code`, `error → util` 방향을 유지합니다.
-- `ErrorDiagnostics`와 `causes`는 다른 패키지에서 사용하므로 public입니다. 생성자는 private으로 유지합니다.
+- 샘플의 common/exception 배치를 따르되, 이전에 정한 enum 분리 기준에 따라 SuccessCode/ErrorCode는 common.code에 함께 둡니다.
+  주문 상태처럼 특정 업무에 속한 enum은 해당 기능의 domain에 둡니다.
+- ErrorDiagnostics는 common.util의 순수 진단 함수입니다. 생성자는 private이고 다른 패키지에서 쓰는 함수는 public입니다.
+- static이라는 이유만으로 util로 옮기지 않습니다. HTTP 응답 생성은 api/exception, 요청 문맥은 web에서 담당합니다.
+- api → exception, api/exception → code, exception → util 방향을 유지합니다. code/util은 Controller/Service/응답 팩토리를 참조하지 않습니다.
 
 ## 설정 객체와 애너테이션
 
@@ -125,12 +116,12 @@ common/
 | `application.yml` / `application-{profile}.yml` | 공통값과 profile별 값을 정의하며 `${...}`로 외부 값을 참조 |
 | Spring `Environment` | 환경변수·설정 파일 등 여러 설정 소스를 우선순위에 따라 조회하고 플레이스홀더 해석에 사용 |
 | `@ConfigurationProperties` | 접두사 아래의 값을 설정 객체에 타입 변환하여 바인딩 |
-| `@EnableConfigurationProperties` | 각 모듈의 `security/config/SecurityConfig`에서 보안·관측 설정 타입을 Spring Bean으로 등록 |
+| `@EnableConfigurationProperties` | 각 모듈의 `common/config/SecurityConfig`에서 보안·관측 설정 타입을 Spring Bean으로 등록 |
 | `@Validated`, `@Valid`, 검증 제약 및 record 생성자 | 필수값·길이·TTL·CORS 등 해당 설정의 조건을 검증. `@ConfigurationProperties`만으로 모든 조건이 검증되지는 않음 |
 | `RuntimeProfileGuard` | 별도 Bean의 `@PostConstruct`에서 `Environment`를 직접 조회해 profile과 금지 설정 조합을 검사 |
 
-실제 바인딩 대상은 Gateway의 [SecurityProperties](../gateway/src/main/java/com/example/gateway/security/properties/SecurityProperties.java)
-(`app.security`), Backend의 [JwtProperties](../backend/src/main/java/com/example/backend/security/properties/JwtProperties.java)
+실제 바인딩 대상은 Gateway의 [SecurityProperties](../gateway/src/main/java/com/example/gateway/common/config/properties/SecurityProperties.java)
+(`app.security`), Backend의 [JwtProperties](../backend/src/main/java/com/example/backend/common/config/properties/JwtProperties.java)
 (`app.security.jwt`), 각 모듈의 `ObservabilityProperties` (`app.observability`)입니다.
 Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties`에는 TTL 필드가 없습니다.
 `RuntimeProfileGuard`는 이 설정 객체들의 검증을 이어받는 마지막 단계가 아니라 독립된 시작 시 검사입니다.

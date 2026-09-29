@@ -244,7 +244,7 @@ Redis 요청 단위 차단과 프록시 오류 계약은 10-4 및 장애 정책 
 
 실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
 
-**읽을 파일:** [Gateway 배포](../../k8s/base/gateway.yaml) · [Backend 배포](../../k8s/base/backend.yaml) · [ConfigMap](../../k8s/base/configmap.yaml) · [staging overlay](../../k8s/overlays/staging/kustomization.yaml) · [profile guard](../../gateway/src/main/java/com/example/gateway/config/runtime/RuntimeProfileGuard.java) · [후속 장애 정책](../resilience-policy.md)
+**읽을 파일:** [Gateway 배포](../../k8s/base/gateway.yaml) · [Backend 배포](../../k8s/base/backend.yaml) · [ConfigMap](../../k8s/base/configmap.yaml) · [staging overlay](../../k8s/overlays/staging/kustomization.yaml) · [profile guard](../../gateway/src/main/java/com/example/gateway/common/config/runtime/RuntimeProfileGuard.java) · [후속 장애 정책](../resilience-policy.md)
 
 - [ ] Deployment → ReplicaSet → Pod 관계와 replicas 변경 시 Service가 Ready Pod를 선택하는 과정을 설명한다.
 - [ ] ConfigMap 원본, Deployment의 개별 env override, 실행 중 프로세스 환경변수를 구분하고 재기동이 필요한 이유를 설명한다.

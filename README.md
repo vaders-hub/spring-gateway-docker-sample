@@ -111,52 +111,52 @@ Redis에 만들어집니다.
 
 ## 주요 구현 위치
 
-기능별 구조를 사용합니다. Backend는 hello/security, Gateway는 auth/routing/security로 묶고,
-공통 응답·enum·util은 common에 유지합니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
+기능별 구조를 사용합니다. Backend는 hello, Gateway는 auth 안에 presentation/application을 두고,
+설정·보안·예외 처리와 공통 응답·enum·util은 common 아래에 둡니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
 
 ```text
-gateway/src/main/java/com/example/gateway/security/config/
+gateway/src/main/java/com/example/gateway/common/config/
   SecurityConfig: 필터 체인과 인가 정책
   JwtConfig: JWT 검증 decoder Bean
   CorsConfig: Origin allowlist와 preflight 정책
 
-gateway/src/main/java/com/example/gateway/auth/config/AuthIssuerConfig.java
+gateway/src/main/java/com/example/gateway/common/config/AuthIssuerConfig.java
   데모 토큰 발급 encoder Bean (local/dev/test + enabled)
 
-gateway/src/main/java/com/example/gateway/auth/error/AuthExceptionHandler.java
+gateway/src/main/java/com/example/gateway/auth/presentation/AuthExceptionHandler.java
   인증 기능 전용 예외 처리
 
-gateway/src/main/java/com/example/gateway/auth/controller/AuthController.java
+gateway/src/main/java/com/example/gateway/auth/presentation/AuthController.java
   HTTP 요청/응답 경계
 
-gateway/src/main/java/com/example/gateway/auth/service/TokenService.java
+gateway/src/main/java/com/example/gateway/auth/application/TokenService.java
   자격증명 확인과 로컬 학습용 JWT 발급
 
-gateway/src/main/java/com/example/gateway/auth/dto/
+gateway/src/main/java/com/example/gateway/auth/application/dto/
   인증 요청/응답 계약
 
-gateway/src/main/java/com/example/gateway/routing/filter/RequestHeadersFilter.java
+gateway/src/main/java/com/example/gateway/common/web/RequestHeadersFilter.java
   Request ID 및 인증 사용자 헤더 전달
 
 gateway/src/main/java/com/example/gateway/common/web/RequestIdWebFilter.java
   모든 요청의 안전한 Request ID와 완료 감사 로그
 
-gateway/src/main/java/com/example/gateway/routing/config/GatewayFilterConfig.java
+gateway/src/main/java/com/example/gateway/common/config/GatewayFilterConfig.java
   JWT subject 기반 Rate Limit 키 생성
 
-gateway/src/main/java/com/example/gateway/security/properties/SecurityProperties.java
+gateway/src/main/java/com/example/gateway/common/config/properties/SecurityProperties.java
   app.security 설정 바인딩 및 시작 시 validation
 
 gateway/src/main/resources/application.yml
   Route, Redis, RequestRateLimiter 설정
 
-backend/src/main/java/com/example/backend/hello/controller/
+backend/src/main/java/com/example/backend/hello/presentation/
   Backend HTTP 요청/응답 경계
 
-backend/src/main/java/com/example/backend/hello/service/
+backend/src/main/java/com/example/backend/hello/application/
   Backend 업무 로직
 
-backend/src/main/java/com/example/backend/hello/dto/
+backend/src/main/java/com/example/backend/hello/application/dto/
   Backend 요청/응답 계약
 
 */src/main/java/**/common/

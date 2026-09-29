@@ -24,7 +24,7 @@ spring:
 app:
   observability:
     prometheus-public: ${PROMETHEUS_PUBLIC:false}
-  # 필수 비밀값은 환경변수로 받는다. security/properties에서 시작 시 타입·필수값을 검증한다.
+  # 필수 비밀값은 환경변수로 받는다. common/config/properties에서 시작 시 타입·필수값을 검증한다.
   security:
     jwt:
       issuer: ${JWT_ISSUER}
@@ -35,7 +35,7 @@ management:
   info:
     env:
       enabled: true
-  # 노출 대상과 인증 허용은 별개이다. security/config/SecurityConfig가 접근을 결정한다.
+  # 노출 대상과 인증 허용은 별개이다. common/config/SecurityConfig가 접근을 결정한다.
   endpoints:
     web:
       exposure:

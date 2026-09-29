@@ -91,12 +91,12 @@ return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 원래 HTTP 상태를 본문의 `status`에도 반영하며 `Allow` 등 원래 헤더를 보존합니다.
 Service는 응답 팩터리를 호출하지 않고 업무 결과를 반환하거나 예외를 던집니다.
 
-인증/인가 오류는 Controller 전에 발생하므로 각 모듈의 `security/web/SecurityProblemWriter`를 사용합니다.
-writer는 `common/error/ProblemDetails`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
+인증/인가 오류는 Controller 전에 발생하므로 각 모듈의 `common/security/SecurityProblemWriter`를 사용합니다.
+writer는 `common/exception/ProblemDetails`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
 Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화합니다.
 
 `ApiResponses.fail`도 같은 `ProblemDetails.forCode`로 위임합니다. 오류 처리기는 `common/api`를
-참조하지 않으므로 의존 방향은 `common/api → common/error` 한 방향입니다.
+참조하지 않으므로 의존 방향은 `common/api → common/exception` 한 방향입니다.
 응답 enum인 `SuccessCode`/`ErrorCode`는 각 모듈의 `common/code`에 모으고,
 오류 진단 유틸리티 `ErrorDiagnostics`는 `common/util`에 둡니다. 코드·메시지·HTTP 계약은 동일합니다.
 프레임워크 상태는 `ProblemDetails.forStatus`가 처리합니다. `ErrorCode`에 없는 418 같은 상태도
@@ -107,11 +107,11 @@ Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으�
 
 | 발생 경로 | 처리 코드 | 결과 |
 |---|---|---|
-| Controller/DTO 검증/일반 Service 예외 | 각 모듈 `common/error/GlobalExceptionHandler` | 공통 Problem Details, 안전한 메시지, 필드별 `errors` |
-| 데모 자격증명 오류 | Gateway `auth/error/AuthExceptionHandler` | 기존 INVALID_CREDENTIALS 401, Bearer/no-store 유지 |
-| 인증/인가 거절 | 각 모듈 `security/web/SecurityProblemWriter` | 401/403과 인증 헤더 유지 |
-| Backend Servlet filter 예외 또는 `sendError` | [ApiErrorController](../backend/src/main/java/com/example/backend/common/error/ApiErrorController.java) | 컨테이너 ERROR dispatch의 원래 상태·경로·requestId로 JSON 작성 |
-| Gateway WebFilter/라우팅 예외 | Advice 또는 [GatewayErrorHandler](../gateway/src/main/java/com/example/gateway/common/error/GatewayErrorHandler.java) → `GatewayErrorResponses` | 미처리 오류 500, 연결 실패 502, 응답 timeout 504 등 |
+| Controller/DTO 검증/일반 Service 예외 | 각 모듈 `common/exception/GlobalExceptionHandler` | 공통 Problem Details, 안전한 메시지, 필드별 `errors` |
+| 데모 자격증명 오류 | Gateway `auth/presentation/AuthExceptionHandler` | 기존 INVALID_CREDENTIALS 401, Bearer/no-store 유지 |
+| 인증/인가 거절 | 각 모듈 `common/security/SecurityProblemWriter` | 401/403과 인증 헤더 유지 |
+| Backend Servlet filter 예외 또는 `sendError` | [ApiErrorController](../backend/src/main/java/com/example/backend/common/exception/ApiErrorController.java) | 컨테이너 ERROR dispatch의 원래 상태·경로·requestId로 JSON 작성 |
+| Gateway WebFilter/라우팅 예외 | Advice 또는 [GatewayErrorHandler](../gateway/src/main/java/com/example/gateway/common/exception/GatewayErrorHandler.java) → `GatewayErrorResponses` | 미처리 오류 500, 연결 실패 502, 응답 timeout 504 등 |
 | Gateway 요청 제한 거절 | YAML의 `throw-on-limit: true` → 공통 `GatewayErrorResponses` | 429 본문 작성, rate-limit 헤더 유지, Backend 미호출 |
 
 Backend는 Boot 4의 `spring.web.error.path`(기본 `/error`)를 사용하며, Security에서
@@ -120,8 +120,8 @@ Backend는 Boot 4의 `spring.web.error.path`(기본 `/error`)를 사용하며, S
 500/405/503 등은 그대로 보존하며 모든 오류 상태를 403으로 바꾸지는 않습니다.
 
 Gateway 라우팅 예외는 `GlobalExceptionHandler`에 전달되기도 하므로, Advice와 전역 handler가
-[GatewayErrorResponses](../gateway/src/main/java/com/example/gateway/common/error/GatewayErrorResponses.java)의 상태·헤더 매핑을 함께 사용합니다.
-Gateway의 [ProblemResponseWriter](../gateway/src/main/java/com/example/gateway/common/error/ProblemResponseWriter.java)는
+[GatewayErrorResponses](../gateway/src/main/java/com/example/gateway/common/exception/GatewayErrorResponses.java)의 상태·헤더 매핑을 함께 사용합니다.
+Gateway의 [ProblemResponseWriter](../gateway/src/main/java/com/example/gateway/common/exception/ProblemResponseWriter.java)는
 Security/전역 handler의 직렬화·헤더 쓰기를 공유합니다. 정규화한 requestId와 원래 요청 경로는
 exchange attribute에 두어 요청 mutate/StripPrefix 이후에도 유지합니다. HEAD 응답에는 본문을 쓰지 않습니다.
 프레임워크의 `Allow`, rate-limit 헤더, 기존 `Retry-After`를 보존하며, 계산 근거 없는 Retry-After를 새로 만들지 않습니다.
@@ -173,11 +173,11 @@ committed 응답 보존은 단위 테스트로 확인하며 Compose/kind 재배�
 
 ## 계층 경계
 
-- `<feature>/controller`: HTTP mapping, validation 시작, `ApiResponses.success` 호출
-- `<feature>/service`: use case와 업무 로직
-- `<feature>/dto`: 외부 요청/응답 계약
+- `<feature>/presentation`: HTTP mapping, validation 시작, `ApiResponses.success` 호출
+- `<feature>/application`: use case와 업무 로직
+- `<feature>/application/dto`: 외부 요청/응답 계약
 - `common`: 요청 추적, 공통 응답과 오류 처리
-- `<feature>/entity`: DB/JPA가 도입될 때만 생성하며 DTO와 분리
+- `<feature>/domain`: 업무 모델·규칙·Repository 계약이 필요할 때 생성하며 DTO와 분리
 
 Gateway와 Backend의 envelope 형태는 같지만, 두 배포 단위를 하나의 공유 Java 모듈에
 강하게 결합하지 않기 위해 각 서비스 내부 common 패키지에 둡니다. 세 번째 소비자가

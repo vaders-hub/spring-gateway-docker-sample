@@ -2,7 +2,7 @@ package com.example.gateway.common.api;
 
 import com.example.gateway.common.code.ErrorCode;
 import com.example.gateway.common.code.SuccessCode;
-import com.example.gateway.common.error.ProblemDetails;
+import com.example.gateway.common.exception.ProblemDetails;
 import java.time.Instant;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;

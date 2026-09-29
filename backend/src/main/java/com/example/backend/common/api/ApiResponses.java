@@ -2,7 +2,7 @@ package com.example.backend.common.api;
 
 import com.example.backend.common.code.ErrorCode;
 import com.example.backend.common.code.SuccessCode;
-import com.example.backend.common.error.ProblemDetails;
+import com.example.backend.common.exception.ProblemDetails;
 import java.time.Instant;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;

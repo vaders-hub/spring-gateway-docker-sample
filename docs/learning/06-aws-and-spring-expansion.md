@@ -56,8 +56,8 @@ API Gateway의 route throttling과 Redis의 subject별 제한을 같은 정책�
    Spring 자체가 `.env` 파일을 자동 읽는다고 가정하지 않습니다.
 3. `@EnableConfigurationProperties`의 Bean 등록, 설정 record의 `@Validated`·제약·생성자 검증,
    `RuntimeProfileGuard`의 독립적인 환경 검사를 구분합니다. [설정 객체와 애너테이션](../package-structure.md#설정-객체와-애너테이션)을 참고합니다.
-4. `security/config`의 JWT/CORS/인가 정책과 hello/auth 기능 내부의 controller/service/dto 경계를 읽습니다.
-5. `common/error`, 요청 ID, probe, 종료 시간을 검토합니다.
+4. `common/config`의 JWT/CORS/인가 정책과 hello/auth 기능 내부의 `presentation`·`application`·`application/dto` 경계를 읽습니다.
+5. `common/exception`, 요청 ID, probe, 종료 시간을 검토합니다.
 
 주요 운영 설정 간 우선순위는 명령행 > JVM 시스템 속성 > OS 환경변수 > 설정 파일입니다.
 이는 전체 PropertySource 목록의 일부이며 테스트 속성 등 별도 source도 있습니다.
@@ -67,7 +67,7 @@ API Gateway의 route throttling과 Redis의 subject별 제한을 같은 정책�
 
 추가 업무 API 구현 순서 (아직 구현되지 않은 과제):
 
-1. 실제 업무를 선택하고 `<feature>/controller`, `service`, `dto/request`, `dto/response`를 만듭니다.
+1. 실제 업무를 선택하고 `<feature>/presentation`, `<feature>/application`, `<feature>/application/dto`를 만듭니다. domain/mapper는 필요한 코드가 생길 때 추가합니다.
 2. HTTP 검증과 변환은 Controller, 업무 규칙은 Service로 둡니다.
 3. 공통 성공/오류 계약과 생성자 주입을 재사용합니다.
 4. 설정을 추가한다면 타입 바인딩, fail-fast 검증, 환경변수, 문서를 한 묶음으로 추가합니다.
@@ -160,7 +160,7 @@ LocalStack/EKS Anywhere 같은 추가 도구도 현재 목표에는 필수가 �
 
 실행 결과를 확인한 뒤 아래 항목을 관련 파일과 연결해 설명합니다. 모든 클래스를 암기하기보다 요청 한 건과 설정 한 개를 끝까지 추적하세요.
 
-**읽을 파일:** [패키지 구조](../package-structure.md) · [영속성 설계](../persistence-policy.md) · [장애 정책](../resilience-policy.md) · [Gateway 속성 검증](../../gateway/src/main/java/com/example/gateway/security/properties/SecurityProperties.java) · [Backend Service](../../backend/src/main/java/com/example/backend/hello/service/HelloService.java)
+**읽을 파일:** [패키지 구조](../package-structure.md) · [영속성 설계](../persistence-policy.md) · [장애 정책](../resilience-policy.md) · [Gateway 속성 검증](../../gateway/src/main/java/com/example/gateway/common/config/properties/SecurityProperties.java) · [Backend Service](../../backend/src/main/java/com/example/backend/hello/application/HelloService.java)
 
 - [ ] kind의 Kubernetes 공통 개념과 EKS의 IAM/VPC/ALB/EBS 등 별도 검증 대상을 대응시켜 설명한다.
 - [ ] Gateway API·Spring Cloud Gateway·AWS API Gateway의 책임을 구분하며 로컬 실행이 AWS 리소스를 만든 것은 아님을 설명한다.

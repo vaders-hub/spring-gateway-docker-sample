@@ -5,8 +5,8 @@
 ## 목표 / 구현 위치
 
 Kubernetes에 올리기 전에 앱 자체를 이해합니다. `docker-compose.yml`, 각 모듈의
-`Dockerfile`, `gateway/src/main/resources/application.yml`, `auth/controller`,
-`auth/service`, Backend의 `controller/service/dto`를 함께 봅니다.
+`Dockerfile`, `gateway/src/main/resources/application.yml`, `auth/presentation`,
+`auth/application`, Backend의 `hello/presentation`, `hello/application`, `hello/application/dto`를 함께 봅니다.
 
 컨테이너 엔진은 Windows Docker Desktop, 아래 명령은 WSL Bash에서 실행합니다.
 API 실습에는 curl/jq/OpenSSL이 필요합니다. IDE 개발은 WSL JDK 25가 필요하며 Gradle은
@@ -208,8 +208,8 @@ lab_api POST /api/echo '{"name":"","value":-1}' status
 | 값 정의 | [생성 스크립트](../../scripts/new-local-env.sh)가 `.env`에 `JWT_TTL=1h`를 기록 |
 | 컨테이너에 전달 | [Compose](../../docker-compose.yml)의 `environment`에서 `JWT_TTL: ${JWT_TTL:-1h}`를 해석해 컨테이너 환경변수로 전달 |
 | Spring에서 값 해석 | [Gateway application.yml](../../gateway/src/main/resources/application.yml)의 `app.security.jwt.ttl: ${JWT_TTL:1h}`를 Spring `Environment`의 값으로 해석 |
-| 객체에 바인딩 | [SecurityProperties](../../gateway/src/main/java/com/example/gateway/security/properties/SecurityProperties.java)의 `@ConfigurationProperties(prefix = "app.security")`에 따라 `jwt.ttl`을 `Duration` 타입으로 변환 |
-| 등록과 사용 | [SecurityConfig](../../gateway/src/main/java/com/example/gateway/security/config/SecurityConfig.java)의 `@EnableConfigurationProperties`로 설정 Bean을 등록하고, [TokenService](../../gateway/src/main/java/com/example/gateway/auth/service/TokenService.java)가 `properties.jwt().ttl().toSeconds()`로 3600초를 얻어 토큰 만료 시각 계산 |
+| 객체에 바인딩 | [SecurityProperties](../../gateway/src/main/java/com/example/gateway/common/config/properties/SecurityProperties.java)의 `@ConfigurationProperties(prefix = "app.security")`에 따라 `jwt.ttl`을 `Duration` 타입으로 변환 |
+| 등록과 사용 | [SecurityConfig](../../gateway/src/main/java/com/example/gateway/common/config/SecurityConfig.java)의 `@EnableConfigurationProperties`로 설정 Bean을 등록하고, [TokenService](../../gateway/src/main/java/com/example/gateway/auth/application/TokenService.java)가 `properties.jwt().ttl().toSeconds()`로 3600초를 얻어 토큰 만료 시각 계산 |
 
 `@ConfigurationProperties`는 애너테이션이고 `SecurityProperties`는 실제 설정 객체의 타입입니다.
 Spring이 `.env`를 직접 읽거나 `application.yml` 파일 내용을 수정하는 것은 아닙니다.
