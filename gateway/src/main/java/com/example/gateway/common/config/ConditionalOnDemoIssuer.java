@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Profile;
 // 토큰 발급 Controller/Service/Encoder가 반드시 같은 조건에서 함께 활성화된다.
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-@Profile({"local", "dev", "test"})
+@Profile("!oidc & (local | dev | test)")
 @ConditionalOnProperty(prefix = "app.security.demo-user", name = "enabled", havingValue = "true")
 public @interface ConditionalOnDemoIssuer {
 }

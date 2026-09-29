@@ -220,3 +220,14 @@ POST /orders/preview는 계속 저장하지 않고 200을 반환합니다. 같�
 `GET /api/members/admin`은 일반 목록 handler/DTO/서비스를 재사용하며 Backend에서 `api.read`와 `member.admin`을 모두 요구합니다.
 `/members/{id}`보다 관리 경로 규칙을 먼저 선언합니다. 기존 member ID는 양수만 허용하며 0·음수는 400입니다.
 HTTP 권한과 feature 업무 권한을 구분하고, [15단계](learning/15-security-rules-and-member-tests.md)에 테스트 절차와 확장 기준을 기록했습니다.
+
+
+## 인증 모드별 계약 (16단계)
+
+기본 데모 모드의 /auth/login·/auth/token·/auth/logout은 기존 계약을 유지한다.
+`oidc` profile에서는 해당 Controller/발급기를 생성하지 않는다. 로그인/로그아웃/갱신은 Keycloak 표준 endpoint를 사용한다.
+업무 API 성공 envelope와 Problem Details 401/403 계약은 두 모드에서 동일하다.
+`permissions` 배열을 SCOPE_ authority로 매핑하며 sub는 불변 사용자/서비스 계정 ID다.
+hello/echo의 기존 username 필드는 Principal.getName()(sub)이므로 OIDC에서는 사용자 UUID가 표시될 수 있다.
+서비스 계정은 사람의 로그인 계정과 구분하고 API 호출에는 Access Token을 사용한다(ID Token 사용 금지).
+OIDC 로그아웃은 이미 발급된 Access Token의 즉시 무효화를 보장하지 않는다. 자세한 정책은 [16단계](learning/16-keycloak-and-method-security.md)를 따른다.

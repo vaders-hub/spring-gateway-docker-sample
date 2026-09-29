@@ -1,5 +1,11 @@
 # 15. 보안 설정 간소화와 member 40x 실습
 
+> 인증 모드 구분: 이 문서의 HS256/Redis 로그인은 기본 데모 Compose용이다.
+> Keycloak 레퍼런스 구성은 [16단계](16-keycloak-and-method-security.md)를 사용한다.
+> 현재 Backend는 feature 경로 기본 정책 + 메서드 권한을 사용하며 `/members/admin`은
+> `@RequireMemberAdmin`에서 검사한다. 기본 denyAll과 200/401/403 응답 계약은 유지한다.
+
+
 ## 설정 분리 기준
 
 Gateway(WebFlux)와 Backend(MVC)의 `SecurityConfig`는 각 스택을 유지하면서 아래 순서로 설정을 조립합니다.
@@ -7,7 +13,7 @@ Gateway(WebFlux)와 Backend(MVC)의 `SecurityConfig`는 각 스택을 유지하�
 ```java
 configureStateless(http);
 configureAuthorization(http, observabilityProperties /* Backend는 environment도 전달 */);
-configureJwt(http, problems);
+configureJwt(http, problems, /* JWKS 방식 여부 */ oidc);
 return http.build();
 ```
 
@@ -18,7 +24,7 @@ return http.build();
 | configureJwt | JWT 인증과 인증·인가 실패의 공통 응답 writer 연결 |
 | requireScope | 반복되는 메서드·경로·scope 등록만 공통화 |
 
-Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 실제 등록된 URL을 나열합니다.
+Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 feature 경로와 HTTP 메서드의 기본 정책을 등록하고 세부 권한을 메서드에서 검사합니다.
 두 서비스의 Security API를 하나의 추상 부모 클래스나 util로 감싸지 않습니다.
 규칙이 더 커질 때 `GatewayAuthorization`/`BackendAuthorization`으로 이동할 수 있으며, 현재는 private 메서드로 충분합니다.
 회원/주문 소유권 같은 업무 권한은 각 feature의 application에서 검사하는 기존 원칙을 유지합니다.
@@ -33,11 +39,11 @@ Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 실�
 
 Backend 직접 URL은 `/api`를 제외합니다. 기존 local/test 목업 또는 persistence 조건에서만 member Controller가 활성화됩니다.
 관리 경로는 현재 일반 목록과 같은 DTO/서비스를 재사용하는 권한 학습용 읽기 API입니다.
-따라서 `@GetMapping({"", "/admin"})`으로 같은 handler에 매핑했습니다. 관리 기능/정보가 달라지면 별도 DTO·유스케이스로 분리합니다.
+일반/관리 handler를 분리하고 공통 응답 매핑과 Service를 재사용합니다. 관리 기능/정보가 달라지면 별도 DTO·유스케이스로 분리합니다.
 
-**`/members/admin` 규칙을 `/members/{id}`보다 앞에 두는 것이 중요합니다.** Security는 먼저 일치한 규칙을 적용합니다.
-일반 규칙을 앞에 놓으면 admin 문자열도 `{id}`에 매칭되어 더 약한 정책이 선택될 수 있습니다.
-이 순서와 두 scope를 모두 요구하는 조건은 실제 HTTP 테스트로 고정했습니다.
+현재 `/members/admin`의 추가 권한은 `@RequireMemberAdmin` 메서드 보안으로 검사합니다.
+SecurityConfig의 feature 기본 읽기 정책을 통과한 뒤 api.read + member.admin을 모두 요구합니다.
+URL 규칙 자체는 여전히 먼저 일치하는 규칙이 적용되므로 Gateway 관리 경로 차단 같은 구체적 제한은 일반 허용보다 먼저 선언합니다.
 
 기존 데모 로그인은 `api.read api.write`만 발급합니다. 일반 로그인으로 관리 경로를 호출하면 403이 정상입니다.
 테스트를 위해 공개 로그인 요청에 임의 scope/role을 넣어 권한을 올리는 기능은 추가하지 않았습니다.

@@ -31,6 +31,23 @@ Gateway :8080
 Backend :8081 (외부 비공개, JWT 재검증)
 ```
 
+## 실무 레퍼런스 인증 구성 (16단계)
+
+기존 01~15단계 데모 인증과 별도로 **Keycloak + 메서드 보안 + Client Credentials** 구성을 제공한다.
+이 구성을 사용하면 Gateway의 데모 JSON 로그인 대신 브라우저에서 Keycloak에 로그인한다.
+
+```bash
+bash scripts/reference-stack.sh prepare
+bash scripts/reference-stack.sh up
+python3 scripts/oidc-api.py check
+# 정지: bash scripts/reference-stack.sh stop
+```
+
+브라우저: http://localhost:3001/ · 인증 서버: http://localhost:8180/
+사용자 암호/서비스 secret은 생성된 `.env`에서 확인하며 공유하지 않는다.
+[16단계 실행·권한·로그아웃 정책](docs/learning/16-keycloak-and-method-security.md)을 먼저 읽는다.
+아래의 기본 Compose 명령과 shell lab_login은 이전 데모 모드용이다.
+
 ## Docker Compose 실행
 
 Windows VS Code·Docker Desktop을 유지하고 명령은 **WSL2 Linux Bash**에서 실행합니다.
@@ -271,7 +288,7 @@ docker compose \
 ```
 
 - Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000`
+- Grafana: `http://localhost:3001`
 - Grafana 사용자: `admin`
 - Grafana 비밀번호: Git에서 제외된 `.env`의 `GRAFANA_ADMIN_PASSWORD`
 

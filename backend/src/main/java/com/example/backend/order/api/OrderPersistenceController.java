@@ -1,5 +1,7 @@
 package com.example.backend.order.api;
 
+import com.example.backend.common.security.permission.RequireRead;
+import com.example.backend.common.security.permission.RequireWrite;
 import com.example.backend.common.code.SuccessCode;
 import com.example.backend.common.config.ConditionalOnLearningPersistence;
 import com.example.backend.common.response.*;
@@ -27,6 +29,7 @@ public class OrderPersistenceController {
         this.service = service;
         this.mapper = mapper;
     }
+    @RequireWrite
     @PostMapping
     @Operation(summary = "주문 저장 (결제·재고 차감 없음)")
     public ResponseEntity<ApiResponse<OrderResponse>> create(@Valid @RequestBody OrderCreateRequest request,
@@ -35,6 +38,7 @@ public class OrderPersistenceController {
         var order = service.place(request.memberId(), request.productId(), request.quantity(), principal.getName());
         return ApiResponses.success(SuccessCode.CREATED, mapper.toResponse(order), requestId);
     }
+    @RequireRead
     @GetMapping("/{id}")
     @Operation(summary = "본인 주문 조회")
     public ResponseEntity<ApiResponse<OrderResponse>> get(@PathVariable UUID id, Principal principal,

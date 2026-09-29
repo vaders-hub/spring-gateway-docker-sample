@@ -73,7 +73,7 @@ app:
     jwt:
       issuer: ${JWT_ISSUER}
       audience: ${JWT_AUDIENCE:gateway-sample-api}
-      secret: ${JWT_SECRET}
+      secret: ${JWT_SECRET:}
       ttl: ${JWT_TTL:1h}
     demo-user:
       enabled: false

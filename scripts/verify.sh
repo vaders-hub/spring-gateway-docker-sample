@@ -19,6 +19,10 @@ if [[ -f .env ]]; then
 else
   printf '%s\n' 'Skipped Compose validation: .env is absent. Generate local credentials first.'
 fi
+if grep -Eq '^KC_DB_PASSWORD=.+$' .env 2>/dev/null; then
+  bash scripts/reference-stack.sh config
+fi
+python3 -m json.tool keycloak/gateway-lab-realm.json >/dev/null
 printf '%s\n' 'Static checks passed. No deployment or runtime behavior was verified.'
 if [[ "$mode" == test ]]; then
   printf '%s\n' 'Explicit test mode: compiling and running tests, including local HTTP test servers.'

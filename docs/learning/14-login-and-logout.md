@@ -1,5 +1,11 @@
 # 14. 로그인·로그아웃과 공유 토큰 상태
 
+> 인증 모드 구분: 이 문서의 HS256/Redis 로그인은 기본 데모 Compose용이다.
+> Keycloak 레퍼런스 구성은 [16단계](16-keycloak-and-method-security.md)를 사용한다.
+> 현재 Backend는 feature 경로 기본 정책 + 메서드 권한을 사용하며 `/members/admin`은
+> `@RequireMemberAdmin`에서 검사한다. 기본 denyAll과 200/401/403 응답 계약은 유지한다.
+
+
 기존 `lab_login`도 셸에서 JWT를 만든 것이 아니라 Gateway의 `/auth/token`을 호출했습니다.
 이제 `/auth/login`을 기본 로그인 API로 사용하고, `/auth/token`은 같은 처리의 호환 별칭입니다.
 로그아웃은 클라이언트 변수 삭제에 그치지 않고 Redis의 현재 활성 토큰 기록을 삭제합니다.

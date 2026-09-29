@@ -15,7 +15,7 @@ class CorsConfig {
         // 브라우저의 허용 Origin/메서드/헤더 정책이다. JWT 인증이나 서버 간 접근 제어를 대신하지 않는다.
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.cors().allowedOrigins());
-        configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",

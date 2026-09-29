@@ -64,7 +64,7 @@ class SecurityPropertiesTest {
                         Duration.ofHours(1)));
 
         assertThat(validator.validate(properties))
-                .anyMatch(violation -> violation.getPropertyPath().toString().equals("jwt.secret"));
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("jwt.keyConfigurationValid"));
     }
 
     @Test
@@ -105,5 +105,12 @@ class SecurityPropertiesTest {
                 .isThrownBy(() -> new SecurityProperties.Cors(
                         List.of(),
                         Duration.ofHours(1)));
+    }
+    @Test
+    void acceptsJwksWithoutSharedSecretAndRejectsMixedTrust() {
+        assertThat(validator.validate(new SecurityProperties.Jwt("https://issuer.test", "api", "", Duration.ofMinutes(5),
+                "https://issuer.test/certs"))).isEmpty();
+        assertThat(validator.validate(new SecurityProperties.Jwt("https://issuer.test", "api", "01234567890123456789012345678901", Duration.ofMinutes(5),
+                "https://issuer.test/certs"))).isNotEmpty();
     }
 }

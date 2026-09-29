@@ -1,0 +1,10 @@
+# Keycloak 기반 인증. 기본 Compose의 데모 모드와 분리한다.
+app:
+  security:
+    jwt:
+      issuer: ${OIDC_ISSUER:http://localhost:8180/realms/gateway-lab}
+      audience: gateway-sample-api
+      secret: ""
+      jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8180/realms/gateway-lab/protocol/openid-connect/certs}
+    demo-user:
+      enabled: false

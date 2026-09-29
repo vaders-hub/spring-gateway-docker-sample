@@ -243,6 +243,20 @@ ArchUnit은 이전 의존 방향을 유지하고 Entity가 API DTO로 새어 나
 ## 보안 설정 및 member 관리 조회 (15단계)
 
 양쪽 SecurityConfig를 configureStateless/configureAuthorization/configureJwt로 분리하고 반복 scope 등록만 requireScope로 묶었습니다.
-`GET /api/members/admin`은 일반 목록 handler/DTO/서비스를 재사용하며 Backend에서 `api.read`와 `member.admin`을 모두 요구합니다.
+`GET /api/members/admin`은 일반/관리 handler를 분리하고 DTO/서비스를 재사용하며 Backend에서 `api.read`와 `member.admin`을 모두 요구합니다.
 `/members/{id}`보다 관리 경로 규칙을 먼저 선언합니다. 기존 member ID는 양수만 허용하며 0·음수는 400입니다.
 HTTP 권한과 feature 업무 권한을 구분하고, [15단계](learning/15-security-rules-and-member-tests.md)에 테스트 절차와 확장 기준을 기록했습니다.
+
+
+## 16단계 인증/인가 확장
+
+- `common/security/JwtAuthorities`: 데모 scope와 Keycloak permissions를 동일한 SCOPE_ 권한으로 변환.
+- `common/security/permission`: 여러 feature가 쓰는 @RequireRead / @RequireWrite.
+- `member/application/RequireMemberAdmin`: 회원 관리 권한은 해당 feature가 소유.
+- `SecurityConfig`: feature 경로/HTTP 메서드 기본 정책과 기본 거부. Controller마다 세부 URI를 복제하지 않는다.
+- 각 HTTP handler에 권한을 명시하고 architecture 테스트로 누락을 감지한다.
+- 주문 소유권처럼 데이터에 의존하는 업무 조건은 application/저장소 조회에 유지한다.
+- `auth-ui`: 공식 Keycloak JS adapter를 사용하는 별도 브라우저 실습 클라이언트.
+- `keycloak`: 최초 realm seed. 이미 생성된 realm 변경은 관리 API/Console로 진행.
+
+실행과 운영 차이는 [16단계](learning/16-keycloak-and-method-security.md)를 따른다.

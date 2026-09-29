@@ -1,0 +1,250 @@
+{
+  "realm": "gateway-lab",
+  "enabled": true,
+  "displayName": "Gateway Reference Lab",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "roles": {
+    "realm": [
+      {
+        "name": "api.read"
+      },
+      {
+        "name": "api.write"
+      },
+      {
+        "name": "member.admin"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "lab-browser",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "gateway-sample-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "api-permissions",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "permissions",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ],
+      "redirectUris": [
+        "http://localhost:3001/"
+      ],
+      "webOrigins": [
+        "http://localhost:3001"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3001/"
+      }
+    },
+    {
+      "clientId": "partner-reader",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "gateway-sample-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "api-permissions",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "permissions",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ],
+      "secret": "${KC_READER_SECRET}",
+      "clientAuthenticatorType": "client-secret"
+    },
+    {
+      "clientId": "partner-writer",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "gateway-sample-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "api-permissions",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "permissions",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ],
+      "secret": "${KC_WRITER_SECRET}",
+      "clientAuthenticatorType": "client-secret"
+    }
+  ],
+  "scopeMappings": [
+    {
+      "client": "lab-browser",
+      "roles": [
+        "api.read",
+        "api.write",
+        "member.admin"
+      ]
+    },
+    {
+      "client": "partner-reader",
+      "roles": [
+        "api.read"
+      ]
+    },
+    {
+      "client": "partner-writer",
+      "roles": [
+        "api.read",
+        "api.write"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "demo",
+      "lastName": "Lab",
+      "email": "demo@example.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_DEMO_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "api.read",
+        "api.write"
+      ]
+    },
+    {
+      "username": "lab-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "lab-admin",
+      "lastName": "Lab",
+      "email": "lab-admin@example.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_LAB_ADMIN_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "api.read",
+        "api.write",
+        "member.admin"
+      ]
+    },
+    {
+      "username": "service-account-partner-reader",
+      "enabled": true,
+      "serviceAccountClientId": "partner-reader",
+      "realmRoles": [
+        "api.read"
+      ]
+    },
+    {
+      "username": "service-account-partner-writer",
+      "enabled": true,
+      "serviceAccountClientId": "partner-writer",
+      "realmRoles": [
+        "api.read",
+        "api.write"
+      ]
+    }
+  ]
+}

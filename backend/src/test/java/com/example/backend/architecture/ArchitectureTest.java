@@ -97,4 +97,23 @@ class ArchitectureTest {
                     .allowEmptyShould(true).check(classes);
         }
     }
+    @Test
+    void everyFeatureHttpHandlerDeclaresMethodPermission() {
+        // feature 추가 시 보안 어노테이션을 빠뜨리면 테스트가 실패한다. URI 목록을 별도로 복제하지 않는다.
+        for (var type : classes) {
+            if (!type.getPackageName().contains(".api")) continue;
+            var javaType = type.reflect();
+            if (!javaType.isAnnotationPresent(org.springframework.web.bind.annotation.RestController.class)) continue;
+            for (var method : javaType.getDeclaredMethods()) {
+                if (!org.springframework.core.annotation.AnnotatedElementUtils.hasAnnotation(method,
+                        org.springframework.web.bind.annotation.RequestMapping.class)) continue;
+                org.assertj.core.api.Assertions.assertThat(
+                        org.springframework.core.annotation.AnnotatedElementUtils.hasAnnotation(method,
+                                org.springframework.security.access.prepost.PreAuthorize.class)
+                        || org.springframework.core.annotation.AnnotatedElementUtils.hasAnnotation(javaType,
+                                org.springframework.security.access.prepost.PreAuthorize.class))
+                        .as("Explicit permission on %s", method).isTrue();
+            }
+        }
+    }
 }

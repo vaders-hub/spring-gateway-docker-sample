@@ -75,7 +75,7 @@ class LearningHttpIntegrationTest {
         assertProblem(request("GET", "/members", null, null), 401, "UNAUTHORIZED");
         assertProblem(request("GET", "/products", "api.write", null), 403, "ACCESS_DENIED");
         assertProblem(request("POST", "/orders/preview", "api.read", "{}"), 403, "ACCESS_DENIED");
-        assertProblem(request("DELETE", "/members/1", "api.read api.write", null), 403, "ACCESS_DENIED");
+        assertProblem(request("DELETE", "/members/1", "api.read api.write", null), 405, "METHOD_NOT_ALLOWED");
     }
     @Test
     void openApiAndSwaggerUiAreActuallyServedInLearningMode() throws Exception {
@@ -89,7 +89,7 @@ class LearningHttpIntegrationTest {
         assertThat(ui.body()).contains("swagger-ui");
     }
     @Test
-    void memberAdminRequiresBothScopesBeforeTheGenericMemberPath() throws Exception {
+    void memberAdminRequiresBothScopesAtTheMethodBoundary() throws Exception {
         assertProblem(request("GET", "/members/admin", null, null), 401, "UNAUTHORIZED");
         for (String scope : List.of("api.read", "api.write", "member.admin")) {
             assertProblem(request("GET", "/members/admin", scope, null), 403, "ACCESS_DENIED");
@@ -98,7 +98,7 @@ class LearningHttpIntegrationTest {
         assertThat(admin.statusCode()).isEqualTo(200);
         assertThat(admin.body()).contains("Sample Member", "meta");
         assertProblem(request("POST", "/members/admin", "api.read api.write member.admin", "{}"),
-                403, "ACCESS_DENIED");
+                405, "METHOD_NOT_ALLOWED");
     }
 
     @Test

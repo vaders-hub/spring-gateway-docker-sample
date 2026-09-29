@@ -23,8 +23,11 @@ class RuntimeProfileGuard {
     @PostConstruct
     void validateActiveProfile() {
         String[] activeProfiles = environment.getActiveProfiles();
-        if (activeProfiles.length != 1
-                || !ALLOWED_PROFILES.contains(activeProfiles[0])) {
+        // oidc는 인증 방식이다. local/prod 등 lifecycle profile은 여전히 정확히 하나다.
+        var lifecycle = Arrays.stream(activeProfiles).filter(ALLOWED_PROFILES::contains).toList();
+        boolean unsupported = Arrays.stream(activeProfiles)
+                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !profile.equals("oidc"));
+        if (lifecycle.size() != 1 || unsupported) {
             throw new IllegalStateException(
                     "Exactly one supported profile must be active: "
                             + ALLOWED_PROFILES
@@ -32,16 +35,16 @@ class RuntimeProfileGuard {
                             + Arrays.toString(activeProfiles));
         }
 
-        String profile = activeProfiles[0];
+        String profile = lifecycle.getFirst();
         if (!Set.of("local", "test").contains(profile)
                 && environment.getProperty("app.observability.prometheus-public", Boolean.class, false)) {
             throw new IllegalStateException(
                     "Public Prometheus access is permitted only in local/test profiles");
         }
-        if (Set.of("staging", "prod").contains(profile)
+        if ((Set.of("staging", "prod").contains(profile) || Arrays.asList(activeProfiles).contains("oidc"))
                 && environment.getProperty("app.security.demo-user.enabled", Boolean.class, false)) {
             throw new IllegalStateException(
-                    "Demo token issuance must be disabled in staging/prod");
+                    "Demo token issuance must be disabled in staging/prod/oidc");
         }
 
     }

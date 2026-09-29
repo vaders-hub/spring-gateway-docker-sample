@@ -1,0 +1,85 @@
+# 16단계: 기본 Compose + persistence + 이 overlay 순서. 실행은 scripts/reference-stack.sh 사용.
+# 공개 issuer는 브라우저 기준, JWKS 주소는 컨테이너 DNS 기준이다. 토큰의 iss는 항상 동일하다.
+services:
+  gateway:
+    environment:
+      SPRING_PROFILES_ACTIVE: local,oidc
+      OIDC_ISSUER: http://localhost:8180/realms/gateway-lab
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/gateway-lab/protocol/openid-connect/certs
+      JWT_SECRET: ""
+      DEMO_USERNAME: ""
+      DEMO_PASSWORD: ""
+      CORS_ALLOWED_ORIGINS: http://localhost:3001
+    depends_on:
+      keycloak:
+        condition: service_healthy
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: local,persistence,oidc
+      OIDC_ISSUER: http://localhost:8180/realms/gateway-lab
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/gateway-lab/protocol/openid-connect/certs
+      JWT_SECRET: ""
+      BACKEND_READINESS_INDICATORS: readinessState,db
+    depends_on:
+      keycloak:
+        condition: service_healthy
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    # start-dev는 loopback 전용 실습이다. 운영은 HTTPS/hostname/proxy/DB 백업을 별도 구성한다.
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "127.0.0.1:8180:8080"
+    environment:
+      KC_HOSTNAME: http://localhost:8180
+      KC_HEALTH_ENABLED: "true"
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?Run python3 scripts/ensure-keycloak-env.py}
+      KC_BOOTSTRAP_ADMIN_USERNAME: lab-bootstrap
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_PASSWORD:?Initialize Keycloak env}
+      KC_DEMO_PASSWORD: ${KC_DEMO_PASSWORD:?Initialize Keycloak env}
+      KC_LAB_ADMIN_PASSWORD: ${KC_LAB_ADMIN_PASSWORD:?Initialize Keycloak env}
+      KC_READER_SECRET: ${KC_READER_SECRET:?Initialize Keycloak env}
+      KC_WRITER_SECRET: ${KC_WRITER_SECRET:?Initialize Keycloak env}
+    volumes:
+      - ./keycloak/gateway-lab-realm.json:/opt/keycloak/data/import/gateway-lab-realm.json:ro
+    healthcheck:
+      # 공식 이미지에는 curl이 없다. 관리 health 포트는 호스트에 공개하지 않는다.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3; grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    networks: [app-net]
+    stop_grace_period: 30s
+  keycloak-db:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?Initialize Keycloak env}
+    # 업무 DB와 사용자/인증 설정 DB의 수명을 분리한다. 호스트 포트는 공개하지 않는다.
+    volumes:
+      - keycloak-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [app-net]
+    stop_grace_period: 30s
+  auth-ui:
+    build: ./auth-ui
+    ports:
+      - "127.0.0.1:3001:8080"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [app-net]
+volumes:
+  keycloak-data:

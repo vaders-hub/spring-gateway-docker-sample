@@ -1,6 +1,8 @@
 package com.example.backend.common.config;
 
 import com.example.backend.common.security.SecurityProblemWriter;
+import com.example.backend.common.security.JwtAuthorities;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import com.example.backend.common.config.properties.JwtProperties;
 import com.example.backend.common.config.properties.ObservabilityProperties;
 import jakarta.servlet.DispatcherType;
@@ -11,7 +13,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
-import static org.springframework.security.authorization.AuthorizationManagers.allOf;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +20,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import static org.springframework.security.oauth2.core.authorization.OAuth2AuthorizationManagers.hasScope;
 
+@EnableMethodSecurity
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({JwtProperties.class, ObservabilityProperties.class})
 class SecurityConfig {
@@ -27,10 +29,10 @@ class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObservabilityProperties observabilityProperties,
-            SecurityProblemWriter problems, Environment environment) throws Exception {
+            SecurityProblemWriter problems, Environment environment, JwtProperties jwtProperties) throws Exception {
         configureStateless(http);
         configureAuthorization(http, observabilityProperties, environment);
-        configureJwt(http, problems);
+        configureJwt(http, problems, jwtProperties.usesJwks());
         return http.build();
     }
 
@@ -60,32 +62,34 @@ class SecurityConfig {
                     else {
                         authorize.requestMatchers("/actuator/prometheus").authenticated();
                     }
-                    // 더 구체적인 관리 경로를 /members/{id}보다 먼저 둔다. 두 scope를 모두 요구한다.
-                    authorize.requestMatchers(HttpMethod.GET, "/members/admin")
-                            .access(allOf(hasScope("api.read"), hasScope("member.admin")));
+                    // 경로/메서드의 기본 권한만 관리한다. 세부 권한은 feature 메서드가 소유한다.
                     requireScope(authorize, HttpMethod.GET, "api.read",
-                            "/hello", "/members", "/members/{id}", "/products", "/products/{id}", "/orders/{id}");
-                    requireScope(authorize, HttpMethod.HEAD, "api.read", "/hello");
-                    requireScope(authorize, HttpMethod.POST, "api.write", "/echo", "/orders/preview", "/orders");
+                            "/hello", "/members", "/members/**", "/products", "/products/**", "/orders", "/orders/**");
+                    requireScope(authorize, HttpMethod.HEAD, "api.read",
+                            "/hello", "/members", "/members/**", "/products", "/products/**", "/orders", "/orders/**");
+                    for (var method : java.util.List.of(HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)) {
+                        requireScope(authorize, method, "api.write", "/members", "/members/**", "/products", "/products/**", "/orders", "/orders/**");
+                    }
+                    requireScope(authorize, HttpMethod.POST, "api.write", "/echo");
                     // URL 권한 뒤의 주문 소유권 등 업무 정책은 각 feature application에서 검사한다.
                     if (environment.getProperty("app.learning.docs-enabled", Boolean.class, false)) {
                         // Backend 로컬 문서 UI 부트스트랩용. 업무 API의 JWT 인가는 그대로 유지한다.
                         authorize.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**",
                                 "/v3/api-docs.yaml", "/swagger-ui.html", "/swagger-ui/**").permitAll();
                     }
-                    // 새 endpoint도 경로/메서드/권한을 명시하기 전에는 공개되지 않는다.
+                    // 새 최상위 feature는 기본 경로 정책에 등록하기 전에는 공개되지 않는다.
                     authorize.anyRequest().denyAll();
                 });
     }
 
     // 일반 인가 실패와 OAuth2 인증 실패는 진입점이 다르므로 같은 writer를 양쪽에 연결한다.
-    private void configureJwt(HttpSecurity http, SecurityProblemWriter problems) throws Exception {
+    private void configureJwt(HttpSecurity http, SecurityProblemWriter problems, boolean oidc) throws Exception {
         http
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
                         .accessDeniedHandler(problems.accessDeniedHandler()))
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(Customizer.withDefaults())
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(JwtAuthorities.converter(oidc)))
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
                         .accessDeniedHandler(problems.accessDeniedHandler()));
     }

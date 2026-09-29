@@ -23,10 +23,10 @@ class RuntimeProfileGuard {
     @PostConstruct
     void validateActiveProfile() {
         String[] activeProfiles = environment.getActiveProfiles();
-        // lifecycle은 여전히 정확히 하나다. Backend 학습 DB용 persistence만 추가 profile로 허용한다.
+        // lifecycle은 여전히 정확히 하나다. persistence(DB)와 oidc(인증)를 추가 profile로 허용한다.
         var lifecycle = Arrays.stream(activeProfiles).filter(ALLOWED_PROFILES::contains).toList();
         boolean unsupported = Arrays.stream(activeProfiles)
-                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !profile.equals("persistence"));
+                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !profile.equals("persistence") && !profile.equals("oidc"));
         if (lifecycle.size() != 1 || unsupported
                 || (Arrays.asList(activeProfiles).contains("persistence")
                     && !Set.of("local", "test").contains(lifecycle.getFirst()))) {

@@ -44,6 +44,7 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 13 (구조 확장) | [Feature 경계와 확장](13-feature-boundaries-and-growth.md) | 하위 분류, 공개 contract, command/query, 교차 기능 연결 | 직접 내부 참조/순환을 ArchUnit으로 차단 |
 | 14 (인증 확장) | [로그인·로그아웃](14-login-and-logout.md) | 활성 토큰 등록/삭제, Redis 공유 검증 | 로그아웃 후 양쪽 서비스 401, 저장소 장애 503 |
 | 15 (보안 설정) | [설정 간소화·member 40x](15-security-rules-and-member-tests.md) | 역할별 설정, 관리 scope, JWT/입력 오류 대조 | 일반 조회 200·관리 조회 403, 토큰 오류 401 |
+| 16 (실무 인증) | [Keycloak·메서드 보안·서비스 인증](16-keycloak-and-method-security.md) | Code + PKCE, Client Credentials, JWKS, feature 권한 | 실제 발급 토큰으로 200/401/403, 로그아웃 정책 구분 |
 | 4단계 후속 | [장애 정책 설계](../resilience-policy.md) | fail-closed·CircuitBreaker·Retry 설계 | 기본 동작과 미구현 과제 구분 |
 
 1~2단계는 Compose, 3~5단계는 kind입니다. **Compose와 kind를 기본 설정으로 동시에

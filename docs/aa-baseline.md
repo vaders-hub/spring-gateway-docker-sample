@@ -43,7 +43,7 @@
 | 업무 API 증가 | API versioning, OpenAPI 계약 테스트, 도메인별 오류 코드 확장 |
 | 비동기 작업 도입 | 명시적 bounded executor, queue/rejection 정책, context 전파 |
 | Scheduler/Batch 도입 | 전용 thread pool, 다중 Pod 중복 실행 방지, 재실행과 실패 복구 정책 |
-| 운영 인증 전환 | 로컬 `/auth/token` 제거, Cognito/Keycloak OIDC issuer/JWK, key rotation |
+| 운영 인증 전환 | 16단계에 Keycloak OIDC/JWKS·메서드 보안·Client Credentials 구현. 운영 TLS/HA/키 회전 실습은 후속 |
 | 운영 관측 도입 | Prometheus ServiceMonitor, 대시보드, alert, 중앙 로그와 trace backend |
 | CI/CD 도입 | test, static analysis, dependency/CVE scan, SBOM, image scan, immutable tag/digest |
 

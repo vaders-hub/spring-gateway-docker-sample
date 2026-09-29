@@ -1,6 +1,8 @@
 package com.example.gateway.common.config;
 
 import com.example.gateway.common.security.SecurityProblemWriter;
+import com.example.gateway.common.security.JwtAuthorities;
+import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import com.example.gateway.common.config.properties.ObservabilityProperties;
 import com.example.gateway.common.config.properties.SecurityProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -23,10 +25,10 @@ class SecurityConfig {
     SecurityWebFilterChain securityWebFilterChain(
             ServerHttpSecurity http,
             ObservabilityProperties observabilityProperties,
-            SecurityProblemWriter problems) {
+            SecurityProblemWriter problems, SecurityProperties jwtProperties) {
         configureStateless(http);
         configureAuthorization(http, observabilityProperties);
-        configureJwt(http, problems);
+        configureJwt(http, problems, jwtProperties.jwt().usesJwks());
         return http.build();
     }
 
@@ -68,13 +70,14 @@ class SecurityConfig {
     }
 
     // 일반 인가 실패와 OAuth2 인증 실패는 진입점이 다르므로 같은 writer를 양쪽에 연결한다.
-    private void configureJwt(ServerHttpSecurity http, SecurityProblemWriter problems) {
+    private void configureJwt(ServerHttpSecurity http, SecurityProblemWriter problems, boolean oidc) {
         http
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
                         .accessDeniedHandler(problems.accessDeniedHandler()))
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(Customizer.withDefaults())
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(new ReactiveJwtAuthenticationConverterAdapter(
+                                JwtAuthorities.converter(oidc))))
                         .authenticationEntryPoint(problems.authenticationEntryPoint())
                         .accessDeniedHandler(problems.accessDeniedHandler()));
     }

@@ -58,4 +58,12 @@ class RuntimeProfileGuardTest {
         assertThatIllegalStateException().isThrownBy(
                 () -> new RuntimeProfileGuard(environment).validateActiveProfile());
     }
+    @Test
+    void permitsOidcAlongsideOneLifecycleButNotAlone() {
+        var env = new MockEnvironment();
+        env.setActiveProfiles("local", "oidc");
+        assertThatNoException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+        env.setActiveProfiles("oidc");
+        assertThatIllegalStateException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+    }
 }

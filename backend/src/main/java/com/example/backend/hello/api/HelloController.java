@@ -1,5 +1,7 @@
 package com.example.backend.hello.api;
 
+import com.example.backend.common.security.permission.RequireRead;
+import com.example.backend.common.security.permission.RequireWrite;
 import com.example.backend.common.response.ApiResponse;
 import com.example.backend.common.response.ApiResponses;
 import com.example.backend.common.code.SuccessCode;
@@ -28,6 +30,7 @@ public class HelloController {
 
     // 1단계: Gateway의 /api/hello가 StripPrefix 이후 /hello로 도달한다.
     // 사용자는 X-Gateway-User가 아니라 Backend Security가 검증한 Principal에서 얻는다.
+    @RequireRead
     @GetMapping("/hello")
     public ResponseEntity<ApiResponse<HelloResponse>> hello(
             @RequestAttribute(RequestContext.REQUEST_ID_ATTRIBUTE) String requestId,
@@ -38,6 +41,7 @@ public class HelloController {
     }
 
     // @Valid가 EchoRequest 제약을 검사한다. 실패하면 Service 호출 전 400 오류로 처리된다.
+    @RequireWrite
     @PostMapping("/echo")
     public ResponseEntity<ApiResponse<EchoResponse>> echo(
             @Valid @RequestBody EchoRequest request,

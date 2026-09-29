@@ -3,7 +3,8 @@ package com.example.gateway.common.config.properties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -21,14 +22,32 @@ public record SecurityProperties(
     public record Jwt(
             @NotBlank String issuer,
             @NotBlank String audience,
-            @NotBlank @Size(min = 32) String secret,
-            @NotNull Duration ttl) {
+            String secret,
+            @NotNull Duration ttl,
+            String jwkSetUri) {
 
         // 초 단위 JWT TTL로 변환할 때 0초나 소수초가 되지 않도록 제한한다.
+        @ConstructorBinding
         public Jwt {
             if (ttl != null && (ttl.compareTo(Duration.ofSeconds(1)) < 0 || ttl.getNano() != 0)) {
                 throw new IllegalArgumentException("app.security.jwt.ttl must be a positive whole number of seconds");
             }
+        }
+
+        public Jwt(String issuer, String audience, String secret, Duration ttl) {
+            this(issuer, audience, secret, ttl, null);
+        }
+        public boolean usesJwks() { return jwkSetUri != null && !jwkSetUri.isBlank(); }
+        // OIDC에는 공유 비밀키가 필요 없다. 두 신뢰 방식을 동시에 켜지 않는다.
+        @AssertTrue(message = "Configure either a 32+ character demo secret or an HTTP(S) JWKS URI")
+        public boolean isKeyConfigurationValid() {
+            if (!usesJwks()) return secret != null && secret.length() >= 32;
+            try {
+                var uri = java.net.URI.create(jwkSetUri);
+                return (secret == null || secret.isBlank()) && uri.getHost() != null
+                        && ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
+                        && uri.getUserInfo() == null && uri.getFragment() == null;
+            } catch (IllegalArgumentException invalid) { return false; }
         }
 
         @Override

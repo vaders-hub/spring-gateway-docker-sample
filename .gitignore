@@ -51,3 +51,6 @@ replay_pid*
 *.swp
 *.swo
 *~
+
+# Browser adapter dependencies
+node_modules/

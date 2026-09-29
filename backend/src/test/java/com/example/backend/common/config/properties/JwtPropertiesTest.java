@@ -34,6 +34,13 @@ class JwtPropertiesTest {
         JwtProperties properties = new JwtProperties("local-gateway", "gateway-sample-api", "short");
 
         assertThat(validator.validate(properties))
-                .anyMatch(violation -> violation.getPropertyPath().toString().equals("secret"));
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("keyConfigurationValid"));
+    }
+    @Test
+    void acceptsJwksWithoutSharedSecretAndRejectsMixedTrust() {
+        assertThat(validator.validate(new JwtProperties("https://issuer.test", "api", "",
+                "https://issuer.test/certs"))).isEmpty();
+        assertThat(validator.validate(new JwtProperties("https://issuer.test", "api", "01234567890123456789012345678901",
+                "https://issuer.test/certs"))).isNotEmpty();
     }
 }

@@ -70,3 +70,10 @@ tasks.register('databaseTest', Test) {
     useJUnitPlatform { includeTags 'database' }
     shouldRunAfter tasks.named('test')
 }
+
+// Java 25에서 Mockito의 동적 self-attach에 의존하지 않는다. 테스트 JVM 시작 시 agent를 명시한다.
+tasks.withType(Test).configureEach {
+    doFirst {
+        jvmArgs "-javaagent:${classpath.find { it.name.startsWith('mockito-core-') }}"
+    }
+}

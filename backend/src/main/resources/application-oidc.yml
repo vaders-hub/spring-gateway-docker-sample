@@ -1,0 +1,16 @@
+# Keycloak 기반 인증. 기본 Compose의 데모 모드와 분리한다.
+app:
+  security:
+    jwt:
+      issuer: ${OIDC_ISSUER:http://localhost:8180/realms/gateway-lab}
+      audience: gateway-sample-api
+      secret: ""
+      jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8180/realms/gateway-lab/protocol/openid-connect/certs}
+
+# 인증은 Redis에 의존하지 않는다. persistence에서는 환경변수로 DB probe를 유지한다.
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: ${BACKEND_READINESS_INDICATORS:readinessState}
