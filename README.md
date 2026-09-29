@@ -115,6 +115,7 @@ Backend의 member/product/order는 기본 local에서 fixture 조회·견적을,
 MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포함합니다.
 [11단계 안내와 후속 로드맵](docs/learning/11-features-and-library-roadmap.md)에서 실행 예제와 선택형 UI overlay를 확인하세요.
 [12단계 PostgreSQL/JPA/Flyway](docs/learning/12-postgresql-jpa-flyway.md)에는 DB 기동·주문 저장·재기동·Testcontainers 검증 절차가 있습니다.
+[13단계 Feature 경계와 확장](docs/learning/13-feature-boundaries-and-growth.md)에는 하위 패키지 분류와 기능 간 공개 계약, 순환 의존을 피하는 설계 기준이 있습니다.
 다음 단계는 PostgreSQL + JPA/Flyway/Testcontainers이며 아직 DB는 추가하지 않았습니다.
 
 ## 주요 구현 위치

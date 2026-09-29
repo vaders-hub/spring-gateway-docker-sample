@@ -11,8 +11,8 @@
 flowchart LR
   Client -->|JWT| Gateway
   Gateway -->|JWT 재검증| Controller[OrderPersistenceController]
-  Controller -->|DTO 검증 후 업무 값| Service[OrderPlacementService]
-  Service -->|서버 가격 조회| Quote[OrderService / OrderCatalog]
+  Controller -->|DTO 검증 후 업무 값| Service[PlaceOrderService]
+  Service -->|서버 가격 조회| Quote[OrderQuoteService / OrderCatalog]
   Service -->|application port| Adapter[JpaOrderRepository]
   Adapter --> SpringData[Spring Data JPA]
   SpringData --> DB[(PostgreSQL)]
@@ -21,11 +21,11 @@ flowchart LR
 
 1. SecurityFilterChain이 JWT와 api.write/api.read scope를 검사합니다.
 2. Controller가 입력 DTO를 검증합니다. 소유자는 요청 JSON 대신 검증된 JWT의 subject를 사용합니다.
-3. OrderPlacementService의 `@Transactional`이 회원·상품 조회, 견적 계산, 저장을 묶습니다.
+3. PlaceOrderService의 `@Transactional`이 회원·상품 조회, 견적 계산, 저장을 묶습니다.
 4. Repository adapter가 domain record를 JPA Entity로 변환합니다. `saveAndFlush` 후에도 commit 전 실패하면 rollback됩니다.
 5. MapStruct가 domain → 응답 DTO를 변환합니다. requestId는 응답 추적용이며 업무 Service로 전달하지 않습니다.
 
-Entity와 Spring Data Repository는 각 feature의 infrastructure에 있습니다. application은 port와 domain을 사용합니다.
+Entity와 Spring Data Repository는 각 feature의 infrastructure/persistence에 있습니다. application은 port와 domain을 사용합니다.
 회원/상품 Entity 간 lazy 연관관계를 추가하지 않고 주문에는 참조 ID와 상품명/가격 snapshot을 저장합니다.
 FK는 존재하지 않는 회원/상품을 참조한 주문과 참조 중인 부모의 삭제를 차단합니다.
 총액은 저장된 단가 × 수량으로 계산하므로 상품 가격이 바뀌어도 기존 주문 금액이 유지됩니다.
@@ -154,7 +154,8 @@ flush 후 실제 rollback, DB CHECK/FK, 상품 변경 후 주문 snapshot 유지
 
 1. 기존 단계: MemberController/MemberMapper → MemberService → FixtureMemberRepository.
 2. 저장소 교체: ConditionalOnLearningFeature/Persistence → JpaMemberRepository → MemberEntity.
-3. 주문: OrderPersistenceController → OrderPlacementService → OrderService/LocalOrderCatalog → JpaOrderRepository.
+3. 주문: OrderPersistenceController → command/PlaceOrderService → query/OrderQuoteService → integration/LocalOrderCatalog → JpaOrderRepository. 본인 조회는 query/OrderQueryService가 담당합니다.
+   [13단계](13-feature-boundaries-and-growth.md)에 contract/port와 전체 하위 패키지 분류가 정리돼 있습니다.
 4. 데이터: V1 migration → application-persistence.yml → scripts/sql/learning-catalog.sql.
 5. 검증: ArchitectureTest → PersistenceIntegrationTest의 rollback/소유권/snapshot 테스트.
 

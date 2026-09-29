@@ -1,6 +1,7 @@
 package com.example.backend.learning;
 
-import com.example.backend.order.application.OrderPlacementService;
+import com.example.backend.order.application.command.PlaceOrderService;
+import com.example.backend.order.application.query.OrderQueryService;
 import com.example.backend.common.exception.BusinessException;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.net.URI;
@@ -46,7 +47,8 @@ class PersistenceIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired DataSource dataSource;
     @Autowired Flyway flyway;
-    @Autowired OrderPlacementService orders;
+    @Autowired PlaceOrderService orders;
+    @Autowired OrderQueryService queries;
     @Autowired PlatformTransactionManager transactionManager;
 
     @DynamicPropertySource
@@ -125,20 +127,20 @@ class PersistenceIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update("delete from products where id=1"))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        assertThat(orders.get(order.id(), "alice").quote().quantity()).isEqualTo(1);
+        assertThat(queries.get(order.id(), "alice").quote().quantity()).isEqualTo(1);
     }
 
     @Test
     void savedPriceSnapshotSurvivesCatalogChange() throws Exception {
         var order = orders.place(1, 1, 2, "alice");
         jdbc.update("update products set unit_price=60000, name='New Keyboard' where id=1");
-        var saved = orders.get(order.id(), "alice");
+        var saved = queries.get(order.id(), "alice");
         assertThat(saved.quote().totalPrice()).isEqualByComparingTo("100000");
         assertThat(saved.quote().productName()).isEqualTo("Keyboard");
         var preview = data(request("POST", "/orders/preview", "alice", "api.write", input(2)));
         assertThat(new java.math.BigDecimal(preview.get("totalPrice").toString())).isEqualByComparingTo("120000");
         assertThat(jdbc.queryForObject("select count(*) from purchase_orders", Long.class)).isEqualTo(1);
-        assertThatThrownBy(() -> orders.get(order.id(), "bob")).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> queries.get(order.id(), "bob")).isInstanceOf(BusinessException.class);
     }
 
     @Test

@@ -41,6 +41,7 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 10 (4단계 후속) | [Spring Boot 기본 구성 검증](10-spring-boot-readiness.md) | Stateless Pod 교체 실습, 종료 검증 설계, 설정 관리표 | 같은 JWT 인증 유지; graceful/Redis 후속 구현과 검증 상태 구분 |
 | 11 (Spring 확장 1차) | [Feature 목업과 라이브러리 로드맵](11-features-and-library-roadmap.md) | 회원·상품·주문 견적, MapStruct/OpenAPI/ArchUnit | HTTP/아키텍처 검증과 PostgreSQL 후속 범위 구분 |
 | 12 (Spring 확장 2차) | [PostgreSQL/JPA/Flyway](12-postgresql-jpa-flyway.md) | DB 저장, migration, Testcontainers | 소유권·rollback·DB 재생성 후 주문 유지 |
+| 13 (구조 확장) | [Feature 경계와 확장](13-feature-boundaries-and-growth.md) | 하위 분류, 공개 contract, command/query, 교차 기능 연결 | 직접 내부 참조/순환을 ArchUnit으로 차단 |
 | 4단계 후속 | [장애 정책 설계](../resilience-policy.md) | fail-closed·CircuitBreaker·Retry 설계 | 기본 동작과 미구현 과제 구분 |
 
 1~2단계는 Compose, 3~5단계는 kind입니다. **Compose와 kind를 기본 설정으로 동시에

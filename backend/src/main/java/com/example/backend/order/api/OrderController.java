@@ -4,8 +4,9 @@ import com.example.backend.common.code.SuccessCode;
 import com.example.backend.common.config.ConditionalOnLearningFeature;
 import com.example.backend.common.response.*;
 import com.example.backend.common.web.RequestContext;
-import com.example.backend.order.api.dto.*;
-import com.example.backend.order.application.OrderService;
+import com.example.backend.order.api.dto.request.*;
+import com.example.backend.order.api.dto.response.*;
+import com.example.backend.order.application.query.OrderQuoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -15,9 +16,9 @@ import org.springframework.web.bind.annotation.*;
 @ConditionalOnLearningFeature
 @RequestMapping("/orders")
 public class OrderController {
-    private final OrderService service;
+    private final OrderQuoteService service;
     private final OrderMapper mapper;
-    public OrderController(OrderService service, OrderMapper mapper) {
+    public OrderController(OrderQuoteService service, OrderMapper mapper) {
         this.service = service;
         this.mapper = mapper;
     }

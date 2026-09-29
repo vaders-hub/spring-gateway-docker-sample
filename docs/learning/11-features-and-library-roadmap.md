@@ -42,22 +42,23 @@ Backend
 ├── common/config/runtime/LearningProfileGuard
 ├── member
 │   ├── api/dto                       응답 계약 (Controller/Mapper는 api)
-│   ├── application                   MemberService / MemberRepository 조회 계약
+│   ├── application                   MemberService / port/MemberRepository 조회 계약
+│   ├── contract                      MemberLookup 공개 계약
 │   ├── domain                        Member
-│   └── infrastructure                FixtureMemberRepository
+│   └── infrastructure/fixture        FixtureMemberRepository (DB 구현은 persistence)
 ├── product                           같은 경계, Product와 불변 상품 데이터
 └── order
     ├── api/dto                       OrderPreviewRequest/Response + Mapper
-    ├── application                   OrderService / OrderCatalog 연동 계약
+    ├── application                   query/OrderQuoteService / port/OrderCatalog
     ├── domain                        OrderQuote 금액 계산
-    └── infrastructure                LocalOrderCatalog: 회원/상품 서비스 연결
+    └── infrastructure/integration    LocalOrderCatalog: 회원/상품 공개 계약 연결
 ```
 
 Mapper 인터페이스는 각 feature/api에 있으며 구현은 Gradle build/generated에 생성됩니다.
 생성 코드는 수정하거나 Git에 추가하지 않습니다. unmappedTargetPolicy=ERROR로 응답 필드 누락을 컴파일에서 발견합니다.
 ArchUnit은 main 클래스만 검사하고 domain의 프레임워크/외부 의존, application → api/infrastructure,
 common → feature, feature 간 순환과 infrastructure → api 의존을 검사합니다.
-OrderCatalog의 adapter는 다른 기능의 공개 application 서비스를 사용하고 Controller나 Repository를 직접 호출하지 않습니다.
+OrderCatalog의 adapter는 현재 member/product의 공개 contract를 사용합니다. Controller·내부 Service·Repository를 직접 참조하지 않습니다. [13단계](13-feature-boundaries-and-growth.md)에서 경계와 하위 분류를 보강했습니다.
 
 회원/상품은 고정된 샘플 2개씩이며, 주문은 **견적 계산만** 합니다.
 계정 가입·주문 저장·결제·재고 차감·사용자별 소유권 검사는 구현하지 않았습니다.

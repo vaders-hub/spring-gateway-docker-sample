@@ -44,27 +44,36 @@ com.example.gateway
     └── application/  TokenService와 IssuedToken, InvalidCredentialsException
 ```
 
-위 트리는 기본 hello/auth 공통 구조입니다. 11단계에서 추가한 실제 학습 기능은 다음과 같습니다.
+위 트리는 기본 hello/auth 공통 구조입니다. 11~13단계에서 확장한 실제 학습 기능은 다음과 같습니다.
 
 ```text
-member/                              product도 동일한 계층
-├── api/                             Controller, MapStruct Mapper
-│   └── dto/                         API 응답
-├── application/                     Service, Repository 조회 계약
-├── domain/                          Member / Product 업무 record
-└── infrastructure/                  불변 FixtureRepository
+member/                              product도 같은 분류
+├── api                              Controller/Mapper
+│   └── dto                          HTTP 응답
+├── contract                         외부 feature용 MemberLookup (상품은 ProductLookup/ProductSnapshot)
+├── application                      MemberService: contract 구현
+│   └── port                         MemberRepository: 내부 저장소 계약
+├── domain                           순수 업무 record
+└── infrastructure
+    ├── fixture                      고정 데이터 구현
+    └── persistence                  JPA Entity/Spring Data/adapter
 
 order/
-├── api/                             Controller, MapStruct Mapper
-│   └── dto/                         주문 견적 요청/응답
-├── application/                     OrderService, OrderCatalog 연동 계약
-├── domain/                          OrderQuote 금액 계산
-└── infrastructure/                  LocalOrderCatalog: 회원/상품 application 연동
+├── api                              견적·저장·조회 Controller, MapStruct
+│   └── dto/request, dto/response     HTTP 계약
+├── application
+│   ├── command                      PlaceOrderService
+│   ├── query                        OrderQuoteService, OrderQueryService
+│   └── port                         OrderCatalog, OrderRepository
+├── domain                           OrderQuote, StoredOrder
+└── infrastructure
+    ├── integration                  LocalOrderCatalog: 상대 contract 연결
+    └── persistence                  주문 JPA 구현
 ```
 
 common/config에 MappingConfig, OpenApiConfig, ConditionalOnLearningMock,
 common/config/runtime에 LearningProfileGuard, common/exception에 BusinessException이 추가됩니다.
-학습 feature는 local/test에서 명시적으로 켠 경우만 생성하며 저장·결제는 하지 않습니다.
+학습 feature는 local/test에서 명시적으로 켠 경우만 생성합니다. fixture는 견적만, persistence는 주문 저장/조회를 제공하며 결제는 구현하지 않았습니다.
 [11단계](learning/11-features-and-library-roadmap.md)에 검증·확장 순서가 있습니다.
 
 복잡한 HTTP DTO 변환이 필요하면 api/mapper를 추가합니다.
@@ -94,7 +103,7 @@ common/config/runtime에 LearningProfileGuard, common/exception에 BusinessExcep
 - JwtConfig는 검증 decoder, AuthIssuerConfig는 데모 발급 encoder를 만듭니다.
   app.security 접두사와 환경변수·local/dev/test 발급 조건은 유지합니다.
 - RequestHeadersFilter는 인증된 Principal을 사용하며 TokenService를 호출해 인증을 재구현하지 않습니다.
-- 기능 간 협력은 상대 기능의 공개 application 서비스/API를 통합니다. 다른 기능의 api나 내부 저장소에 의존하지 않습니다.
+- 기능 간 협력은 infrastructure/integration에서 상대 contract를 통해 수행합니다. 내부 Service, domain, HTTP api, application/port, Entity/Repository는 외부 feature가 직접 참조하지 않습니다.
 
 api/dto에는 기존 요청 검증 애너테이션과 JSON 계약이 유지됩니다.
 따라서 이번 변경은 패키지 책임을 정리하는 것이며 프레임워크에서 완전히 분리된 도메인 아키텍처를 의미하지 않습니다.
@@ -215,9 +224,15 @@ Backend 29개, Gateway 49개이며 인증 전용 Advice와 공통 입력 검증 
 ## 12단계 저장소 경계
 
 member/product의 application Repository port는 fixture와 JPA adapter가 각각 구현합니다.
-order/application의 OrderPlacementService가 저장 transaction과 소유권 조회를 담당하고,
-OrderRepository port를 order/infrastructure의 JpaOrderRepository가 구현합니다.
-JPA Entity와 Spring Data Repository는 각 feature/infrastructure에 두며 domain은 Java record를 유지합니다.
+order/application/command의 PlaceOrderService가 저장 transaction을, query/OrderQueryService가 소유권 조회를 담당하고,
+OrderRepository port를 order/infrastructure/persistence의 JpaOrderRepository가 구현합니다.
+JPA Entity와 Spring Data Repository는 각 feature/infrastructure/persistence에 두며 domain은 Java record를 유지합니다.
 common에는 feature Entity 스캔/seed 업무 로직을 추가하지 않습니다. Boot가 root package 아래를 스캔합니다.
 ArchUnit은 이전 의존 방향을 유지하고 Entity가 API DTO로 새어 나가지 않도록 경계를 검사합니다.
 [12단계 검증/실행](learning/12-postgresql-jpa-flyway.md)을 참고하세요.
+
+
+## 기능 증가와 공개 계약
+
+단수/복수 이름 변경 대신 실제 책임별 하위 패키지를 추가합니다. 독립 업무가 생길 때 새 feature로 분리합니다.
+[13단계](learning/13-feature-boundaries-and-growth.md)에 판단 예시·contract/port 흐름·순환 해소·거래/조회 제약을 정리했습니다.

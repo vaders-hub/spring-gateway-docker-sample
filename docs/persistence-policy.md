@@ -8,15 +8,15 @@
 ## 패키지와 계층
 
 - `<feature>/domain`: 업무 모델과 규칙
-- `<feature>/infrastructure`: 현재 JPA Entity (순수 domain record와 분리)
-- `<feature>/infrastructure`: 현재 Spring Data Repository와 port 구현; 규모가 커질 때 jpa 하위로 세분화
+- `<feature>/infrastructure/persistence`: 현재 JPA Entity (순수 domain record와 분리)
+- `<feature>/infrastructure/persistence`: 현재 Spring Data Repository와 application/port 구현
 - `<feature>/infrastructure/mybatis`: SQL Mapper와 DB 조회 모델
 - `<feature>/api/dto`: 외부 API 계약이며 Entity를 직접 참조하거나 반환하지 않음
 - `<feature>/application`: Service의 transaction 경계와 use case. API DTO에 의존하지 않음
 - `<feature>/api`: Controller의 HTTP mapping·검증·DTO 변환. `@Transactional` 사용 금지
 
 최상위 persistence에 모든 업무의 저장소를 모으지 않고 해당 기능의 infrastructure에 배치합니다.
-저장소 구현을 교체할 필요가 생기면 application/domain에 필요한 인터페이스를 두고 infrastructure가 구현하도록 분리합니다.
+현재 application/port에 저장소 계약을 두고 infrastructure/fixture 또는 persistence가 구현합니다. 다른 feature는 이 내부 저장소 port가 아닌 공개 contract를 사용합니다.
 아직 구현할 코드가 없는 domain/infrastructure와 빈 인터페이스는 만들지 않습니다.
 
 ## Hikari 시작 기준
