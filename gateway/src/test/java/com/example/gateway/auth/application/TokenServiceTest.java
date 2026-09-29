@@ -1,6 +1,5 @@
 package com.example.gateway.auth.application;
 
-import com.example.gateway.auth.application.dto.TokenRequest;
 import com.example.gateway.common.config.properties.SecurityProperties;
 import java.time.Clock;
 import java.time.Duration;
@@ -36,8 +35,12 @@ class TokenServiceTest {
                     .claims(values -> values.putAll(claims.getClaims())).build();
         });
         var service = new TokenService(encoder, properties, Clock.fixed(now, ZoneOffset.UTC));
-        assertThat(service.issue(new TokenRequest("alice", password)).expiresIn()).isEqualTo(90);
-        assertThatThrownBy(() -> service.issue(new TokenRequest("alice", "wrong")))
+        var issued = service.issue("alice", password);
+        assertThat(issued.expiresIn()).isEqualTo(90);
+        assertThat(issued.accessToken()).isEqualTo("test-token");
+        assertThat(issued.tokenType()).isEqualTo("Bearer");
+        assertThat(issued.toString()).doesNotContain(issued.accessToken()).contains("[REDACTED]");
+        assertThatThrownBy(() -> service.issue("alice", "wrong"))
                 .isInstanceOf(InvalidCredentialsException.class);
         verify(encoder, times(1)).encode(any());
     }

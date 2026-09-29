@@ -9,7 +9,7 @@
 |---|---|
 | 1-1 업무 계층의 requestId | Backend Service 인자와 응답 data에서 제거. Controller에서 meta/header를 처리한다. 자동 envelope Advice는 사용하지 않는다. |
 | 1-2 Service와 웹 DTO 결합 | Service는 HelloResult/EchoResult record 반환. Controller가 응답 DTO로 변환하며 Echo 입력/출력 타입도 분리했다. |
-| 1-3 패키지 순환 | ApiResponses.fail을 유지하면서 common.exception의 ProblemDetails로 위임. 오류 처리기에서 common.api 참조를 제거했다. 의존 방향을 단순화했다. 이후 공통 enum은 common.code로 분리했다. |
+| 1-3 패키지 순환 | ApiResponses.fail을 유지하면서 common.exception의 ProblemDetails로 위임. 오류 처리기에서 common.response 참조를 제거했다. 의존 방향을 단순화했다. 이후 공통 enum은 common.code로 분리했다. |
 | 2-1 오류 상태 복원 중복 | ProblemDetails.forStatus가 실제 HTTP 상태와 안전한 본문/헤더를 함께 생성. 매핑되지 않은 418도 보존하며 Gateway writer의 본문 재수정을 제거했다. |
 | 2-2 혼동되는 설정 | Backend의 중복 spring.mvc.problemdetails.enabled를 제거. 실제 오류 계약은 프로젝트 Advice/ErrorController가 담당한다. |
 | 2-3 5xx 원인 추적 | 예외 타입과 cause별 첫 stack frame을 최대 8개 기록. 순환 cause를 방어하고 예외 메시지/전체 stack은 기록하지 않는다. |
@@ -82,12 +82,13 @@ Backend는 인가 규칙이 없는 테스트 전용 Controller도 차단하는�
 
 ## 2026-09-29 Feature-based Structure 전환
 
-- 사용자 제공 샘플에 맞춰 hello/auth의 Controller를 presentation, Service를 application, DTO를 application/dto로 이동했다.
+- 사용자 제공 샘플에 맞춰 hello/auth의 Controller를 api, Service를 application, DTO를 api/dto로 이동했다.
 - 설정·보안·예외 처리는 common/config, common/security, common/exception으로 모았다. 라우팅 설정과 필터는 common/config와 common/web에 둔다.
-- 인증 기능의 예외는 application, 해당 HTTP Advice는 presentation에 두어 common의 업무 예외 참조를 방지한다.
-- 공통 enum은 기존 기준대로 common/code, 순수 유틸리티는 common/util에 둔다.
-- 같은 기준으로 테스트 패키지·문서 링크를 갱신하고 이동 후 남은 빈 src 디렉터리 54개를 삭제했다.
-- 현재 구현에 필요하지 않은 domain/mapper와 샘플의 member/product/order는 생성하지 않았다.
+- 인증 기능의 예외는 application, 해당 HTTP Advice는 api에 두어 common의 업무 예외 참조를 방지한다.
+- 공통 응답은 common/response, 공통 enum은 기존 기준대로 common/code, 순수 유틸리티는 common/util에 둔다.
+- 수정된 이미지 기준으로 api/dto와 common/response를 적용하고 테스트·문서 링크를 갱신했다. 이번 이동 후 빈 src 디렉터리 6개를 추가로 삭제했다.
+- TokenService의 API DTO 의존을 제거하고 IssuedToken 결과를 Controller에서 TokenResponse로 변환한다. 결과의 토큰 마스킹을 검증했다.
+- domain은 업무 모델·규칙, infrastructure는 Repository·외부 연동으로 기준을 정했다. 현재 코드가 없는 빈 패키지는 생성하지 않았다.
 - HTTP URL/JSON·JWT 알고리즘·환경변수·인가·rate-limit 설정은 유지한다. Java 직접 참조는 새 패키지 import를 사용한다.
 - 구체적인 트리와 기능 간 의존 기준은 [패키지 구조](package-structure.md)를 따른다.
 

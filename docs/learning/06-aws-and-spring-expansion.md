@@ -56,7 +56,7 @@ API Gateway의 route throttling과 Redis의 subject별 제한을 같은 정책�
    Spring 자체가 `.env` 파일을 자동 읽는다고 가정하지 않습니다.
 3. `@EnableConfigurationProperties`의 Bean 등록, 설정 record의 `@Validated`·제약·생성자 검증,
    `RuntimeProfileGuard`의 독립적인 환경 검사를 구분합니다. [설정 객체와 애너테이션](../package-structure.md#설정-객체와-애너테이션)을 참고합니다.
-4. `common/config`의 JWT/CORS/인가 정책과 hello/auth 기능 내부의 `presentation`·`application`·`application/dto` 경계를 읽습니다.
+4. `common/config`의 JWT/CORS/인가 정책과 hello/auth 기능 내부의 `api`·`application`·`api/dto` 경계를 읽습니다.
 5. `common/exception`, 요청 ID, probe, 종료 시간을 검토합니다.
 
 주요 운영 설정 간 우선순위는 명령행 > JVM 시스템 속성 > OS 환경변수 > 설정 파일입니다.
@@ -67,7 +67,7 @@ API Gateway의 route throttling과 Redis의 subject별 제한을 같은 정책�
 
 추가 업무 API 구현 순서 (아직 구현되지 않은 과제):
 
-1. 실제 업무를 선택하고 `<feature>/presentation`, `<feature>/application`, `<feature>/application/dto`를 만듭니다. domain/mapper는 필요한 코드가 생길 때 추가합니다.
+1. 실제 업무를 선택하고 `<feature>/api`, `<feature>/application`, `<feature>/api/dto`를 만듭니다. 업무 모델은 `<feature>/domain`, Repository·외부 연동은 `<feature>/infrastructure`에 필요한 코드가 생길 때 추가합니다.
 2. HTTP 검증과 변환은 Controller, 업무 규칙은 Service로 둡니다.
 3. 공통 성공/오류 계약과 생성자 주입을 재사용합니다.
 4. 설정을 추가한다면 타입 바인딩, fail-fast 검증, 환경변수, 문서를 한 묶음으로 추가합니다.
@@ -105,8 +105,8 @@ Redis 오류의 요청 단위 차단과 pool 고갈 검증을 보완합니다. �
 | 1 | 별도 Oracle Compose overlay, DB 전용 volume, 외부화 자격증명 | 재기동 후 데이터 유지; 다른 DB와 포트/volume 충돌 없음 |
 | 2 | Backend의 Oracle JDBC·JPA·MyBatis 의존성 | Boot/Java/driver 호환 조합 확인 |
 | 3 | 공용 DataSource/Hikari와 migration | 시작 시 연결/스키마 검증, OSIV off, prod ddl-auto validate/none |
-| 4 | `persistence/jpa/entity`, `repository` | Entity가 HTTP 응답에 직접 노출되지 않음 |
-| 5 | `persistence/mybatis/mapper`, `model`, resources/mapper | SQL Mapper와 DTO 변환기 이름 구분 |
+| 4 | `<feature>/infrastructure/jpa/entity`, `<feature>/infrastructure/jpa/repository` | Entity가 HTTP 응답에 직접 노출되지 않음 |
+| 5 | `<feature>/infrastructure/mybatis/mapper`, `model`, resources/mapper/<feature> | SQL Mapper와 DTO 변환기 이름 구분 |
 | 6 | Service 트랜잭션 경계 | JPA+MyBatis 혼합 작업 실패 시 둘 다 rollback |
 | 7 | 같은 이미지를 kind에 배포, DB 연결 주소 분리 | Pod의 localhost가 호스트 DB가 아님을 반영 |
 

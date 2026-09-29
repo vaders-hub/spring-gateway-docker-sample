@@ -1,6 +1,6 @@
 # Feature-based Structure와 설정 책임
 
-2026-09-29 사용자 제공 샘플을 기준으로 기능 내부를 presentation/application으로 나누고,
+2026-09-29 사용자 제공 샘플을 기준으로 기능을 api/application/domain/infrastructure 기준으로 나누고,
 설정·보안·예외 처리 등 공통 기술 코드는 common 아래로 모았습니다.
 Backend의 업무 기능은 hello, Gateway의 데모 토큰 발급 기능은 auth입니다.
 
@@ -15,14 +15,14 @@ com.example.backend
 │   │   └── runtime/     RuntimeProfileGuard
 │   ├── exception/    GlobalExceptionHandler, ApiErrorController, ProblemDetails
 │   ├── security/     SecurityProblemWriter
-│   ├── api/          ApiResponse, ApiResponses
+│   ├── response/     ApiResponse, ApiResponses
 │   ├── code/         SuccessCode, ErrorCode
 │   ├── util/         ErrorDiagnostics
 │   └── web/          RequestContext, RequestIdFilter
 └── hello/
-    ├── application/  HelloService와 업무 결과 record
+    ├── api/          HelloController
     │   └── dto/      HelloResponse, EchoRequest, EchoResponse
-    └── presentation/ HelloController
+    └── application/  HelloService와 업무 결과 record
 
 com.example.gateway
 ├── GatewayApplication
@@ -34,49 +34,63 @@ com.example.gateway
 │   ├── exception/    GlobalExceptionHandler, ProblemDetails, ProblemResponseWriter,
 │   │                GatewayErrorHandler, GatewayErrorResponses
 │   ├── security/     SecurityProblemWriter
-│   ├── api/          ApiResponse, ApiResponses
+│   ├── response/     ApiResponse, ApiResponses
 │   ├── code/         SuccessCode, ErrorCode
 │   ├── util/         ErrorDiagnostics
 │   └── web/          RequestContext, RequestIdWebFilter, RequestHeadersFilter
 └── auth/
-    ├── application/  TokenService, InvalidCredentialsException
+    ├── api/          AuthController, AuthExceptionHandler
     │   └── dto/      TokenRequest, TokenResponse
-    └── presentation/ AuthController, AuthExceptionHandler
+    └── application/  TokenService와 IssuedToken, InvalidCredentialsException
 ```
 
-샘플의 member/product/order는 예시이므로 현재 저장소에 빈 기능으로 추가하지 않습니다.
-현재 hello/auth는 영속화할 업무 모델이 없으므로 domain도 만들지 않습니다.
-도메인 모델·Repository가 필요하면 해당 기능의 domain, 복잡한 변환이 필요하면
-application/mapper를 추가합니다. 기존의 간단한 Controller 변환 코드는 유지합니다.
+위 트리는 현재 존재하는 코드입니다. 이미지의 member/order/payment는 예시이므로 빈 기능을 추가하지 않습니다.
+현재 hello/auth에는 독립 업무 모델이나 저장소가 없어 domain/infrastructure 디렉터리도 생성하지 않았습니다.
+기능이 확장되면 다음 기준으로 코드를 배치합니다.
+
+```text
+<feature>/
+├── api/               Controller, 기능 전용 Advice
+│   └── dto/           HTTP 요청·응답
+├── application/       Service, use case, 업무 결과
+├── domain/            업무 모델·규칙 (도입 시)
+└── infrastructure/    Repository, DB·외부 시스템 연동 (도입 시)
+```
+
+복잡한 HTTP DTO 변환이 필요하면 api/mapper를 추가합니다.
+단순한 변환은 현재처럼 Controller에서 처리하고 불필요한 Mapper 인터페이스는 만들지 않습니다.
 
 ## 계층 책임과 의존 방향
 
 | 패키지 | 책임 |
 |---|---|
-| feature/presentation | Controller, HTTP 검증 시작, 응답 변환, 기능 전용 Advice |
+| feature/api | Controller, HTTP 검증 시작, 응답 변환, 기능 전용 Advice |
 | feature/application | Service, use case, 업무 결과와 기능 전용 예외 |
-| feature/application/dto | 해당 기능의 요청/응답 계약 |
-| feature/domain (필요 시) | 업무 모델·규칙·Repository 계약. 현재 생성하지 않음 |
+| feature/api/dto | 해당 기능의 요청/응답 계약 |
+| feature/domain (필요 시) | 업무 모델·규칙. 현재 생성하지 않음 |
+| feature/infrastructure (필요 시) | Repository·JPA/MyBatis·외부 클라이언트 구현. 현재 생성하지 않음 |
 | common/config | 보안·JWT·CORS·Clock·라우팅 구성 및 데모 발급 Bean 조건 |
 | common/config/properties, common/config/runtime | 타입 기반 설정 객체, 시작 시 profile 보호 |
 | common/security | Servlet/WebFlux 인증·인가 오류 응답 adapter |
 | common/exception | 표준 검증·미처리 오류의 Advice, ProblemDetails, 전역 오류 adapter |
 | common/web | 요청 문맥·로그·Request ID·라우팅 헤더 전달 |
-| common/api, common/code, common/util | 공통 응답 생성, enum, 순수 진단 유틸리티 |
+| common/response, common/code, common/util | 공통 응답 생성, enum, 순수 진단 유틸리티 |
 
-- 기본 방향은 presentation → application → domain(도입 시)입니다. application은 presentation을 참조하지 않습니다.
+- 기본 방향은 api → application → domain(도입 시)입니다. application은 api와 api/dto를 참조하지 않습니다. domain은 api/infrastructure를 참조하지 않습니다.
 - 기능은 common을 사용하고, **main의 common은 hello/auth를 직접 참조하지 않습니다.**
   공통 설정은 프레임워크 Bean과 설정 객체를 구성하며 업무 Controller/Service를 호출하지 않습니다.
-- 인증 전용 InvalidCredentialsException은 application, HTTP 매핑은 presentation의 AuthExceptionHandler가 소유합니다.
+- 인증 전용 InvalidCredentialsException은 application, HTTP 매핑은 api의 AuthExceptionHandler가 소유합니다.
   이 Advice는 AuthController 패키지로 범위를 제한하고, 먼저 처리하지 않는 DTO/JSON 오류는 공통 Advice가 처리합니다.
 - JwtConfig는 검증 decoder, AuthIssuerConfig는 데모 발급 encoder를 만듭니다.
   app.security 접두사와 환경변수·local/dev/test 발급 조건은 유지합니다.
 - RequestHeadersFilter는 인증된 Principal을 사용하며 TokenService를 호출해 인증을 재구현하지 않습니다.
-- 기능 간 협력은 상대 기능의 공개 application 서비스/API를 통합니다. 다른 기능의 presentation이나 내부 저장소에 의존하지 않습니다.
+- 기능 간 협력은 상대 기능의 공개 application 서비스/API를 통합니다. 다른 기능의 api나 내부 저장소에 의존하지 않습니다.
 
-application/dto에는 기존 요청 검증 애너테이션과 JSON 계약이 유지됩니다.
+api/dto에는 기존 요청 검증 애너테이션과 JSON 계약이 유지됩니다.
 따라서 이번 변경은 패키지 책임을 정리하는 것이며 프레임워크에서 완전히 분리된 도메인 아키텍처를 의미하지 않습니다.
-Backend Service는 HTTP DTO/requestId 대신 업무 인자와 결과 record를 사용하고 presentation이 변환합니다.
+양쪽 Service는 API DTO/requestId 대신 업무 인자와 결과 record를 사용하고 Controller가 API DTO로 변환합니다.
+TokenService.issue(username, password)는 IssuedToken을 반환하고 AuthController가 TokenResponse로 변환합니다.
+IssuedToken과 TokenResponse 모두 toString에서 accessToken을 가립니다. JWT 검증·발급 정책은 유지합니다.
 현재 경계는 Java 패키지 기준이며 별도 Gradle 모듈이나 강제 모듈 격리 체계는 아닙니다.
 
 새 코드의 기준: **업무 Controller는 ApiResponses, 오류 처리기는 ProblemDetails**를 사용합니다.
@@ -84,10 +98,10 @@ ApiResponses.fail은 common/exception/ProblemDetails로 위임합니다. Actuato
 
 ## 새 기능을 추가하는 순서
 
-1. 예를 들어 order라면 order/presentation, order/application, order/application/dto에 실제 필요한 코드부터 추가합니다.
-2. 업무 모델·영속화가 필요할 때 order/domain을, 변환이 복잡할 때 order/application/mapper를 추가합니다.
+1. 예를 들어 order라면 order/api, order/application, order/api/dto에 실제 필요한 코드부터 추가합니다.
+2. 업무 모델·규칙은 order/domain, Repository·외부 연동 구현은 order/infrastructure에 추가합니다. HTTP 변환이 복잡할 때 order/api/mapper를 추가합니다.
    아직 구현할 코드가 없는 빈 패키지·Service 인터페이스/Impl은 만들지 않습니다.
-3. 기능 전용 예외는 application 또는 domain, HTTP 예외 처리기는 presentation에 두고 해당 Controller로 범위를 제한합니다.
+3. 기능 전용 예외는 application 또는 domain, HTTP 예외 처리기는 api에 두고 해당 Controller로 범위를 제한합니다.
 4. 경로·메서드·scope를 common/config/SecurityConfig에 등록합니다. Backend의 기본 거부 정책은 유지합니다.
 5. 테스트는 main과 같은 패키지를 따릅니다. 보안 통합 테스트는 common/security, 공통 오류 테스트는 common/exception에 둡니다.
 6. API 계약·학습 문서와 검증을 함께 갱신합니다. 이동 후 남은 빈 src 디렉터리는 비어 있음을 확인한 뒤 삭제합니다.
@@ -102,8 +116,8 @@ Gateway(WebFlux)와 Backend(Servlet)의 독립 빌드 경계와 각자의 common
 - 샘플의 common/exception 배치를 따르되, 이전에 정한 enum 분리 기준에 따라 SuccessCode/ErrorCode는 common.code에 함께 둡니다.
   주문 상태처럼 특정 업무에 속한 enum은 해당 기능의 domain에 둡니다.
 - ErrorDiagnostics는 common.util의 순수 진단 함수입니다. 생성자는 private이고 다른 패키지에서 쓰는 함수는 public입니다.
-- static이라는 이유만으로 util로 옮기지 않습니다. HTTP 응답 생성은 api/exception, 요청 문맥은 web에서 담당합니다.
-- api → exception, api/exception → code, exception → util 방향을 유지합니다. code/util은 Controller/Service/응답 팩토리를 참조하지 않습니다.
+- static이라는 이유만으로 util로 옮기지 않습니다. HTTP 응답 생성은 response/exception, 요청 문맥은 web에서 담당합니다.
+- response → exception, response/exception → code, exception → util 방향을 유지합니다. code/util은 Controller/Service/응답 팩토리를 참조하지 않습니다.
 
 ## 설정 객체와 애너테이션
 

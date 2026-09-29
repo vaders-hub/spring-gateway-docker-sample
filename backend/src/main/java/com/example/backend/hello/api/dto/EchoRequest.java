@@ -1,4 +1,4 @@
-package com.example.backend.hello.application.dto;
+package com.example.backend.hello.api.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

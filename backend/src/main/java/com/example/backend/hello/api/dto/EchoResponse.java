@@ -1,4 +1,4 @@
-package com.example.backend.hello.application.dto;
+package com.example.backend.hello.api.dto;
 
 public record EchoResponse(String service, Received received, String username) {
     // 입력 DTO의 검증 규칙/필드 변경이 응답 계약으로 전파되지 않게 출력 타입을 분리한다.

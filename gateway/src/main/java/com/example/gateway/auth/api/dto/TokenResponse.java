@@ -1,4 +1,4 @@
-package com.example.gateway.auth.application.dto;
+package com.example.gateway.auth.api.dto;
 
 public record TokenResponse(
         String accessToken,

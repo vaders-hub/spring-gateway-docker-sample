@@ -24,7 +24,7 @@
 - 기본 NodePort와 분리된 선택형 Gateway API/Envoy 진입점 (매니페스트와 설치 절차)
 - staging/prod ECS JSON 구조화 로그
 - Gateway CORS allowlist와 내부 Backend CORS 비활성화 정책
-- Feature-based Structure(hello/auth)의 `presentation`·`application`·`application/dto` 분리와 common 구성와 성공 envelope/RFC 9457 오류 코드 규격
+- Feature-based Structure(hello/auth)의 `api`·`application`·`api/dto` 분리와 common 구성과 성공 envelope/RFC 9457 오류 코드 규격
 - Micrometer/OpenTelemetry W3C trace 전파와 외부화된 OTLP export
 - 선택형 Compose Prometheus/Grafana 수집 스택과 로컬 전용 scrape 정책
 - 외부화된 Netty/Tomcat timeout, connection/thread 상한

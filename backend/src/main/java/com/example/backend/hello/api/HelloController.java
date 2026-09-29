@@ -1,12 +1,12 @@
-package com.example.backend.hello.presentation;
+package com.example.backend.hello.api;
 
-import com.example.backend.common.api.ApiResponse;
-import com.example.backend.common.api.ApiResponses;
+import com.example.backend.common.response.ApiResponse;
+import com.example.backend.common.response.ApiResponses;
 import com.example.backend.common.code.SuccessCode;
 import com.example.backend.common.web.RequestContext;
-import com.example.backend.hello.application.dto.EchoRequest;
-import com.example.backend.hello.application.dto.EchoResponse;
-import com.example.backend.hello.application.dto.HelloResponse;
+import com.example.backend.hello.api.dto.EchoRequest;
+import com.example.backend.hello.api.dto.EchoResponse;
+import com.example.backend.hello.api.dto.HelloResponse;
 import com.example.backend.hello.application.HelloService;
 import jakarta.validation.Valid;
 import java.security.Principal;

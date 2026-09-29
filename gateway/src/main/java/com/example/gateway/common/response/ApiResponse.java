@@ -1,4 +1,4 @@
-package com.example.gateway.common.api;
+package com.example.gateway.common.response;
 
 import java.time.Instant;
 

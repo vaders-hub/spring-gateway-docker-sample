@@ -5,8 +5,8 @@
 ## 목표 / 구현 위치
 
 Kubernetes에 올리기 전에 앱 자체를 이해합니다. `docker-compose.yml`, 각 모듈의
-`Dockerfile`, `gateway/src/main/resources/application.yml`, `auth/presentation`,
-`auth/application`, Backend의 `hello/presentation`, `hello/application`, `hello/application/dto`를 함께 봅니다.
+`Dockerfile`, `gateway/src/main/resources/application.yml`, `auth/api`,
+`auth/application`, Backend의 `hello/api`, `hello/application`, `hello/api/dto`를 함께 봅니다.
 
 컨테이너 엔진은 Windows Docker Desktop, 아래 명령은 WSL Bash에서 실행합니다.
 API 실습에는 curl/jq/OpenSSL이 필요합니다. IDE 개발은 WSL JDK 25가 필요하며 Gradle은

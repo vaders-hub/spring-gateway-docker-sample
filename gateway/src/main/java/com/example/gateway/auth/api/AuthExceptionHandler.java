@@ -1,4 +1,4 @@
-package com.example.gateway.auth.presentation;
+package com.example.gateway.auth.api;
 
 import com.example.gateway.common.config.ConditionalOnDemoIssuer;
 import com.example.gateway.auth.application.InvalidCredentialsException;

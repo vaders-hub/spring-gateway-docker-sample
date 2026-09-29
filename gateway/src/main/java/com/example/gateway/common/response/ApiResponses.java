@@ -1,8 +1,8 @@
-package com.example.backend.common.api;
+package com.example.gateway.common.response;
 
-import com.example.backend.common.code.ErrorCode;
-import com.example.backend.common.code.SuccessCode;
-import com.example.backend.common.exception.ProblemDetails;
+import com.example.gateway.common.code.ErrorCode;
+import com.example.gateway.common.code.SuccessCode;
+import com.example.gateway.common.exception.ProblemDetails;
 import java.time.Instant;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;

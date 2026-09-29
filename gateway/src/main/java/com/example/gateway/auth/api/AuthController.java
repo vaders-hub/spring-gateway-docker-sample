@@ -1,10 +1,10 @@
-package com.example.gateway.auth.presentation;
+package com.example.gateway.auth.api;
 
-import com.example.gateway.auth.application.dto.TokenRequest;
-import com.example.gateway.auth.application.dto.TokenResponse;
+import com.example.gateway.auth.api.dto.TokenRequest;
+import com.example.gateway.auth.api.dto.TokenResponse;
 import com.example.gateway.auth.application.TokenService;
-import com.example.gateway.common.api.ApiResponse;
-import com.example.gateway.common.api.ApiResponses;
+import com.example.gateway.common.response.ApiResponse;
+import com.example.gateway.common.response.ApiResponses;
 import com.example.gateway.common.code.SuccessCode;
 import com.example.gateway.common.web.RequestContext;
 import com.example.gateway.common.config.ConditionalOnDemoIssuer;
@@ -34,7 +34,9 @@ public class AuthController {
             @Valid @RequestBody TokenRequest request,
             ServerWebExchange exchange) {
         String requestId = RequestContext.requestId(exchange);
+        var issued = tokenService.issue(request.username(), request.password());
+        var response = new TokenResponse(issued.accessToken(), issued.tokenType(), issued.expiresIn());
         // TOKEN_ISSUED가 토큰 응답의 no-store/no-cache 헤더를 함께 지정한다.
-        return ApiResponses.success(SuccessCode.TOKEN_ISSUED, tokenService.issue(request), requestId);
+        return ApiResponses.success(SuccessCode.TOKEN_ISSUED, response, requestId);
     }
 }

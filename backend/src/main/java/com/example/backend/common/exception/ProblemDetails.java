@@ -11,7 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 
-// 오류 계약의 단일 생성 지점. common.exception은 common.api를 참조하지 않는다.
+// 오류 계약의 단일 생성 지점. common.exception은 common.response를 참조하지 않는다.
 public final class ProblemDetails {
     private ProblemDetails() {}
 

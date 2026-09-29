@@ -1,6 +1,6 @@
 package com.example.gateway.common.security;
 
-import com.example.gateway.auth.presentation.AuthController;
+import com.example.gateway.auth.api.AuthController;
 import com.example.gateway.auth.application.TokenService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
