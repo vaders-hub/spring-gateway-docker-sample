@@ -24,6 +24,7 @@ spring:
 app:
   learning:
     mock-enabled: false
+    persistence-enabled: false
     docs-enabled: false
   observability:
     prometheus-public: ${PROMETHEUS_PUBLIC:false}
@@ -104,3 +105,16 @@ springdoc:
   swagger-ui:
     enabled: ${app.learning.docs-enabled}
   paths-to-match: /hello,/echo,/members/**,/products/**,/orders/**
+
+
+---
+# 01~11단계는 DB 없이도 실행한다. persistence 선택 시에만 JDBC/JPA/Flyway 자동 구성을 활성화한다.
+spring:
+  config:
+    activate:
+      on-profile: "!persistence"
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration

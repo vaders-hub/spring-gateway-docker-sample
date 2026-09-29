@@ -56,7 +56,9 @@ class SecurityConfig {
                     // 실제 업무 경로만 명시한다. fixture의 존재 여부는 local/test 조건이 결정한다.
                     authorize.requestMatchers(HttpMethod.GET, "/members", "/members/{id}", "/products", "/products/{id}")
                             .access(hasScope("api.read"));
-                    authorize.requestMatchers(HttpMethod.POST, "/orders/preview").access(hasScope("api.write"));
+                    authorize.requestMatchers(HttpMethod.POST, "/orders/preview", "/orders").access(hasScope("api.write"));
+                    // 주문 소유권은 scope 검사 후 서비스에서 JWT subject로 한 번 더 검사한다.
+                    authorize.requestMatchers(HttpMethod.GET, "/orders/{id}").access(hasScope("api.read"));
                     if (environment.getProperty("app.learning.docs-enabled", Boolean.class, false)) {
                         // Backend 로컬 문서 UI 부트스트랩용. 업무 API의 JWT 인가는 그대로 유지한다.
                         authorize.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**",

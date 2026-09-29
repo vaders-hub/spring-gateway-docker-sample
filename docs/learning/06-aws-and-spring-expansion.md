@@ -92,7 +92,7 @@ Redis 오류의 요청 단위 차단과 pool 고갈 검증을 보완합니다. �
 
 ## 6-3. Oracle + JPA + MyBatis 선택 확장
 
-현재 선택한 기본 DB 후속은 PostgreSQL + JPA/Flyway/Testcontainers입니다.
+현재 기본 DB는 [12단계](12-postgresql-jpa-flyway.md)의 PostgreSQL + JPA/Flyway/Testcontainers입니다.
 [11단계 로드맵](11-features-and-library-roadmap.md)을 먼저 진행하고, 아래 Oracle/MyBatis는 별도 선택 학습으로 유지합니다.
 
 현재 이 세 구성은 **아직 연결/구현되지 않았습니다.** Kubernetes 기초보다 먼저
@@ -170,7 +170,7 @@ LocalStack/EKS Anywhere 같은 추가 도구도 현재 목표에는 필수가 �
 - [ ] 환경변수와 `application.yml`/profile 설정을 Spring `Environment`에서 조회하고 `@ConfigurationProperties`로 설정 객체에 바인딩하는 경로를 추적했다. 설정 객체의 값 검증과 `RuntimeProfileGuard`의 독립적인 환경 검사를 구분한다.
 - [ ] Controller의 HTTP/검증 책임, Service의 업무 책임, DTO와 향후 Entity/Repository/Mapper의 책임을 구분한다.
 - [ ] 현재 HS256 공유키 검증과 향후 OIDC/JWK 도입의 차이를 설명한다. issuer 문자열 변경만으로 외부 IdP 연동이 되지 않는다.
-- [ ] Oracle/JPA/MyBatis/migration/혼합 트랜잭션은 후속 구현임을 구분하고, 실제 DB rollback 검증이 필요한 이유를 설명한다.
+- [ ] PostgreSQL JPA/Flyway는 12단계 구현이며 Oracle/MyBatis 혼합 트랜잭션은 후속임을 구분하고, 실제 DB rollback 검증이 필요한 이유를 설명한다.
 - [ ] 현재 구현·실제로 확인한 기능·미구현 과제를 나누어 기록하고 다음에는 관측성/정책/저장소 중 한 과제만 선택한다.
 
 **학습 기록:** 예상 경로 → 관찰한 HTTP 코드·로그·지표 → 근거 파일 → 복구 결과(해당 시) → 아직 설명하지 못하는 부분을 적습니다. 비밀번호·JWT·Secret 값은 적지 않습니다.

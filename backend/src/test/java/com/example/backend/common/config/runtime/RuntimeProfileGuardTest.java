@@ -27,6 +27,20 @@ class RuntimeProfileGuardTest {
     }
 
     @Test
+    void permitsOnlyLocalTestPersistenceCombination() {
+        for (String lifecycle : new String[]{"local", "test"}) {
+            var env = new MockEnvironment();
+            env.setActiveProfiles("persistence", lifecycle);
+            assertThatNoException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+        }
+        for (String[] profiles : new String[][]{{"local", "prod"}, {"prod", "persistence"},
+                {"persistence"}, {"local", "other"}, {}}) {
+            var env = new MockEnvironment();
+            env.setActiveProfiles(profiles);
+            assertThatIllegalStateException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+        }
+    }
+    @Test
     void rejectsUnsupportedProfile() {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("kubernetes");

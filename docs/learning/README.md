@@ -40,11 +40,12 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 9 (3~4단계 후속) | [PV·PVC와 저장·복원](09-storage-and-persistence.md) | 전용 namespace에서 Pod 교체, PVC 삭제, 호스트 백업·새 PVC 복원 | emptyDir/PVC 수명 차이와 복원 파일 checksum 일치 |
 | 10 (4단계 후속) | [Spring Boot 기본 구성 검증](10-spring-boot-readiness.md) | Stateless Pod 교체 실습, 종료 검증 설계, 설정 관리표 | 같은 JWT 인증 유지; graceful/Redis 후속 구현과 검증 상태 구분 |
 | 11 (Spring 확장 1차) | [Feature 목업과 라이브러리 로드맵](11-features-and-library-roadmap.md) | 회원·상품·주문 견적, MapStruct/OpenAPI/ArchUnit | HTTP/아키텍처 검증과 PostgreSQL 후속 범위 구분 |
+| 12 (Spring 확장 2차) | [PostgreSQL/JPA/Flyway](12-postgresql-jpa-flyway.md) | DB 저장, migration, Testcontainers | 소유권·rollback·DB 재생성 후 주문 유지 |
 | 4단계 후속 | [장애 정책 설계](../resilience-policy.md) | fail-closed·CircuitBreaker·Retry 설계 | 기본 동작과 미구현 과제 구분 |
 
 1~2단계는 Compose, 3~5단계는 kind입니다. **Compose와 kind를 기본 설정으로 동시에
 띄우면 8080 포트가 충돌합니다.** 2단계 종료 후 Compose를 내리고 kind로 넘어갑니다.
-모든 단계를 한꺼번에 띄울 필요는 없습니다. 다음 DB 실습은 PostgreSQL이며 Oracle과 tracing backend는 후속 선택 과제입니다.
+모든 단계를 한꺼번에 띄울 필요는 없습니다. 12단계 DB 실습은 PostgreSQL이며 Oracle과 tracing backend는 후속 선택 과제입니다.
 권장 순서는 `01 → 02 → 03 → 08(보충) → 04 → 10(기본 검증) → 09(저장소) → 05 → 06`입니다.
 10-1은 현재 코드로 실습할 수 있습니다. 10-3 지연 fixture와 10-4 장애 정책은 구현 과제로 기록하고
 나머지 Kubernetes 학습과 병행합니다. 후속 코드를 구현할 때 해당 검증으로 돌아옵니다.
@@ -58,7 +59,7 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 매니페스트 존재 | Compose, kind 기본 리소스, 선택형 Envoy/Gateway API |
 | Compose 관측 설정 존재 | Prometheus scrape, Grafana datasource; 완성 dashboard는 없음 |
 | 계측 설정만 존재 | OpenTelemetry; Collector/trace 저장소는 없고 export는 기본 off |
-| 추가 구현 필요 | Oracle 연결, JPA/MyBatis, migration, 업무 Entity/Repository/Mapper |
+| DB 학습 구현 | 12단계 PostgreSQL/JPA/Flyway·주문 저장·Testcontainers. Oracle/MyBatis 혼합은 별도 후속 |
 | 보안 보완 과제 | Redis 오류 시 요청 단위 fail-closed; 현재 readiness 제외와 별개 |
 | 저장소 실습 문서 존재 | 09에 PVC/Deployment YAML과 백업·복원 절차 포함; 실행 시에만 전용 리소스 생성 |
 | Spring Boot 보완 문서 존재 | 10에 Stateless 실습과 설정 관리표; 지연 fixture/처리 중 종료 검증은 추가 구현 필요 |

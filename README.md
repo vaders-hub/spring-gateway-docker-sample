@@ -111,9 +111,10 @@ Redis에 만들어집니다.
 
 ## Feature와 라이브러리 확장
 
-Backend에 local/test 전용 member/product/order 목업을 추가했습니다. 회원·상품 조회와 주문 견적 계산이며 저장·결제는 하지 않습니다.
+Backend의 member/product/order는 기본 local에서 fixture 조회·견적을, local,persistence에서 PostgreSQL 조회·주문 저장을 제공합니다. 결제·재고 차감은 구현하지 않았습니다.
 MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포함합니다.
 [11단계 안내와 후속 로드맵](docs/learning/11-features-and-library-roadmap.md)에서 실행 예제와 선택형 UI overlay를 확인하세요.
+[12단계 PostgreSQL/JPA/Flyway](docs/learning/12-postgresql-jpa-flyway.md)에는 DB 기동·주문 저장·재기동·Testcontainers 검증 절차가 있습니다.
 다음 단계는 PostgreSQL + JPA/Flyway/Testcontainers이며 아직 DB는 추가하지 않았습니다.
 
 ## 주요 구현 위치
@@ -177,7 +178,7 @@ backend/src/main/java/com/example/backend/hello/api/dto/
 
 ## 설정과 Profile
 
-- lifecycle profile: `local`, `dev`, `test`, `staging`, `prod` 중 정확히 하나
+- lifecycle profile: `local`, `dev`, `test`, `staging`, `prod` 중 정확히 하나. Backend는 local/test에서 저장소 선택용 `persistence`를 추가할 수 있음
 - deployment platform: `DEPLOYMENT_PLATFORM`으로 Docker Compose/Kubernetes 구분
 - 기본값: 각 모듈의 `application.yml`
 - 환경 차이: `application-{profile}.yml` 또는 배포 환경변수
@@ -201,7 +202,7 @@ Pod를 교체해야 합니다. Compose의 `.env`/`environment` 변경은 `docker
 - 설정 검증: `@ConfigurationProperties`로 Gateway의 `app.security`를 `SecurityProperties`에,
   Backend의 `app.security.jwt`를 `JwtProperties`에 바인딩. `@Validated`·검증 제약·record 생성자로
   필수값과 secret 길이를 검사하고, Gateway에서는 데모 암호 길이·TTL·CORS 조건도 검증
-- 환경 분리: `local`, `dev`, `test`, `staging`, `prod` 중 정확히 하나의 active profile 요구
+- 환경 분리: lifecycle profile은 정확히 하나; Backend local/test의 선택형 persistence만 추가 허용
 - 내부 보안: Backend의 JWT 재검증과 Kubernetes NetworkPolicy
 - Timeout: Backend connect 2초/response 5초, Redis connect 2초/command 1초
 - Connection pool: Gateway Backend 연결을 최대 50개로 제한하고 acquire timeout 설정

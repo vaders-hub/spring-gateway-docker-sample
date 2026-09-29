@@ -1,13 +1,13 @@
 package com.example.backend.order.application;
 
 import com.example.backend.common.code.ErrorCode;
-import com.example.backend.common.config.ConditionalOnLearningMock;
+import com.example.backend.common.config.ConditionalOnLearningFeature;
 import com.example.backend.common.exception.BusinessException;
 import com.example.backend.order.domain.OrderQuote;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnLearningMock
+@ConditionalOnLearningFeature
 public class OrderService {
     private final OrderCatalog catalog;
     public OrderService(OrderCatalog catalog) { this.catalog = catalog; }
@@ -17,7 +17,7 @@ public class OrderService {
         }
         catalog.requireMember(memberId);
         var product = catalog.product(productId);
-        // 현재는 견적 계산만 한다. 저장/결제/재고 차감은 후속 단계다.
+        // preview 자체는 저장하지 않는다. 저장 유스케이스는 이 계산을 재사용한 뒤 별도로 INSERT한다.
         return new OrderQuote(memberId, product.id(), product.name(), quantity, product.unitPrice(), product.currency());
     }
 }

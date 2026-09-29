@@ -23,6 +23,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Boot BOM이 Hibernate/Flyway/JDBC/Testcontainers의 호환 버전을 함께 관리한다.
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
@@ -42,10 +49,23 @@ springBoot {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'database'
+    }
 }
 
 // Stable artifact name for independent Docker builds; version remains in build info.
 tasks.named('bootJar') {
     archiveFileName = 'app.jar'
+}
+
+
+// 기본 test는 Docker 없이 실행된다. 실제 PostgreSQL 검증은 명시적으로 실행하며 Docker 부재를 skip하지 않는다.
+tasks.register('databaseTest', Test) {
+    description = 'Runs PostgreSQL integration tests using disposable Testcontainers.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'database' }
+    shouldRunAfter tasks.named('test')
 }

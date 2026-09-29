@@ -2,7 +2,7 @@
 
 2026-09-29. 사용자 제공 chat-session.md의 목록을 현재 Boot 4.0.8 / Java 25 소스와 대조한 계획입니다.
 이번 범위는 회원·상품·주문 목업, MapStruct, OpenAPI, ArchUnit입니다.
-후속 DB는 **PostgreSQL**로 결정했습니다. DB 컨테이너·JPA·Flyway는 이번에 추가하지 않았습니다.
+1차에서는 **PostgreSQL**을 후속 DB로 결정했습니다. 이후 [12단계](12-postgresql-jpa-flyway.md)에 DB/JPA/Flyway/Testcontainers를 구현했습니다. 아래 1차 설명과 96개 검증 기록은 당시 범위이며, 현재 DB 저장 기능과 검증은 12단계를 참고하세요.
 
 ## 목록과 현재 상태
 
@@ -16,9 +16,9 @@
 | MapStruct 1.6.3 | 이번 적용. Backend API DTO 변환과 컴파일 시 매핑 누락 검사 |
 | springdoc-openapi 3.0.3 | 이번 적용. Boot 4.0.x용 Backend OpenAPI/Swagger UI |
 | ArchUnit 1.5.1 | 이번 적용. 양쪽 모듈 패키지 의존 검사. 별도 JUnit 엔진 대신 core API 사용 |
-| Spring Data JPA/JDBC + PostgreSQL | 2차. 우선 JPA, 복잡한 SQL 요구가 생길 때 JDBC/MyBatis 검토 |
-| Flyway | 2차. PostgreSQL 스키마 migration과 앱 기동을 함께 검증 |
-| Testcontainers | 2차. 실제 PostgreSQL로 migration·Repository·rollback 검증 |
+| Spring Data JPA/JDBC + PostgreSQL | [12단계](12-postgresql-jpa-flyway.md) 적용. 우선 JPA, 복잡한 SQL 요구가 생길 때 JDBC/MyBatis 검토 |
+| Flyway | [12단계](12-postgresql-jpa-flyway.md) 적용. PostgreSQL 스키마 migration과 앱 기동을 함께 검증 |
+| Testcontainers | [12단계](12-postgresql-jpa-flyway.md) 적용. 실제 PostgreSQL로 migration·Repository·rollback 검증 |
 | RestClient / WebClient | 3차. Backend 외부 조회는 RestClient, 비동기 스트림이 필요할 때 WebClient. Gateway의 Netty 스레드에서는 blocking 호출 금지 |
 | WireMock | 3차. 외부 시스템 정상·5xx·지연 응답을 고정하여 HTTP 연동 검증 |
 | Resilience4j | 3차. 읽기 호출의 CircuitBreaker·제한된 Retry부터 시작; Bulkhead/TimeLimiter는 호출 방식과 요구에 맞춰 추가 |
@@ -73,7 +73,7 @@ Pod 메모리에 변경 가능한 주문 상태를 보관하지 않아 기존 st
 | POST /api/orders/preview | /orders/preview | api.write | 견적; 저장하지 않으므로 200 |
 
 동작 조건: local/test 프로필 + app.learning.mock-enabled=true.
-local YAML은 켜져 있고 test는 필요한 통합 테스트에서만 켭니다. dev/staging/prod에서 강제로 켜면 기동 실패입니다.
+local YAML은 켜져 있고 test는 필요한 통합 테스트에서만 켭니다. 12단계 persistence 조합에서는 mock을 끄고 JPA adapter로 같은 기능을 제공합니다. dev/staging/prod에서 강제로 켜면 기동 실패입니다.
 OFF일 때 Controller/Service/fixture가 없으므로 유효한 scope 요청은 404이며, 인증 누락은 계속 401입니다.
 Gateway의 Redis 제한은 그대로 적용됩니다. 연속 실행으로 429가 나면 토큰 버킷 충전 후 다시 확인합니다.
 
@@ -121,7 +121,7 @@ docker compose -f docker-compose.yml up -d --no-deps --force-recreate backend
 
 ## 다음 적용 순서와 완료 기준
 
-1. **2차 PostgreSQL + JPA + Flyway + Testcontainers**: 전용 Compose DB/volume,
+1. **2차 PostgreSQL + JPA + Flyway + Testcontainers** ([12단계 구현](12-postgresql-jpa-flyway.md)): 전용 Compose DB/volume,
    환경변수 자격증명, migration V1, 회원·상품 fixture를 JPA adapter로 교체,
    주문 저장/조회와 transaction·제약·rollback·재기동 데이터 유지 검증.
    학습용 데이터를 production migration에 자동 주입하지 않습니다.
@@ -157,4 +157,4 @@ Compose/kind 이미지 재빌드·UI 브라우저 실습·PostgreSQL 기동은 �
 - [ ] 견적 100000 KRW를 확인하고 실제 주문이 저장되지 않음을 설명했다.
 - [ ] Swagger Backend 직접 호출과 Gateway 호출의 경로·제한 차이를 확인했다.
 - [ ] ArchUnit 규칙의 금지 의존 방향과 도메인 계산 테스트의 역할을 설명했다.
-- [ ] 현재 완료된 1차와 미구현 PostgreSQL/외부 연동 단계를 구분했다.
+- [ ] 현재 완료된 1차와 12단계 PostgreSQL 구현/후속 외부 연동 단계를 구분했다.

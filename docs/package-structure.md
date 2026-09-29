@@ -78,7 +78,7 @@ common/config/runtime에 LearningProfileGuard, common/exception에 BusinessExcep
 | feature/application | Service, use case, 업무 결과와 기능 전용 예외 |
 | feature/api/dto | 해당 기능의 요청/응답 계약 |
 | feature/domain (필요 시) | 업무 모델·규칙. 현재 Member/Product/OrderQuote |
-| feature/infrastructure (필요 시) | 저장소/외부 연동 adapter. 현재 fixture와 LocalOrderCatalog; 실제 DB는 후속 |
+| feature/infrastructure (필요 시) | 저장소/외부 연동 adapter. fixture/LocalOrderCatalog와 12단계 JPA Entity·Spring Data Repository·adapter |
 | common/config | 보안·JWT·CORS·Clock·라우팅 구성 및 데모 발급 Bean 조건 |
 | common/config/properties, common/config/runtime | 타입 기반 설정 객체, 시작 시 profile 보호 |
 | common/security | Servlet/WebFlux 인증·인가 오류 응답 adapter |
@@ -202,7 +202,7 @@ layered JAR, Foojay 자동 JDK 다운로드는 이번 변경에 포함하지 않
 
 ## 검증 범위
 
-11단계 목업/라이브러리 추가 후 96개 회귀 테스트가 통과했습니다. [최신 검증 기록](learning/11-features-and-library-roadmap.md#검증과-단계-체크)을 참고합니다.
+11단계 목업/라이브러리 추가 후 96개 회귀 테스트가 통과했습니다. [1차 검증 기록](learning/11-features-and-library-roadmap.md#검증과-단계-체크)을 참고합니다.
 아래 78개 기록은 패키지 전환 시점의 이전 검증입니다.
 
 2026-09-29 기능별 구조 전환 후 Java 컴파일과 두 모듈의 회귀 테스트 78개가 통과했습니다.
@@ -210,3 +210,14 @@ Backend 29개, Gateway 49개이며 인증 전용 Advice와 공통 입력 검증 
 설정 보호, JWT/권한, DTO 검증, 오류 상태·헤더, 실제 Servlet ERROR dispatch와 Netty 라우팅을
 검증합니다. Compose/kind 재배포는 이 검증과 별개이며 실행 중인 컨테이너는 변경하지 않습니다.
 세부 반영·보류 이유는 [AA/SWA 검토 기록](aa-swa-review.md)을 참고합니다.
+
+
+## 12단계 저장소 경계
+
+member/product의 application Repository port는 fixture와 JPA adapter가 각각 구현합니다.
+order/application의 OrderPlacementService가 저장 transaction과 소유권 조회를 담당하고,
+OrderRepository port를 order/infrastructure의 JpaOrderRepository가 구현합니다.
+JPA Entity와 Spring Data Repository는 각 feature/infrastructure에 두며 domain은 Java record를 유지합니다.
+common에는 feature Entity 스캔/seed 업무 로직을 추가하지 않습니다. Boot가 root package 아래를 스캔합니다.
+ArchUnit은 이전 의존 방향을 유지하고 Entity가 API DTO로 새어 나가지 않도록 경계를 검사합니다.
+[12단계 검증/실행](learning/12-postgresql-jpa-flyway.md)을 참고하세요.

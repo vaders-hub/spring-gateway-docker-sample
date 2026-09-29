@@ -23,16 +23,21 @@ class RuntimeProfileGuard {
     @PostConstruct
     void validateActiveProfile() {
         String[] activeProfiles = environment.getActiveProfiles();
-        if (activeProfiles.length != 1
-                || !ALLOWED_PROFILES.contains(activeProfiles[0])) {
+        // lifecycle은 여전히 정확히 하나다. Backend 학습 DB용 persistence만 추가 profile로 허용한다.
+        var lifecycle = Arrays.stream(activeProfiles).filter(ALLOWED_PROFILES::contains).toList();
+        boolean unsupported = Arrays.stream(activeProfiles)
+                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !profile.equals("persistence"));
+        if (lifecycle.size() != 1 || unsupported
+                || (Arrays.asList(activeProfiles).contains("persistence")
+                    && !Set.of("local", "test").contains(lifecycle.getFirst()))) {
             throw new IllegalStateException(
-                    "Exactly one supported profile must be active: "
+                    "Exactly one lifecycle profile must be active; persistence is optional in local/test: "
                             + ALLOWED_PROFILES
                             + "; active="
                             + Arrays.toString(activeProfiles));
         }
 
-        String profile = activeProfiles[0];
+        String profile = lifecycle.getFirst();
         if (!Set.of("local", "test").contains(profile)
                 && environment.getProperty("app.observability.prometheus-public", Boolean.class, false)) {
             throw new IllegalStateException(

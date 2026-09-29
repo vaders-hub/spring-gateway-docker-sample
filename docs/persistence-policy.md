@@ -1,18 +1,15 @@
 # Persistence introduction gate
 
-현재 DB/JPA 의존성과 Entity는 없습니다. Backend에 불변 fixture Repository와 조회 계약만 있습니다. 따라서
-사용되지 않는 DataSource/Hikari/transaction 설정은 활성화하지 않습니다. DB 기능을
-처음 추가하는 변경에서 아래 항목을 한 묶음으로 적용합니다.
-
-후속 DB는 PostgreSQL로 결정했습니다. 2차에서 JPA + Flyway + Testcontainers를 함께 적용합니다.
-현재 fixture는 DB가 아니며 재시작 영속성·transaction 검증을 대신하지 않습니다.
-[11단계 로드맵](learning/11-features-and-library-roadmap.md)을 따릅니다.
+[12단계](learning/12-postgresql-jpa-flyway.md)에 PostgreSQL/JPA/Flyway/Testcontainers를 적용했습니다.
+기본 local은 fixture이고 local,persistence에서만 DataSource/Hikari/JPA/migration이 활성화됩니다.
+기존 DB 없는 실습과 새로운 저장 실습을 구분합니다. fixture는 영속성/transaction 검증을 대신하지 않습니다.
+주문 저장/조회는 Service transaction, 소유권은 JWT subject, 테이블 변경은 Flyway가 담당합니다.
 
 ## 패키지와 계층
 
 - `<feature>/domain`: 업무 모델과 규칙
-- `<feature>/infrastructure/jpa/entity`: JPA Entity (독립 업무 모델과 분리할 때)
-- `<feature>/infrastructure/jpa/repository`: Spring Data Repository와 조회 구현
+- `<feature>/infrastructure`: 현재 JPA Entity (순수 domain record와 분리)
+- `<feature>/infrastructure`: 현재 Spring Data Repository와 port 구현; 규모가 커질 때 jpa 하위로 세분화
 - `<feature>/infrastructure/mybatis`: SQL Mapper와 DB 조회 모델
 - `<feature>/api/dto`: 외부 API 계약이며 Entity를 직접 참조하거나 반환하지 않음
 - `<feature>/application`: Service의 transaction 경계와 use case. API DTO에 의존하지 않음
@@ -51,7 +48,7 @@ spring:
 
 ## Transaction 정책
 
-- transaction은 public Service use case에 선언
+- 주문 transaction은 public Service use case에 선언. 독립 카탈로그 조회 adapter에는 짧은 readOnly transaction을 두어 domain 변환을 완료
 - 쓰기 use case 기본 propagation은 `REQUIRED`
 - 조회 use case는 `@Transactional(readOnly = true)`
 - isolation은 DB 기본값을 확인한 뒤 `READ_COMMITTED`를 기본 후보로 명시

@@ -1,13 +1,14 @@
 package com.example.backend.order.infrastructure;
 
-import com.example.backend.common.config.ConditionalOnLearningMock;
+import com.example.backend.common.config.ConditionalOnLearningFeature;
 import com.example.backend.member.application.MemberService;
 import com.example.backend.product.application.ProductService;
 import com.example.backend.order.application.OrderCatalog;
 import org.springframework.stereotype.Component;
 
+// 다른 feature의 공개 application 서비스만 조합한다. Repository/Entity를 직접 참조하지 않는다.
 @Component
-@ConditionalOnLearningMock
+@ConditionalOnLearningFeature
 class LocalOrderCatalog implements OrderCatalog {
     private final MemberService members;
     private final ProductService products;

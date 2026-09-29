@@ -1,6 +1,6 @@
 package com.example.backend.product.api;
 
-import com.example.backend.common.config.ConditionalOnLearningMock;
+import com.example.backend.common.config.ConditionalOnLearningFeature;
 import com.example.backend.common.code.SuccessCode;
 import com.example.backend.common.response.*;
 import com.example.backend.common.web.RequestContext;
@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@ConditionalOnLearningMock
+@ConditionalOnLearningFeature
 @RequestMapping("/products")
 public class ProductController {
     private final ProductService service;
@@ -21,6 +21,7 @@ public class ProductController {
         this.service = service;
         this.mapper = mapper;
     }
+    // HTTP 입력/권한은 웹 계층, 업무 조회는 Service, 응답 형태 변환은 MapStruct가 담당한다.
     @GetMapping
     @Operation(summary = "학습용 product 목록 조회")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> list(

@@ -231,6 +231,8 @@ class SecurityHttpIntegrationTest {
         assertProblem(request("GET", "/members", jwt, null), 404, "NOT_FOUND");
         assertProblem(request("GET", "/products", jwt, null), 404, "NOT_FOUND");
         assertProblem(request("POST", "/orders/preview", jwt, "{}"), 404, "NOT_FOUND");
+        assertProblem(request("POST", "/orders", jwt, "{}"), 404, "NOT_FOUND");
+        assertProblem(request("GET", "/orders/" + UUID.randomUUID(), jwt, null), 404, "NOT_FOUND");
         assertProblem(request("GET", "/v3/api-docs", jwt, null), 403, "ACCESS_DENIED");
         assertProblem(request("GET", "/swagger-ui/index.html", jwt, null), 403, "ACCESS_DENIED");
     }

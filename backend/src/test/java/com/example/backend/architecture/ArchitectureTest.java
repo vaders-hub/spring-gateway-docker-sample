@@ -11,10 +11,17 @@ class ArchitectureTest {
     private static final JavaClasses classes = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages("com.example.backend");
+    // JPA 도입 후에도 Service는 저장소 port만 알고, HTTP DTO나 Entity 구현을 참조하지 않아야 한다.
     @Test
     void applicationDoesNotDependOnApiOrInfrastructure() {
         noClasses().that().resideInAPackage("..application..")
                 .should().dependOnClassesThat().resideInAnyPackage("..api..", "..infrastructure..")
+                .check(classes);
+    }
+    @Test
+    void apiNeverExposesPersistenceImplementation() {
+        noClasses().that().resideInAPackage("..api..")
+                .should().dependOnClassesThat().resideInAPackage("..infrastructure..")
                 .check(classes);
     }
     @Test

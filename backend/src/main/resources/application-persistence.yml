@@ -1,0 +1,35 @@
+# 12단계: local,persistence 또는 test,persistence 조합. 기존 목업 대신 JPA adapter를 사용한다.
+app:
+  learning:
+    mock-enabled: false
+    persistence-enabled: true
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 3000
+  jpa:
+    # HTTP 응답 매핑 단계에서 SQL이 뒤늦게 발생하지 않도록 영속성 컨텍스트를 서비스 트랜잭션에 한정한다.
+    open-in-view: false
+    hibernate:
+      # DDL 변경은 Flyway만 담당한다. Hibernate는 Entity와 실제 스키마의 일치 여부를 검사한다.
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+    clean-disabled: true
+    # 기존 스키마를 임의로 baseline 처리하지 않고 migration 이력의 부재를 오류로 확인한다.
+    baseline-on-migrate: false
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db
+# liveness에는 DB를 넣지 않는다. DB 장애로 앱 재시작이 반복되는 것을 방지한다.

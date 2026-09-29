@@ -1,7 +1,7 @@
 package com.example.backend.order.api;
 
 import com.example.backend.common.code.SuccessCode;
-import com.example.backend.common.config.ConditionalOnLearningMock;
+import com.example.backend.common.config.ConditionalOnLearningFeature;
 import com.example.backend.common.response.*;
 import com.example.backend.common.web.RequestContext;
 import com.example.backend.order.api.dto.*;
@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@ConditionalOnLearningMock
+@ConditionalOnLearningFeature
 @RequestMapping("/orders")
 public class OrderController {
     private final OrderService service;
@@ -21,6 +21,7 @@ public class OrderController {
         this.service = service;
         this.mapper = mapper;
     }
+    // 견적은 부작용 없는 계산이므로 200이다. 실제 저장 POST /orders의 201과 구분한다.
     @PostMapping("/preview")
     @Operation(summary = "주문 견적 계산 (저장·결제 없음)")
     public ResponseEntity<ApiResponse<OrderPreviewResponse>> preview(@Valid @RequestBody OrderPreviewRequest request,

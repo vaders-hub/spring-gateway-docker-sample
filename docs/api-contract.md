@@ -83,8 +83,8 @@ return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 
 성공 코드는 내부 응답 정책 선택용이며 JSON에 새 `code`/`message` 필드를 추가하지 않습니다.
 문자열을 비교하는 대신 enum을 받아 성공 코드가 `fail`에 전달되는 실수를 컴파일 단계에서 막습니다.
-`CREATED`는 생성 API 확장용으로 제공하며 현재 사용하는 API는 없습니다. 리소스 생성 API를
-추가하면 `Location` 같은 요청별 헤더는 해당 Controller에서 추가합니다.
+`CREATED`는 persistence 모드의 POST /orders에서 사용합니다. 응답 data.id를 GET /orders/{id}에 사용합니다.
+이 예제는 Location 헤더를 추가하지 않으며, Gateway prefix까지 고려한 링크 정책은 별도입니다.
 
 `GlobalExceptionHandler`는 공통 오류에 요청 경로(`instance`), 필드별 검증 오류(`errors`),
 잘못된 JSON의 안전한 메시지를 덧붙입니다. 프레임워크 오류는
@@ -193,3 +193,13 @@ app.learning.mock-enabled=true일 때 /members, /members/{id}, /products, /produ
 허용하지 않은 쓰기 메서드는 기존 기본 거부 403입니다. 고정 fixture에는 사용자별 소유권 정책을 구현하지 않았습니다.
 문서/UI는 별도 app.learning.docs-enabled=true와 local/test에서만 노출합니다.
 실행 예제와 후속 DB 범위는 [11단계](learning/11-features-and-library-roadmap.md)를 참고합니다.
+
+
+## PostgreSQL 주문 저장 (12단계)
+
+local/test + persistence에서 POST /orders는 api.write 권한으로 201을 반환합니다.
+요청은 memberId/productId/quantity이며 data에는 id, quote(기존 견적 응답), createdAt이 있습니다.
+GET /orders/{UUID}는 api.read와 JWT subject 일치를 요구합니다. 남의 주문과 없는 주문은 같은 404입니다.
+member/product는 같은 조회 계약을 유지하며 JPA로 저장소가 바뀝니다. 회원 예제는 로그인 계정과 별개입니다.
+POST /orders/preview는 계속 저장하지 않고 200을 반환합니다. 같은 주문 POST 재전송은 별도 주문을 만듭니다.
+정확한 요청·응답·실행/검증 범위는 [12단계](learning/12-postgresql-jpa-flyway.md)를 참고하세요.
