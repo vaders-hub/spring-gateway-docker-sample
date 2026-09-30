@@ -43,7 +43,7 @@ order/
 │       └── response/                    저장 결과/견적 응답
 ├── application/
 │   ├── command/PlaceOrderService        저장 transaction
-│   ├── query/OrderQuoteService          견적
+│   ├── application/OrderQuoteService          견적
 │   ├── query/OrderQueryService          본인 주문 조회
 │   └── port/                            OrderCatalog, OrderRepository
 ├── domain/                              OrderQuote, StoredOrder
@@ -87,7 +87,7 @@ flowchart LR
 ProductSnapshot은 공개 경계의 값이며 Product Entity/domain 객체를 노출하지 않습니다.
 LocalOrderCatalog가 이를 주문 소유의 OrderCatalog.ProductSnapshot으로 변환합니다.
 같은 필드가 일부 반복돼도 각 기능의 변경 범위를 분리하는 목적이 있습니다. 전 feature의 DTO를 common에 모으지 않습니다.
-회원 검증 실패는 기존 BusinessException/NOT_FOUND 흐름으로 끝나며 다음 상품 조회/주문 저장으로 넘어가지 않습니다.
+MemberLookup은 boolean, ProductLookup은 Optional을 반환합니다. 주문은 부재를 422 참조 오류로 해석하고 다음 단계로 진행하지 않습니다.
 
 ## 서로 참조해야 할 때
 
@@ -115,7 +115,7 @@ LocalOrderCatalog가 이를 주문 소유의 OrderCatalog.ProductSnapshot으로 
 - 원격 결제 호출은 로컬 DB rollback으로 되돌릴 수 없습니다. timeout·멱등키·상태 전이·보상/재처리를 별도 설계합니다.
 - 대량 목록에서 다른 feature를 행마다 호출하면 N+1 호출이 생길 수 있습니다. 공개 batch 조회 계약 또는 명시적인 읽기 모델을 검토합니다.
   성능 때문에 SQL join을 도입한다면 projection 소유권·schema 의존·검증을 문서화하고 쓰기 경계는 유지합니다.
-- 새 HTTP endpoint를 만들면 패키지만 추가하지 않고 SecurityConfig의 경로/메서드/scope와 소유권 검증도 추가합니다.
+- 새 HTTP endpoint를 만들면 패키지만 추가하지 않고 기능 api의 FeatureRoutes 경로 등록/메서드 권한과 application 소유권 검증도 추가합니다.
 
 ## 자동으로 지키는 규칙
 
@@ -161,3 +161,6 @@ DB 테스트에는 Docker가 필요합니다. 패키지 이동은 HTTP 경로/JS
 - 계약 연결 테스트에서 소수 금액 0.10 × 3 = 0.30과 통화 유지, 회원 검증 실패 시 상품 호출 중단을 확인했습니다.
 - HTTP 경로/JSON 응답과 Flyway migration은 변경하지 않았습니다. 운영 중인 로컬 Compose 이미지는 이번 구조 변경으로 재배포하지 않았습니다.
 - 위 판단 예시의 payment/inventory/화면 조합 feature, 원격 호출, 이벤트/outbox는 구현하지 않았습니다. 해당 책임이 생겼을 때 적용할 확장 기준입니다.
+
+
+> 현재 구조 보완: [17단계](17-reference-architecture.md). 기능 flag 제거, 단일 주문 API, feature 경로 Bean/메서드 권한, 기능별 오류 코드, 공유 모듈과 루트 빌드를 적용했습니다. 이전 단계의 검증 수는 당시 기록입니다.

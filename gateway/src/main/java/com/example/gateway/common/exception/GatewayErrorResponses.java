@@ -1,6 +1,7 @@
 package com.example.gateway.common.exception;
+import com.example.platform.exception.ProblemDetails;
 
-import com.example.gateway.common.util.ErrorDiagnostics;
+import com.example.platform.util.ErrorDiagnostics;
 import com.example.gateway.common.web.RequestContext;
 import io.netty.channel.ConnectTimeoutException;
 import java.net.ConnectException;

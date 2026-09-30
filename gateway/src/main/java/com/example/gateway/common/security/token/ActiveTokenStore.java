@@ -1,4 +1,5 @@
 package com.example.gateway.common.security.token;
+import com.example.platform.security.token.TokenKey;
 
 import java.time.Duration;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;

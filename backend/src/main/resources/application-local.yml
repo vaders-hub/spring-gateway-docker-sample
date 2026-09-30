@@ -12,5 +12,4 @@ logging:
 # 고정 fixture와 Swagger UI는 로컬 학습에서만 사용한다.
 app:
   learning:
-    mock-enabled: true
     docs-enabled: true

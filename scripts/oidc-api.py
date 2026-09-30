@@ -64,7 +64,20 @@ def check():
         if expected in (401, 403) and json.loads(response).get('errorCode') not in ('UNAUTHORIZED', 'ACCESS_DENIED'):
             raise RuntimeError('Unexpected error response contract')
         print(f'PASS {method} {path}: HTTP {actual}')
-    print('Client Credentials checks passed; credentials and tokens were not printed.')
+    # 잘못된 본문 참조는 저장하지 않고 422로 끝나야 한다. 없는 경로 리소스의 404와 구분한다.
+    missing = 9223372036854775807
+    references = [
+        ('GET', f'/api/members/{missing}', None, 404, 'MEMBER_NOT_FOUND'),
+        ('POST', '/api/orders/preview', {'memberId': missing, 'productId': 1, 'quantity': 1}, 422, 'INVALID_MEMBER_REFERENCE'),
+        ('POST', '/api/orders', {'memberId': missing, 'productId': 1, 'quantity': 1}, 422, 'INVALID_MEMBER_REFERENCE'),
+    ]
+    for method, path, payload, expected, code in references:
+        time.sleep(0.6)
+        status, response = call(BASE + path, method, writer, json.dumps(payload).encode() if payload else None)
+        if status != expected or json.loads(response).get('errorCode') != code:
+            raise RuntimeError(f'{method} {path}: expected HTTP {expected} / {code}; got HTTP {status}')
+        print(f'PASS {method} {path}: HTTP {status} / {code}')
+    print('Client Credentials and reference-error checks passed; credentials and tokens were not printed.')
 
 if __name__ == '__main__':
     try:

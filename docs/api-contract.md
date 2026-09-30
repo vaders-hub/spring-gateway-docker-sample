@@ -62,7 +62,7 @@ Hello/Echo의 `data.username`은 Backend가 JWT를 검증한 Principal의 이름
 새 업무 Controller는 `ApiResponses`, 오류 처리기(Advice·ErrorController·Security writer·전역 handler)는
 `ProblemDetails`를 사용합니다. `ApiResponses.fail`은 같은 팩토리로 위임하는 Controller용 진입점입니다.
 
-각 모듈의 `common/response/ApiResponses`는 `success`와 `fail` 두 메서드만 제공합니다.
+공유 모듈의 `com.example.platform.response.ApiResponses`는 `success`와 `fail` 두 메서드만 제공합니다.
 `ApiResponse`는 성공 JSON 본문을 표현하는 record이며, HTTP 상태·헤더는 `ApiResponses`가 결정합니다.
 
 ```java
@@ -92,13 +92,13 @@ return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 Service는 응답 팩터리를 호출하지 않고 업무 결과를 반환하거나 예외를 던집니다.
 
 인증/인가 오류는 Controller 전에 발생하므로 각 모듈의 `common/security/SecurityProblemWriter`를 사용합니다.
-writer는 `common/exception/ProblemDetails`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
+writer는 `platform/exception/ProblemDetails`의 상태·헤더·본문을 Servlet/WebFlux 응답에 옮기며,
 Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으로 직렬화합니다.
 
-`ApiResponses.fail`도 같은 `ProblemDetails.forCode`로 위임합니다. 오류 처리기는 `common/response`를
-참조하지 않으므로 의존 방향은 `common/response → common/exception` 한 방향입니다.
-응답 enum인 `SuccessCode`/`ErrorCode`는 각 모듈의 `common/code`에 모으고,
-오류 진단 유틸리티 `ErrorDiagnostics`는 `common/util`에 둡니다. 코드·메시지·HTTP 계약은 동일합니다.
+`ApiResponses.fail`도 같은 `ProblemDetails.forCode`로 위임합니다. 오류 처리기는 `platform/response`를
+참조하지 않으므로 의존 방향은 `platform/response → platform/exception` 한 방향입니다.
+`SuccessCode`, `CommonErrorCode`, `ErrorCode` 인터페이스는 공유 모듈의 `platform/code`에 두고,
+오류 진단 유틸리티 `ErrorDiagnostics`는 `platform/util`에 둡니다. 코드·메시지·HTTP 계약은 동일합니다.
 프레임워크 상태는 `ProblemDetails.forStatus`가 처리합니다. `ErrorCode`에 없는 418 같은 상태도
 그대로 유지하고, 응답 본문을 새로 만들면서 기존 Content-Length/Content-Encoding은 제거합니다.
 `Allow`/`Retry-After`/rate-limit 헤더는 보존합니다. WebFlux writer는 생성된 본문을 다시 수정하지 않습니다.
@@ -154,7 +154,7 @@ Gateway는 위 scope 허용 규칙보다 먼저 `/api/actuator`·`/api/actuator/
 
 Backend는 위 업무 경로·메서드와 명시한 관리 경로/내부 ERROR dispatch 외에는 기본 거부합니다.
 인증된 `/missing`, `/error`, GET `/echo`, POST `/hello` 등은 403입니다.
-새 Controller를 추가할 때 SecurityConfig의 경로·메서드·scope도 함께 등록해야 합니다.
+새 Controller는 기능 api 패키지의 FeatureRoutes Bean으로 경로를 등록하고 handler에 메서드 권한을 선언합니다.
 직접 `/actuator/health/**`·`/actuator/info`와 공개 여부 설정에 따른 `/actuator/prometheus` 접근은 유지합니다.
 
 Gateway의 위 목록 밖 API 메서드는 deny이며 CORS preflight는 CORS 정책으로 처리합니다.
@@ -180,29 +180,20 @@ committed 응답 보존은 단위 테스트로 확인하며 Compose/kind 재배�
 - `<feature>/domain`: 업무 모델·규칙이 필요할 때 생성하며 API DTO와 분리
 - `<feature>/infrastructure`: Repository·DB·외부 클라이언트 구현이 필요할 때 생성
 
-Gateway와 Backend의 envelope 형태는 같지만, 두 배포 단위를 하나의 공유 Java 모듈에
-강하게 결합하지 않기 위해 각 서비스 내부 common 패키지에 둡니다. 세 번째 소비자가
-생기거나 독립 계약 배포가 필요해질 때 버전이 있는 contract 모듈로 승격합니다.
+Gateway와 Backend의 공통 응답/오류 계약은 libs/platform-core에 공유합니다. Servlet/WebFlux 처리기는 각 서비스가 소유합니다.
 
+## 기능 API와 저장소
 
-## 11단계 local/test feature API
+모든 프로필에서 member/product/order API를 제공합니다. local/test 기본은 fixture, persistence 추가 또는 dev/staging/prod는 JPA입니다.
+GET은 api.read, 주문 POST는 api.write, 회원 관리자 GET은 api.read와 member.admin을 요구합니다.
+POST /orders/preview는 200 견적, POST /orders는 201 주문, GET /orders/{UUID}는 본인 주문만 반환합니다.
+같은 POST 재전송은 별도 주문을 만듭니다. 결제·재고 차감은 구현하지 않았습니다.
 
-app.learning.mock-enabled=true일 때 /members, /members/{id}, /products, /products/{id} GET은 api.read,
-/orders/preview POST는 api.write가 필요합니다. Gateway 경로에는 /api가 붙습니다.
-견적은 저장하지 않고 200 data/meta로 응답합니다. 수량 검증은 400, 없는 회원/상품은 BusinessException → 404 NOT_FOUND입니다.
-허용하지 않은 쓰기 메서드는 기존 기본 거부 403입니다. 고정 fixture에는 사용자별 소유권 정책을 구현하지 않았습니다.
-문서/UI는 별도 app.learning.docs-enabled=true와 local/test에서만 노출합니다.
-실행 예제와 후속 DB 범위는 [11단계](learning/11-features-and-library-roadmap.md)를 참고합니다.
-
-
-## PostgreSQL 주문 저장 (12단계)
-
-local/test + persistence에서 POST /orders는 api.write 권한으로 201을 반환합니다.
-요청은 memberId/productId/quantity이며 data에는 id, quote(기존 견적 응답), createdAt이 있습니다.
-GET /orders/{UUID}는 api.read와 JWT subject 일치를 요구합니다. 남의 주문과 없는 주문은 같은 404입니다.
-member/product는 같은 조회 계약을 유지하며 JPA로 저장소가 바뀝니다. 회원 예제는 로그인 계정과 별개입니다.
-POST /orders/preview는 계속 저장하지 않고 200을 반환합니다. 같은 주문 POST 재전송은 별도 주문을 만듭니다.
-정확한 요청·응답·실행/검증 범위는 [12단계](learning/12-postgresql-jpa-flyway.md)를 참고하세요.
+GET 부재는 MEMBER_NOT_FOUND / PRODUCT_NOT_FOUND / ORDER_NOT_FOUND(404),
+주문 본문의 없는 회원/상품 참조는 INVALID_MEMBER_REFERENCE / INVALID_PRODUCT_REFERENCE(422)입니다.
+수량·타입·필수 입력 오류는 400 INVALID_REQUEST입니다. 인증은 DTO 바인딩 전, Backend 메서드 권한은 바인딩 뒤 검사합니다.
+Backend 등록 경로의 미지원 메서드는 405가 될 수 있으며, 미등록 경로는 기본 거부합니다.
+자세한 변경 계약과 예제는 [17단계](learning/17-reference-architecture.md)를 참고합니다.
 
 
 ## 로그인·로그아웃 (14단계)
@@ -216,7 +207,7 @@ POST /orders/preview는 계속 저장하지 않고 200을 반환합니다. 같�
 
 ## 보안 설정 및 member 관리 조회 (15단계)
 
-양쪽 SecurityConfig를 configureStateless/configureAuthorization/configureJwt로 분리하고 반복 scope 등록만 requireScope로 묶었습니다.
+SecurityConfig는 stateless/인가/JWT 구성을 분리합니다. Backend는 FeatureRoutes를 모아 인증하고 scope는 메서드 보안에 둡니다. Gateway는 coarse scope 정책을 유지합니다.
 `GET /api/members/admin`은 일반 목록 handler/DTO/서비스를 재사용하며 Backend에서 `api.read`와 `member.admin`을 모두 요구합니다.
 `/members/{id}`보다 관리 경로 규칙을 먼저 선언합니다. 기존 member ID는 양수만 허용하며 0·음수는 400입니다.
 HTTP 권한과 feature 업무 권한을 구분하고, [15단계](learning/15-security-rules-and-member-tests.md)에 테스트 절차와 확장 기준을 기록했습니다.

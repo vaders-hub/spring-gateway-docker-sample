@@ -2,9 +2,9 @@ package com.example.backend.hello.api;
 
 import com.example.backend.common.security.permission.RequireRead;
 import com.example.backend.common.security.permission.RequireWrite;
-import com.example.backend.common.response.ApiResponse;
-import com.example.backend.common.response.ApiResponses;
-import com.example.backend.common.code.SuccessCode;
+import com.example.platform.response.ApiResponse;
+import com.example.platform.response.ApiResponses;
+import com.example.platform.code.SuccessCode;
 import com.example.backend.common.web.RequestContext;
 import com.example.backend.hello.api.dto.EchoRequest;
 import com.example.backend.hello.api.dto.EchoResponse;

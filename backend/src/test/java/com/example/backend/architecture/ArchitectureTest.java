@@ -49,9 +49,11 @@ class ArchitectureTest {
     }
     @Test
     void domainAndInfrastructureKeepTheirBoundaries() {
-        noClasses().that().resideInAPackage("..domain..")
-                .should().dependOnClassesThat().resideOutsideOfPackages("java..", ROOT + ".domain..")
-                .check(classes);
+        for (String feature : features) {
+            noClasses().that().resideInAPackage(ROOT + feature + ".domain..")
+                    .should().dependOnClassesThat().resideOutsideOfPackages("java..", ROOT + feature + ".domain..")
+                    .allowEmptyShould(true).check(classes);
+        }
         noClasses().that().resideInAPackage("..infrastructure..")
                 .should().dependOnClassesThat().resideInAPackage("..api..")
                 .check(classes);
@@ -60,7 +62,7 @@ class ArchitectureTest {
     void otherFeaturesCanOnlyAccessPublishedContracts() {
         for (String feature : features) {
             // public 키워드는 Java 접근성일 뿐이다. 다른 feature에는 contract만 공개한다.
-            noClasses().that().resideInAPackage(ROOT + ".")
+            noClasses().that().resideInAPackage("com.example.backend..")
                     .and().resideOutsideOfPackage(ROOT + feature + "..")
                     .should().dependOnClassesThat(resideInAPackage(ROOT + feature + "..")
                             .and(not(resideInAPackage(ROOT + feature + ".contract.."))))
@@ -95,6 +97,17 @@ class ArchitectureTest {
                     .should().dependOnClassesThat().resideOutsideOfPackages("java..",
                             ROOT + feature + ".domain..", ROOT + feature + ".application.port..")
                     .allowEmptyShould(true).check(classes);
+        }
+    }
+    @Test
+    void featureApiAndApplicationAreNotProfileConditional() {
+        for (var type : classes) {
+            if (!type.getPackageName().contains(".api") && !type.getPackageName().contains(".application")) continue;
+            var javaType = type.reflect();
+            org.assertj.core.api.Assertions.assertThat(
+                    org.springframework.core.annotation.AnnotatedElementUtils.hasAnnotation(javaType,
+                            org.springframework.context.annotation.Conditional.class))
+                    .as("Always loaded: %s", javaType).isFalse();
         }
     }
     @Test

@@ -1,4 +1,5 @@
 package com.example.backend.common.security.token;
+import com.example.platform.security.token.TokenKey;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.dao.DataAccessException;

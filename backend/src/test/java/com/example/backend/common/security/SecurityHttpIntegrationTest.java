@@ -230,21 +230,21 @@ class SecurityHttpIntegrationTest {
     @Test
     void unmappedMethodsAndNewControllerNeedExplicitAuthorizationRules() throws Exception {
         String jwt = token("api.read api.write", AUDIENCE, ISSUER, SECRET, 300);
-        assertProblem(request("POST", "/hello", jwt, "{}"), 403, "ACCESS_DENIED");
-        assertProblem(request("GET", "/echo", jwt, null), 403, "ACCESS_DENIED");
+        assertProblem(request("POST", "/hello", jwt, "{}"), 405, "METHOD_NOT_ALLOWED");
+        assertProblem(request("GET", "/echo", jwt, null), 405, "METHOD_NOT_ALLOWED");
         // 실제 Controller가 있어도 SecurityConfig에 등록하지 않았으면 통과하지 못한다.
         assertProblem(request("GET", "/new-feature", jwt, null), 403, "ACCESS_DENIED");
         assertProblem(request("GET", "/actuator/env", jwt, null), 403, "ACCESS_DENIED");
     }
 
     @Test
-    void learningFeaturesAndDocumentationAreDisabledByDefault() throws Exception {
+    void businessFeaturesStayAvailableAndDocumentationIsDisabledByDefault() throws Exception {
         String jwt = token("api.read api.write", AUDIENCE, ISSUER, SECRET, 300);
-        assertProblem(request("GET", "/members", jwt, null), 404, "NOT_FOUND");
-        assertProblem(request("GET", "/products", jwt, null), 404, "NOT_FOUND");
-        assertProblem(request("POST", "/orders/preview", jwt, "{}"), 404, "NOT_FOUND");
-        assertProblem(request("POST", "/orders", jwt, "{}"), 404, "NOT_FOUND");
-        assertProblem(request("GET", "/orders/" + UUID.randomUUID(), jwt, null), 404, "NOT_FOUND");
+        assertThat(request("GET", "/members", jwt, null).statusCode()).isEqualTo(200);
+        assertThat(request("GET", "/products", jwt, null).statusCode()).isEqualTo(200);
+        assertProblem(request("POST", "/orders/preview", jwt, "{}"), 400, "INVALID_REQUEST");
+        assertProblem(request("POST", "/orders", jwt, "{}"), 400, "INVALID_REQUEST");
+        assertProblem(request("GET", "/orders/" + UUID.randomUUID(), jwt, null), 404, "ORDER_NOT_FOUND");
         assertProblem(request("GET", "/v3/api-docs", jwt, null), 403, "ACCESS_DENIED");
         assertProblem(request("GET", "/swagger-ui/index.html", jwt, null), 403, "ACCESS_DENIED");
     }

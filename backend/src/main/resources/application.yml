@@ -30,8 +30,6 @@ spring:
 
 app:
   learning:
-    mock-enabled: false
-    persistence-enabled: false
     docs-enabled: false
   observability:
     prometheus-public: ${PROMETHEUS_PUBLIC:false}
@@ -115,13 +113,48 @@ springdoc:
 
 
 ---
-# 01~11단계는 DB 없이도 실행한다. persistence 선택 시에만 JDBC/JPA/Flyway 자동 구성을 활성화한다.
+# local/test fixture 모드만 DB 구성을 제외한다. dev/staging/prod는 기본 JPA이다.
 spring:
   config:
     activate:
-      on-profile: "!persistence"
+      on-profile: "(local | test) & !persistence"
   autoconfigure:
     exclude:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
       - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
       - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+
+---
+# JPA는 운영 기본값이다. local/test는 persistence를 추가해 같은 adapter를 학습한다.
+spring:
+  config:
+    activate:
+      on-profile: "(!local & !test) | persistence"
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 3000
+  jpa:
+    # HTTP 응답 매핑 단계에서 SQL이 뒤늦게 발생하지 않도록 영속성 컨텍스트를 서비스 트랜잭션에 한정한다.
+    open-in-view: false
+    hibernate:
+      # DDL 변경은 Flyway만 담당한다. Hibernate는 Entity와 실제 스키마의 일치 여부를 검사한다.
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+    clean-disabled: true
+    # 기존 스키마를 임의로 baseline 처리하지 않고 migration 이력의 부재를 오류로 확인한다.
+    baseline-on-migrate: false
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db,redis
+# liveness에는 DB를 넣지 않는다. DB 장애로 앱 재시작이 반복되는 것을 방지한다.

@@ -1,9 +1,8 @@
 package com.example.backend.product.api;
 
 import com.example.backend.common.security.permission.RequireRead;
-import com.example.backend.common.config.ConditionalOnLearningFeature;
-import com.example.backend.common.code.SuccessCode;
-import com.example.backend.common.response.*;
+import com.example.platform.code.SuccessCode;
+import com.example.platform.response.*;
 import com.example.backend.common.web.RequestContext;
 import com.example.backend.product.application.ProductService;
 import com.example.backend.product.api.dto.ProductResponse;
@@ -13,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@ConditionalOnLearningFeature
 @RequestMapping("/products")
 public class ProductController {
     private final ProductService service;

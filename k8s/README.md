@@ -8,8 +8,8 @@
 ```bash
 cd /mnt/c/dev/personal/infra/spring-gateway-docker-sample
 bash scripts/new-local-env.sh
-docker build -t local-backend:dev ./backend
-docker build -t local-gateway:dev ./gateway
+docker build -f backend/Dockerfile -t local-backend:dev .
+docker build -f gateway/Dockerfile -t local-gateway:dev .
 kind_node_image='kindest/node:v1.35.8@sha256:07b2536e30b803ed61d1677a79df6115f798ce64c80f9e22f6ed45afd09323c0'
 kind create cluster --name gateway-lab --config k8s/kind-config.yaml --image "$kind_node_image"
 kind load docker-image local-backend:dev local-gateway:dev --name gateway-lab

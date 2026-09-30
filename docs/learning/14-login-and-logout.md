@@ -70,7 +70,7 @@ Gateway의 Redis 접근은 reactive Mono이며 `block()`하지 않습니다. Bac
 
 - 앱 JVM에는 HttpSession/WebSession/토큰 캐시를 두지 않습니다. **앱은 stateless지만 인증 시스템은 Redis 공유 상태를 사용합니다.**
 - `auth:active:v1:<SHA-256(token)>` → `1`을 JWT 수명만큼 저장합니다. 원문 토큰/비밀번호는 Redis에 저장하지 않습니다.
-- Gateway/Backend가 동일 Redis 인스턴스·DB를 사용해야 합니다. prefix/hash는 두 모듈의 `TokenKey` 계약 테스트로 맞춥니다.
+- Gateway/Backend가 동일 Redis 인스턴스·DB를 사용해야 합니다. prefix/hash는 `libs/platform-core`의 단일 `TokenKey` 구현과 계약 테스트로 맞춥니다.
 - JWT 서명/issuer/audience/시간 검증 후 활성 목록을 확인합니다. 이전 버전에서 발급해 등록되지 않은 토큰은 재로그인이 필요합니다.
 - 매 로그인마다 jti가 다르므로 같은 계정의 다른 로그인은 유지됩니다. 전체 기기 로그아웃/refresh token은 아직 없습니다.
 - Redis key 만료/삭제/휘발성 Redis 재시작 후에는 재로그인이 필요합니다. Redis 장애 시 우회 허용하지 않습니다.

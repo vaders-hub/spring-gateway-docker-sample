@@ -1,6 +1,5 @@
 package com.example.backend.product.infrastructure.persistence;
 
-import com.example.backend.common.config.ConditionalOnLearningPersistence;
 import com.example.backend.product.application.port.ProductRepository;
 import com.example.backend.product.domain.Product;
 import java.util.List;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-@ConditionalOnLearningPersistence
+@org.springframework.context.annotation.Profile("(!local & !test) | persistence")
 @Transactional(readOnly = true)
 class JpaProductRepository implements ProductRepository {
     private final ProductJpaRepository repository;

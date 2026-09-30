@@ -1,8 +1,8 @@
 package com.example.gateway.common.security;
 
 import com.example.gateway.common.exception.ProblemResponseWriter;
-import com.example.gateway.common.exception.ProblemDetails;
-import com.example.gateway.common.code.ErrorCode;
+import com.example.platform.exception.ProblemDetails;
+import com.example.platform.code.CommonErrorCode;
 import com.example.gateway.common.security.token.TokenStoreUnavailableException;
 import com.example.gateway.common.web.RequestContext;
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
@@ -24,17 +24,17 @@ public class SecurityProblemWriter {
     public ServerAuthenticationEntryPoint authenticationEntryPoint() {
         return (exchange, exception) ->
                 write(exchange, TokenStoreUnavailableException.causedBy(exception)
-                        ? ErrorCode.SERVICE_UNAVAILABLE : ErrorCode.UNAUTHORIZED);
+                        ? CommonErrorCode.SERVICE_UNAVAILABLE : CommonErrorCode.UNAUTHORIZED);
     }
 
     public ServerAccessDeniedHandler accessDeniedHandler() {
         return (exchange, exception) ->
-                write(exchange, ErrorCode.ACCESS_DENIED);
+                write(exchange, CommonErrorCode.ACCESS_DENIED);
     }
 
     private Mono<Void> write(
             ServerWebExchange exchange,
-            ErrorCode errorCode) {
+            CommonErrorCode errorCode) {
         if (exchange.getResponse().isCommitted()) {
             return Mono.empty();
         }

@@ -110,9 +110,9 @@ JWT의 `sub`는 Keycloak 사용자의 불변 ID/서비스 계정 ID이다. 기�
 ## API 확장 규칙
 
 1. 같은 Backend의 /api/** API: Gateway route는 기존 설정을 사용한다. StripPrefix로 /api를 제거한다.
-2. Backend에 이미 등록한 feature(member/product/order)의 하위 API: feature namespace의 read/write 기본 정책을 따른다.
+2. Backend에 등록한 feature의 하위 API: 경로 인증을 거친 후 각 handler의 메서드 권한을 따른다.
 3. HTTP handler에는 @RequireRead / @RequireWrite / feature 전용 권한을 명시한다. ArchUnit 기반 검사에서 누락을 찾는다.
-4. 새 최상위 feature는 Backend 기본 경로 정책에 등록한다. 기본 denyAll을 유지한다.
+4. 새 최상위 feature는 자기 api 패키지의 FeatureRoutes Bean으로 등록한다. 공통 SecurityConfig 수정 없이 기본 denyAll을 유지한다.
 5. 새 서비스로 라우팅하려면 Gateway route/목적지와 네트워크 정책을 추가한다. 호출자의 도메인마다 route를 만들 필요는 없다.
 
 `@EnableMethodSecurity`로 메서드 보안을 활성화했다. `@RequireMemberAdmin`은 api.read와 member.admin을 함께 요구한다.
@@ -182,3 +182,6 @@ Compose 검증은 별도로 실제 Keycloak 발급 토큰으로 수행한다. �
 - 사용자 토큰의 sub 누락을 발견해 basic client scope를 보완하고, 양쪽 decoder에 sub 필수 검증/회귀 테스트 추가. 기존 realm은 scope 연결 API로 보완했으며 DB를 삭제하지 않음.
 - 기존 업무 PostgreSQL/관측 서비스를 보존하고 별도 Keycloak DB와 브라우저 3001 포트를 추가.
 - Compose 기동/health·셸/JSON 문법·diff 검사 통과. Kubernetes 실제 배포, 운영 TLS/HA/백업 복구는 이번 검증에 포함하지 않음.
+
+
+> 현재 구조 보완: [17단계](17-reference-architecture.md). 기능 flag 제거, 단일 주문 API, feature 경로 Bean/메서드 권한, 기능별 오류 코드, 공유 모듈과 루트 빌드를 적용했습니다. 이전 단계의 검증 수는 당시 기록입니다.

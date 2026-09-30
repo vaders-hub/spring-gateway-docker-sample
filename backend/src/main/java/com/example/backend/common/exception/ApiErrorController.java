@@ -1,6 +1,7 @@
 package com.example.backend.common.exception;
+import com.example.platform.exception.ProblemDetails;
 
-import com.example.backend.common.util.ErrorDiagnostics;
+import com.example.platform.util.ErrorDiagnostics;
 import com.example.backend.common.web.RequestContext;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;

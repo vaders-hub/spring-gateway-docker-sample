@@ -1,0 +1,16 @@
+plugins { id 'java-library' }
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+repositories { mavenCentral() }
+// 서버와 Redis 구현은 각 서비스가 소유하며 공유 계약만 api로 노출한다.
+dependencies {
+    api platform(libs.boot.bom)
+    api 'org.springframework:spring-web'
+    api 'org.springframework.security:spring-security-oauth2-resource-server'
+    api 'org.springframework.security:spring-security-oauth2-jose'
+    implementation 'org.slf4j:slf4j-api'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.named('test') { useJUnitPlatform() }

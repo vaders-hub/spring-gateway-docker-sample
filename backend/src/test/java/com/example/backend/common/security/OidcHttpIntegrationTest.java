@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 /** 실제 RSA 서명/JWKS HTTP 조회/웹 필터를 검증한다. Redis나 Keycloak 컨테이너는 필요 없다. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"app.learning.mock-enabled=true", "management.otlp.metrics.export.enabled=false"})
+        properties = {"management.otlp.metrics.export.enabled=false"})
 @ActiveProfiles({"test", "oidc"})
 
 class OidcHttpIntegrationTest {

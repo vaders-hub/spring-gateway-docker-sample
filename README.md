@@ -100,7 +100,7 @@ GET/HEAD는 `api.read`, POST/PUT/PATCH/DELETE는 `api.write`가 필요합니다.
 데모 토큰에는 두 scope가 포함됩니다. audience가 없는 기존 토큰은 다시 발급하세요.
 Gateway의 `/api/actuator/**`·`/api/error/**`는 업무 토큰이 있어도 거부합니다.
 Backend는 명시한 업무·관리 경로와 내부 오류 dispatch 외에는 기본 거부합니다.
-새 API를 추가할 때 Controller와 함께 Backend `SecurityConfig`의 경로·메서드·scope도 등록하세요.
+새 API는 기능 api 패키지에 `FeatureRoutes` Bean과 메서드 권한을 선언하세요. Backend 공통 SecurityConfig는 수정하지 않습니다.
 
 ```bash
 lab_api GET /api/hello
@@ -366,3 +366,5 @@ docker compose logs -f backend
 docker compose logs -f redis
 docker compose down
 ```
+
+- [17. 실무 레퍼런스 구조 보완](docs/learning/17-reference-architecture.md) — 저장소 교체, 기능 권한/오류, 플랫폼 공유 모듈

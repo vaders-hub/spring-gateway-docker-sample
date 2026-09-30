@@ -184,7 +184,7 @@ WSL Bash 터미널을 닫아 revision 변수가 사라졌다면 `rollout history
 
 ```bash
 # [빌드] 변경한 소스를 새 태그로 구분해 이미지 생성. 기존 dev 이미지는 덮어쓰지 않습니다.
-docker build -t local-backend:lesson-v2 ./backend
+docker build -f backend/Dockerfile -t local-backend:lesson-v2 .
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Image build failed.' >&2; exit 1; fi
 # [이미지 전달] 새 이미지를 kind 노드 안으로 복사. 이것만으로 실행 중인 Pod가 바뀌지는 않습니다.
 kind load docker-image local-backend:lesson-v2 --name gateway-lab

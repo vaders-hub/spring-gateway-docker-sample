@@ -1,7 +1,7 @@
 package com.example.gateway.common.config;
 
 import com.example.gateway.common.security.SecurityProblemWriter;
-import com.example.gateway.common.security.JwtAuthorities;
+import com.example.platform.security.JwtAuthorities;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import com.example.gateway.common.config.properties.ObservabilityProperties;
 import com.example.gateway.common.config.properties.SecurityProperties;

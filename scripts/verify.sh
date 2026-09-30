@@ -26,5 +26,5 @@ python3 -m json.tool keycloak/gateway-lab-realm.json >/dev/null
 printf '%s\n' 'Static checks passed. No deployment or runtime behavior was verified.'
 if [[ "$mode" == test ]]; then
   printf '%s\n' 'Explicit test mode: compiling and running tests, including local HTTP test servers.'
-  bash ./gradlew gateway:test backend:test
+  bash ./gradlew :libs:platform-core:test :gateway:test :backend:test
 fi

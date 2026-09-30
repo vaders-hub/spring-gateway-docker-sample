@@ -1,262 +1,129 @@
-# Feature-based Structure와 설정 책임
+# Feature-based 구조와 확장 기준
 
-2026-09-29 사용자 제공 샘플을 기준으로 기능을 api/application/domain/infrastructure 기준으로 나누고,
-설정·보안·예외 처리 등 공통 기술 코드는 common 아래로 모았습니다.
-Backend는 hello와 local/test 학습용 member/product/order, Gateway는 학습용 로그인·로그아웃 auth 기능을 제공합니다.
+현재 기준은 [17단계 AA 구조 보완](learning/17-reference-architecture.md)이다. 과거 단계의 테스트 수는 당시 기록이다.
 
-## 현재 구조
+## 기본형과 확장형
 
-```text
-com.example.backend
-├── BackendApplication
-├── common/
-│   ├── config/       SecurityConfig, JwtConfig, TimeConfig
-│   │   ├── properties/  JwtProperties, ObservabilityProperties
-│   │   └── runtime/     RuntimeProfileGuard
-│   ├── exception/    GlobalExceptionHandler, ApiErrorController, ProblemDetails
-│   ├── security/     SecurityProblemWriter
-│   ├── response/     ApiResponse, ApiResponses
-│   ├── code/         SuccessCode, ErrorCode
-│   ├── util/         ErrorDiagnostics
-│   └── web/          RequestContext, RequestIdFilter
-└── hello/
-    ├── api/          HelloController
-    │   └── dto/      HelloResponse, EchoRequest, EchoResponse
-    └── application/  HelloService와 업무 결과 record
+작은 CRUD는 `feature/api`, `feature/application`, `feature/infrastructure`부터 시작한다.
+Controller의 DTO/Mapper는 api에, Service는 application에, JPA/외부 클라이언트는 infrastructure에 둔다.
+실제 업무 규칙이 생기면 domain을 추가한다. 빈 패키지, 단순 전달용 인터페이스/Impl, 동일 모양 DTO를 의무적으로 만들지 않는다.
 
-com.example.gateway
-├── GatewayApplication
-├── common/
-│   ├── config/       SecurityConfig, JwtConfig, CorsConfig, TimeConfig,
-│   │                GatewayFilterConfig, AuthIssuerConfig, ConditionalOnDemoIssuer
-│   │   ├── properties/  SecurityProperties, ObservabilityProperties
-│   │   └── runtime/     RuntimeProfileGuard
-│   ├── exception/    GlobalExceptionHandler, ProblemDetails, ProblemResponseWriter,
-│   │                GatewayErrorHandler, GatewayErrorResponses
-│   ├── security/     SecurityProblemWriter
-│   ├── response/     ApiResponse, ApiResponses
-│   ├── code/         SuccessCode, ErrorCode
-│   ├── util/         ErrorDiagnostics
-│   └── web/          RequestContext, RequestIdWebFilter, RequestHeadersFilter
-└── auth/
-    ├── api/          AuthController, AuthExceptionHandler
-    │   └── dto/      TokenRequest, TokenResponse
-    ├── application/  LoginService, TokenService와 IssuedToken, InvalidCredentialsException
-    │   └── port/     LoginSessions
-    └── infrastructure/security/  RedisLoginSessions
-```
-
-위 트리는 기본 hello/auth 공통 구조입니다. 11~13단계에서 확장한 실제 학습 기능은 다음과 같습니다.
+현재 member/product/order는 저장소 교체와 기능 간 연동을 배우는 **확장형 예제**이다.
+`contract`는 다른 feature에 공개하는 조회 계약, `application/port`는 호출자가 요구하는 계약,
+`infrastructure/integration`은 상대 contract와 자기 port를 연결한다.
+단순 조회 하나를 추가할 때 이 모든 파일을 복제할 필요는 없다.
 
 ```text
-member/                              product도 같은 분류
-├── api                              Controller/Mapper
-│   └── dto                          HTTP 응답
-├── contract                         외부 feature용 MemberLookup (상품은 ProductLookup/ProductSnapshot)
-├── application                      MemberService: contract 구현
-│   └── port                         MemberRepository: 내부 저장소 계약
-├── domain                           순수 업무 record
-└── infrastructure
-    ├── fixture                      고정 데이터 구현
-    └── persistence                  JPA Entity/Spring Data/adapter
+backend / com.example.backend
+├── common
+│   ├── config         SecurityConfig, JwtConfig, TimeConfig, MappingConfig
+│   │   ├── properties JwtProperties, ObservabilityProperties
+│   │   └── runtime    lifecycle 및 공개 문서 설정 검증
+│   ├── exception      GlobalExceptionHandler, ApiErrorController (Servlet)
+│   ├── security       FeatureRoutes, SecurityProblemWriter, permission, token
+│   └── web            RequestContext, RequestIdFilter
+├── hello
+│   ├── api            HelloController, HelloRoutes, dto
+│   └── application    HelloService
+├── member             product도 동일 경계
+│   ├── api            MemberController, MemberRoutes, MemberMapper, RequireMemberAdmin, dto
+│   ├── application    MemberService, error/MemberErrorCode, port/MemberRepository
+│   ├── contract       MemberLookup: boolean exists
+│   ├── domain         Member
+│   └── infrastructure fixture / persistence
+└── order
+    ├── api            OrderController (견적·생성·조회), OrderRoutes, OrderMapper, dto
+    ├── application    OrderQuoteService (카탈로그 조회·참조 검증)
+    │   ├── command    PlaceOrderService
+    │   ├── query      OrderQueryService
+    │   ├── error      OrderErrorCode
+    │   └── port       OrderCatalog, OrderRepository
+    ├── domain         OrderQuote (금액 계산·불변식), StoredOrder
+    └── infrastructure fixture / persistence / integration
 
-order/
-├── api                              견적·저장·조회 Controller, MapStruct
-│   └── dto/request, dto/response     HTTP 계약
-├── application
-│   ├── command                      PlaceOrderService
-│   ├── query                        OrderQuoteService, OrderQueryService
-│   └── port                         OrderCatalog, OrderRepository
-├── domain                           OrderQuote, StoredOrder
-└── infrastructure
-    ├── integration                  LocalOrderCatalog: 상대 contract 연결
-    └── persistence                  주문 JPA 구현
+gateway / com.example.gateway
+├── common             WebFlux 보안·라우팅·오류 writer·JWT decoder·Redis 구현
+└── auth               api / application / infrastructure (데모 발급 전용)
+
+libs/platform-core / com.example.platform
+├── code               ErrorCode 인터페이스, CommonErrorCode, SuccessCode
+├── response           ApiResponse, ApiResponses
+├── exception          BusinessException, ProblemDetails
+├── security           JwtAuthorities, token/TokenKey
+└── util               ErrorDiagnostics
 ```
 
-common/config에 MappingConfig, OpenApiConfig, ConditionalOnLearningMock,
-common/config/runtime에 LearningProfileGuard, common/exception에 BusinessException이 추가됩니다.
-학습 feature는 local/test에서 명시적으로 켠 경우만 생성합니다. fixture는 견적만, persistence는 주문 저장/조회를 제공하며 결제는 구현하지 않았습니다.
-[11단계](learning/11-features-and-library-roadmap.md)에 검증·확장 순서가 있습니다.
+## 의존 방향과 책임
 
-복잡한 HTTP DTO 변환이 필요하면 api/mapper를 추가합니다.
-단순한 변환은 현재처럼 Controller에서 처리하고 불필요한 Mapper 인터페이스는 만들지 않습니다. 현재 목업 3개는 MapStruct 학습 대상으로 명시적 Mapper를 둡니다.
+- api → application → domain. application은 api/infrastructure를 참조하지 않는다.
+- domain은 Java와 **자기 feature의 domain**만 사용한다. HTTP 상태/응답은 application의 오류 코드가 소유한다.
+- 다른 feature는 공개 contract만 사용하며 연결은 호출자의 infrastructure/integration에 둔다. 순환 의존은 금지한다.
+- common과 platform-core는 feature에 의존하지 않는다. 공통 설정에 기능 URL 문자열도 넣지 않는다.
+- 플랫폼 모듈은 공통 응답과 프로토콜만 공유한다. MVC와 WebFlux 처리기, Redis I/O 구현은 각각 유지한다.
+- 업무 Controller는 `ApiResponses`, 오류 처리기는 `ProblemDetails`를 사용한다. Actuator/Prometheus를 envelope로 감싸지 않는다.
+- 새로운 업무 오류는 해당 feature의 `application/error` enum이 `ErrorCode`를 구현한다. `BusinessException`에 전달하면 공통 처리기가 Problem Details로 변환한다.
+- enum/util은 역할별로 묶는다. feature 전용 enum을 플랫폼이나 common에 이동하지 않는다.
+- 패키지는 단수 이름을 유지한다. 하위 책임이 생기면 query/command/persistence 등으로 세분화하고, 독립 업무가 생길 때 새 feature를 만든다.
 
-## 계층 책임과 의존 방향
+## 기능 로딩과 저장소 선택
 
-| 패키지 | 책임 |
-|---|---|
-| feature/api | Controller, HTTP 검증 시작, 응답 변환, 기능 전용 Advice |
-| feature/application | Service, use case, 업무 결과와 기능 전용 예외 |
-| feature/api/dto | 해당 기능의 요청/응답 계약 |
-| feature/domain (필요 시) | 업무 모델·규칙. 현재 Member/Product/OrderQuote |
-| feature/infrastructure (필요 시) | 저장소/외부 연동 adapter. fixture/LocalOrderCatalog와 12단계 JPA Entity·Spring Data Repository·adapter |
-| common/config | 보안·JWT·CORS·Clock·라우팅 구성 및 데모 발급 Bean 조건 |
-| common/config/properties, common/config/runtime | 타입 기반 설정 객체, 시작 시 profile 보호 |
-| common/security | Servlet/WebFlux 인증·인가 오류 응답 adapter |
-| common/exception | 표준 검증·미처리 오류의 Advice, ProblemDetails, 전역 오류 adapter |
-| common/web | 요청 문맥·로그·Request ID·라우팅 헤더 전달 |
-| common/response, common/code, common/util | 공통 응답 생성, enum, 순수 진단 유틸리티 |
+Controller/Service/기능 간 adapter는 항상 등록한다. 저장소 adapter만 프로필로 선택한다.
 
-- 기본 방향은 api → application → domain(도입 시)입니다. application은 api와 api/dto를 참조하지 않습니다. domain은 api/infrastructure를 참조하지 않습니다.
-- 기능은 common을 사용하고, **main의 common은 hello/auth/member/product/order를 직접 참조하지 않습니다.**
-  공통 설정은 프레임워크 Bean과 설정 객체를 구성하며 업무 Controller/Service를 호출하지 않습니다.
-- 인증 전용 InvalidCredentialsException은 application, HTTP 매핑은 api의 AuthExceptionHandler가 소유합니다.
-  이 Advice는 AuthController 패키지로 범위를 제한하고, 먼저 처리하지 않는 DTO/JSON 오류는 공통 Advice가 처리합니다.
-- JwtConfig는 검증 decoder, AuthIssuerConfig는 데모 발급 encoder를 만듭니다.
-  app.security 접두사와 환경변수·local/dev/test 발급 조건은 유지합니다.
-- RequestHeadersFilter는 인증된 Principal을 사용하며 TokenService를 호출해 인증을 재구현하지 않습니다.
-- 기능 간 협력은 infrastructure/integration에서 상대 contract를 통해 수행합니다. 내부 Service, domain, HTTP api, application/port, Entity/Repository는 외부 feature가 직접 참조하지 않습니다.
+| lifecycle | 추가 profile | 저장소 | 업무 API |
+|---|---|---|---|
+| local / test | 없음 | fixture (주문은 메모리 저장) | 조회·견적·생성·본인 조회 모두 제공 |
+| local / test | persistence | PostgreSQL/JPA | 동일 |
+| dev / staging / prod | 없음 | PostgreSQL/JPA | 동일 |
 
-api/dto에는 기존 요청 검증 애너테이션과 JSON 계약이 유지됩니다.
-따라서 이번 변경은 패키지 책임을 정리하는 것이며 프레임워크에서 완전히 분리된 도메인 아키텍처를 의미하지 않습니다.
-양쪽 Service는 API DTO/requestId 대신 업무 인자와 결과 record를 사용하고 Controller가 API DTO로 변환합니다.
-TokenService.issue(username, password)는 IssuedToken을 반환하고 AuthController가 TokenResponse로 변환합니다.
-IssuedToken과 TokenResponse 모두 toString에서 accessToken을 가립니다. JWT 검증·발급 정책은 유지합니다.
-현재 경계는 Java 패키지이며 ArchUnit 테스트가 의존 방향과 feature 순환을 검사합니다. 별도 Gradle 모듈/JPMS 격리는 아닙니다.
+JPA 환경에는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`가 필요하다. 누락 시 시작 실패가 올바른 동작이다.
+fixture는 재시작 시 주문이 사라지고 여러 인스턴스 간 공유되지 않는다. 실제 stateless/내구성 실습은 persistence로 수행한다.
+`app.learning.mock-enabled`, `persistence-enabled`, `ConditionalOnLearning*`는 제거했다.
+공개 Swagger/OpenAPI는 기존대로 local/test의 `app.learning.docs-enabled`로 제한한다.
 
-새 코드의 기준: **업무 Controller는 ApiResponses, 오류 처리기는 ProblemDetails**를 사용합니다.
-ApiResponses.fail은 common/exception/ProblemDetails로 위임합니다. Actuator/Prometheus/streaming을 자동으로 감싸지 않습니다.
+## 새 기능 추가
 
-## 새 기능을 추가하는 순서
+1. 필요한 api/application 코드부터 추가한다. DTO는 HTTP 입력 형식을 검증한다.
+2. 기능 api 패키지의 Configuration에서 `FeatureRoutes` Bean으로 경로를 등록한다.
+3. 각 HTTP handler에 `@RequireRead`, `@RequireWrite` 또는 feature 소유 `@PreAuthorize`를 선언한다.
+4. Backend SecurityConfig는 등록 경로의 인증만 요구하고 나머지는 거부한다. 메서드 권한 누락은 ArchUnit 테스트로 차단한다.
+5. 소유권·재고·거래 상태 등 데이터 정책은 application/domain에 둔다. Repository 조회에서도 소유자 범위를 제한한다.
+6. 새 비표준 외부 API 영역을 공개하면 Gateway 라우트/상위 권한 정책도 검토한다. 기존 `/api/**` 아래 기능은 Gateway URI 목록 추가가 필요 없다.
 
-1. 예를 들어 order라면 order/api, order/application, order/api/dto에 실제 필요한 코드부터 추가합니다.
-2. 업무 모델·규칙은 order/domain, Repository·외부 연동 구현은 order/infrastructure에 추가합니다. HTTP 변환이 복잡할 때 order/api/mapper를 추가합니다.
-   아직 구현할 코드가 없는 빈 패키지·Service 인터페이스/Impl은 만들지 않습니다.
-3. 기능 전용 예외는 application 또는 domain, HTTP 예외 처리기는 api에 두고 해당 Controller로 범위를 제한합니다.
-4. 경로·메서드·scope를 common/config/SecurityConfig에 등록합니다. Backend의 기본 거부 정책은 유지합니다.
-5. 테스트는 main과 같은 패키지를 따릅니다. 보안 통합 테스트는 common/security, 공통 오류 테스트는 common/exception에 둡니다.
-6. API 계약·학습 문서와 검증을 함께 갱신합니다. 이동 후 남은 빈 src 디렉터리는 비어 있음을 확인한 뒤 삭제합니다.
+JWT 인증 → MVC 인자 바인딩/DTO 검증 → 메서드 권한 → 업무 로직 순서다.
+Backend 직접 호출에서 잘못된 DTO는 scope 부족보다 먼저 400이 될 수 있다. Gateway는 여전히 HTTP 메서드별 coarse scope를 먼저 검사한다.
+`RequireMemberAdmin`은 Controller 전용이므로 member/api에 둔다.
 
-각 Application 클래스는 앱 루트에 유지하여 component scan과 Boot 테스트 설정 탐색이 하위 패키지를 포함합니다.
-생성자/Bean 매개변수 주입, proxyBeanMethods=false, application YAML 위치, URL·Bean 이름·설정 키는 유지합니다.
-Gateway(WebFlux)와 Backend(Servlet)의 독립 빌드 경계와 각자의 common도 유지합니다.
-공유 HTTP 계약은 [api-contract.md](api-contract.md)로 관리합니다.
+## 설정과 시간
 
-## 공통 코드와 유틸리티 배치 기준
+환경변수 → application.yml 플레이스홀더 → Spring Environment → `@ConfigurationProperties`로 실제 record에 바인딩한다.
+Gateway는 `SecurityProperties`, Backend는 `JwtProperties`, 관측 설정은 `ObservabilityProperties`가 받는다.
+`@EnableConfigurationProperties`는 Bean 등록, 검증 애너테이션은 값 검증을 담당한다.
+`server.*`, `spring.*`는 프레임워크 설정이며 모두 위 record를 거치는 것은 아니다.
+상세 흐름은 [01단계](learning/01-setup-and-compose.md)를 참고한다.
 
-- 샘플의 common/exception 배치를 따르되, 이전에 정한 enum 분리 기준에 따라 SuccessCode/ErrorCode는 common.code에 함께 둡니다.
-  주문 상태처럼 특정 업무에 속한 enum은 해당 기능의 domain에 둡니다.
-- ErrorDiagnostics는 common.util의 순수 진단 함수입니다. 생성자는 private이고 다른 패키지에서 쓰는 함수는 public입니다.
-- static이라는 이유만으로 util로 옮기지 않습니다. HTTP 응답 생성은 response/exception, 요청 문맥은 web에서 담당합니다.
-- response → exception, response/exception → code, exception → util 방향을 유지합니다. code/util은 Controller/Service/응답 팩토리를 참조하지 않습니다.
+TimeConfig의 UTC Clock을 HelloService/TokenService/PlaceOrderService에 주입한다.
+업무 시각은 테스트에서 고정할 수 있다. 응답 meta.timestamp는 응답 생성 시각으로 Instant.now를 사용한다.
 
-## 설정 객체와 애너테이션
+## Gradle / Docker
 
-`@ConfigurationProperties`는 설정 접두사와 Java 타입을 연결하는 애너테이션입니다.
-`ConfigurationProperties`라는 프로젝트 설정 파일이나 객체로 값이 전달되는 것은 아닙니다.
+루트 settings.gradle 하나가 gateway/backend/libs:platform-core를 정의한다.
+버전은 gradle/libs.versions.toml에 모으고, 프레임워크 전이 의존성은 Boot/Cloud BOM이 정렬한다.
+모듈별 settings.gradle은 제거했다. 모든 명령은 저장소 루트에서 실행한다.
 
-| 구분 | 현재 코드의 역할 |
-|---|---|
-| 설정 원본 | Compose의 `environment` 또는 Kubernetes Deployment의 `envFrom`/`env`가 컨테이너 환경변수를 전달 |
-| `application.yml` / `application-{profile}.yml` | 공통값과 profile별 값을 정의하며 `${...}`로 외부 값을 참조 |
-| Spring `Environment` | 환경변수·설정 파일 등 여러 설정 소스를 우선순위에 따라 조회하고 플레이스홀더 해석에 사용 |
-| `@ConfigurationProperties` | 접두사 아래의 값을 설정 객체에 타입 변환하여 바인딩 |
-| `@EnableConfigurationProperties` | 각 모듈의 `common/config/SecurityConfig`에서 보안·관측 설정 타입을 Spring Bean으로 등록 |
-| `@Validated`, `@Valid`, 검증 제약 및 record 생성자 | 필수값·길이·TTL·CORS 등 해당 설정의 조건을 검증. `@ConfigurationProperties`만으로 모든 조건이 검증되지는 않음 |
-| `RuntimeProfileGuard` | 별도 Bean의 `@PostConstruct`에서 `Environment`를 직접 조회해 profile과 금지 설정 조합을 검사 |
+```bash
+bash ./gradlew :libs:platform-core:test :gateway:test :backend:test
+bash ./gradlew :backend:databaseTest
+bash ./gradlew :backend:bootJar :gateway:bootJar
+docker build -f backend/Dockerfile -t local-backend:dev .
+docker build -f gateway/Dockerfile -t local-gateway:dev .
+```
 
-실제 바인딩 대상은 Gateway의 [SecurityProperties](../gateway/src/main/java/com/example/gateway/common/config/properties/SecurityProperties.java)
-(`app.security`), Backend의 [JwtProperties](../backend/src/main/java/com/example/backend/common/config/properties/JwtProperties.java)
-(`app.security.jwt`), 각 모듈의 `ObservabilityProperties` (`app.observability`)입니다.
-Gateway는 토큰을 발급하므로 TTL이 있지만, Backend의 `JwtProperties`에는 TTL 필드가 없습니다.
-`RuntimeProfileGuard`는 이 설정 객체들의 검증을 이어받는 마지막 단계가 아니라 독립된 시작 시 검사입니다.
-
-모든 설정이 프로젝트의 `SecurityProperties`를 거치지는 않습니다. `server.*`, `spring.*` 등은
-프레임워크가 각 설정에 맞게 처리하며, Gateway route의 rate-limit 인자도 Gateway가 처리합니다.
-구체적인 값의 흐름은 [1단계 JWT_TTL 예제](learning/01-setup-and-compose.md#설정-추적-예-jwt_ttl)를 참고합니다.
-
-## 동작 보완
-
-- 잘못된 Bearer 토큰과 인증 누락 모두 동일 SecurityProblemWriter를 사용합니다.
-- `ApiResponses.success`/`fail`과 `SuccessCode`/`ErrorCode`로 HTTP 상태·헤더·기본 오류 메시지를 공통화합니다.
-- 오류 JSON은 Boot 4의 자동 구성 JsonMapper를 주입받아 직렬화합니다.
-- Advice가 처리하지 못한 오류는 Backend의 Servlet `/error`와 Gateway의 `ErrorWebExceptionHandler`에서 각각 처리합니다.
-- Gateway 429는 `throw-on-limit`으로 예외를 전달하고 Advice/전역 handler가 같은 `GatewayErrorResponses`를 사용하며, 이미 수신한 Backend 오류 본문은 그대로 전달합니다.
-  [처리 범위와 예외](api-contract.md#시스템별-오류-처리-경계)를 참고합니다.
-- ControllerAdvice는 Spring ErrorResponse의 4xx/5xx 상태와 Allow 같은 응답 헤더를 보존합니다.
-- 예상하지 못한 오류는 requestId·예외 타입·원인별 첫 발생 위치를 남깁니다.
-  cause는 순환 방지와 최대 8개 제한을 적용하며, 비밀값이 들어갈 수 있는 원문 메시지와
-  전체 stack trace는 DEBUG에서도 출력하지 않습니다.
-- local/dev 콘솔은 `%kvp`로 SLF4J key-value 필드를 표시합니다. staging/prod는 기존 ECS 출력입니다.
-- 정상 health 요청 로그는 DEBUG, 오류 health 요청은 INFO로 남깁니다.
-- `TimeConfig`의 UTC Clock을 HelloService/TokenService에 주입해 시간 계산을 테스트할 수 있습니다.
-  static 응답 팩토리의 `meta.timestamp`는 응답 생성 시각으로 기존 `Instant.now()`를 유지합니다.
-- JWT SecretKey는 주입 가능한 Bean 대신 JwtConfig/AuthIssuerConfig 내부에서 생성합니다. HS256과 UTF-8 키 형식은 유지합니다.
-  audience는 표준 `JwtClaimValidator`로 검증합니다.
-- JWT 키, 데모 비밀번호, 토큰 DTO의 toString은 민감값을 가립니다.
-- 토큰 발급 응답은 Cache-Control: no-store, Pragma: no-cache를 보냅니다.
-- Gateway는 `/api/actuator/**`·`/api/error/**`의 Backend 우회 접근을 scope 허용 전에 차단합니다.
-- Backend는 명시한 경로·메서드 외에 기본 거부합니다. 새 Controller에는 명시적 인가 규칙도 필요합니다.
-  내부 ERROR dispatch는 허용하여 최종 오류 응답이 401/403으로 가려지지 않게 합니다.
-- 앱은 HttpSession/WebSession 없이 유지하며, 인증 전 요청 cache도 비활성화합니다. 활성 토큰 상태는 Redis에서 공유하고 두 서비스의 common/security/token에서 조회합니다. [로그인·로그아웃](learning/14-login-and-logout.md)을 참고합니다.
-- CORS는 경로/와일드카드가 없는 정확한 HTTP(S) Origin만 받습니다.
-- JWT TTL은 1초 이상의 정수 초만 허용합니다.
-- staging/prod에서 데모 토큰 발급을 켜면 시작에 실패합니다. 발급 Controller,
-  Service, encoder에도 같은 `@ConditionalOnDemoIssuer` 제한이 있습니다.
-- 공개 Prometheus는 local/test만 허용하며 dev/staging/prod에서 켜면 시작에 실패합니다.
-
-## Gradle과 Docker 빌드 경계
-
-루트 `settings.gradle`은 IDE/일괄 빌드를 위한 멀티프로젝트입니다.
-`gateway/settings.gradle`, `backend/settings.gradle`은 각 모듈을 독립 Docker build
-context로 사용하는 데 필요합니다. 중첩 프로젝트 자동 탐지는 VS Code에서 끄고
-루트 프로젝트를 import합니다. 중복 파일로 보고 삭제하지 않습니다.
-
-각 모듈 `bootJar`의 결과 이름은 `build/libs/app.jar`로 고정했습니다.
-Dockerfile은 버전 문자열을 알 필요가 없으며 이미지 태그/digest와 Build Info로 버전을 식별합니다.
-독립 빌드용 plugin/BOM 버전은 두 모듈과 문서를 함께 갱신합니다.
-Gateway의 native-access JVM 플래그는 Netty 경로를 위한 설정으로 Backend에 기계적으로 복사하지 않습니다.
-
-ArchUnit은 11단계에서 적용했습니다. 공유 convention plugin과 Spotless/Checkstyle은 CI 도입 시 검토합니다.
-layered JAR, Foojay 자동 JDK 다운로드는 이번 변경에 포함하지 않았습니다.
-기존 target/bin/Gradle cache는 Git 제외 상태를 유지하며 사용자 산출물을 임의 삭제하지 않습니다.
+Docker는 루트 context에서 공유 모듈과 대상 서비스만 컴파일한다. 실행 이미지는 서비스 JAR와 JRE만 포함한다.
+두 서비스는 따로 배포할 수 있지만 공통 계약 변경은 함께 검증해야 한다. 호환성이 깨지는 프로토콜 변경에는 버전 전환 계획이 필요하다.
 
 ## 검증 범위
 
-11단계 목업/라이브러리 추가 후 96개 회귀 테스트가 통과했습니다. [1차 검증 기록](learning/11-features-and-library-roadmap.md#검증과-단계-체크)을 참고합니다.
-아래 78개 기록은 패키지 전환 시점의 이전 검증입니다.
-
-2026-09-29 기능별 구조 전환 후 Java 컴파일과 두 모듈의 회귀 테스트 78개가 통과했습니다.
-Backend 29개, Gateway 49개이며 인증 전용 Advice와 공통 입력 검증 Advice의 처리 순서도 확인했습니다.
-설정 보호, JWT/권한, DTO 검증, 오류 상태·헤더, 실제 Servlet ERROR dispatch와 Netty 라우팅을
-검증합니다. Compose/kind 재배포는 이 검증과 별개이며 실행 중인 컨테이너는 변경하지 않습니다.
-세부 반영·보류 이유는 [AA/SWA 검토 기록](aa-swa-review.md)을 참고합니다.
-
-
-## 12단계 저장소 경계
-
-member/product의 application Repository port는 fixture와 JPA adapter가 각각 구현합니다.
-order/application/command의 PlaceOrderService가 저장 transaction을, query/OrderQueryService가 소유권 조회를 담당하고,
-OrderRepository port를 order/infrastructure/persistence의 JpaOrderRepository가 구현합니다.
-JPA Entity와 Spring Data Repository는 각 feature/infrastructure/persistence에 두며 domain은 Java record를 유지합니다.
-common에는 feature Entity 스캔/seed 업무 로직을 추가하지 않습니다. Boot가 root package 아래를 스캔합니다.
-ArchUnit은 이전 의존 방향을 유지하고 Entity가 API DTO로 새어 나가지 않도록 경계를 검사합니다.
-[12단계 검증/실행](learning/12-postgresql-jpa-flyway.md)을 참고하세요.
-
-
-## 기능 증가와 공개 계약
-
-단수/복수 이름 변경 대신 실제 책임별 하위 패키지를 추가합니다. 독립 업무가 생길 때 새 feature로 분리합니다.
-[13단계](learning/13-feature-boundaries-and-growth.md)에 판단 예시·contract/port 흐름·순환 해소·거래/조회 제약을 정리했습니다.
-
-
-## 보안 설정 및 member 관리 조회 (15단계)
-
-양쪽 SecurityConfig를 configureStateless/configureAuthorization/configureJwt로 분리하고 반복 scope 등록만 requireScope로 묶었습니다.
-`GET /api/members/admin`은 일반/관리 handler를 분리하고 DTO/서비스를 재사용하며 Backend에서 `api.read`와 `member.admin`을 모두 요구합니다.
-`/members/{id}`보다 관리 경로 규칙을 먼저 선언합니다. 기존 member ID는 양수만 허용하며 0·음수는 400입니다.
-HTTP 권한과 feature 업무 권한을 구분하고, [15단계](learning/15-security-rules-and-member-tests.md)에 테스트 절차와 확장 기준을 기록했습니다.
-
-
-## 16단계 인증/인가 확장
-
-- `common/security/JwtAuthorities`: 데모 scope와 Keycloak permissions를 동일한 SCOPE_ 권한으로 변환.
-- `common/security/permission`: 여러 feature가 쓰는 @RequireRead / @RequireWrite.
-- `member/application/RequireMemberAdmin`: 회원 관리 권한은 해당 feature가 소유.
-- `SecurityConfig`: feature 경로/HTTP 메서드 기본 정책과 기본 거부. Controller마다 세부 URI를 복제하지 않는다.
-- 각 HTTP handler에 권한을 명시하고 architecture 테스트로 누락을 감지한다.
-- 주문 소유권처럼 데이터에 의존하는 업무 조건은 application/저장소 조회에 유지한다.
-- `auth-ui`: 공식 Keycloak JS adapter를 사용하는 별도 브라우저 실습 클라이언트.
-- `keycloak`: 최초 realm seed. 이미 생성된 realm 변경은 관리 API/Console로 진행.
-
-실행과 운영 차이는 [16단계](learning/16-keycloak-and-method-security.md)를 따른다.
+ArchUnit으로 자기 domain 경계, feature 간 contract/integration, 순환, common 의존, API/application의 조건부 등록 금지,
+HTTP handler 권한 누락을 검사한다. 통합 테스트는 기능 api 및 infrastructure/persistence 패키지에 배치한다.
+DB 테스트는 **prod 프로필 + 일회용 PostgreSQL/Redis**로 운영 설정의 API 등록·저장·rollback을 검증한다. 실제 운영 배포 검증은 아니다.
+Spring Modulith 도입은 보류한다. 현재 경계를 검증하는 데 필요한 규칙이 이미 있으며, 추가 모듈 이벤트/문서화 요구가 생길 때 Boot 호환 버전을 확인한다.

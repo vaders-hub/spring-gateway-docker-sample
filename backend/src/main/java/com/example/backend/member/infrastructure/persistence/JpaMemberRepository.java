@@ -1,6 +1,5 @@
 package com.example.backend.member.infrastructure.persistence;
 
-import com.example.backend.common.config.ConditionalOnLearningPersistence;
 import com.example.backend.member.application.port.MemberRepository;
 import com.example.backend.member.domain.Member;
 import java.util.List;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-@ConditionalOnLearningPersistence
+@org.springframework.context.annotation.Profile("(!local & !test) | persistence")
 @Transactional(readOnly = true)
 class JpaMemberRepository implements MemberRepository {
     private final MemberJpaRepository repository;

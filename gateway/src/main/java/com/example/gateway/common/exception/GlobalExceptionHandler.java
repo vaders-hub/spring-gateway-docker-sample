@@ -1,6 +1,7 @@
 package com.example.gateway.common.exception;
+import com.example.platform.exception.ProblemDetails;
 
-import com.example.gateway.common.code.ErrorCode;
+import com.example.platform.code.CommonErrorCode;
 import com.example.gateway.common.web.RequestContext;
 import java.util.Map;
 import org.springframework.core.annotation.Order;
@@ -23,7 +24,7 @@ class GlobalExceptionHandler {
     ResponseEntity<ProblemDetail> handleValidation(
             WebExchangeBindException exception,
             ServerWebExchange exchange) {
-        ResponseEntity<ProblemDetail> response = problem(ErrorCode.INVALID_REQUEST, exchange);
+        ResponseEntity<ProblemDetail> response = problem(CommonErrorCode.INVALID_REQUEST, exchange);
         response.getBody().setProperty("errors", exception.getFieldErrors().stream()
                 .map(error -> Map.of(
                         "field", error.getField(),
@@ -38,7 +39,7 @@ class GlobalExceptionHandler {
     ResponseEntity<ProblemDetail> handleUnreadableRequest(
             ServerWebInputException exception,
             ServerWebExchange exchange) {
-        var response = problem(ErrorCode.INVALID_REQUEST, exchange);
+        var response = problem(CommonErrorCode.INVALID_REQUEST, exchange);
         response.getBody().setDetail("The request body is missing or malformed.");
         return response;
     }
@@ -50,7 +51,7 @@ class GlobalExceptionHandler {
         return GatewayErrorResponses.from(exchange, exception);
     }
 
-    private ResponseEntity<ProblemDetail> problem(ErrorCode code, ServerWebExchange exchange) {
+    private ResponseEntity<ProblemDetail> problem(com.example.platform.code.ErrorCode code, ServerWebExchange exchange) {
         return ProblemDetails.forCode(code, requestId(exchange), exchange.getRequest().getPath().value());
     }
 

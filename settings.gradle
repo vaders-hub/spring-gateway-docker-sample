@@ -1,3 +1,5 @@
 rootProject.name = 'spring-gateway-docker-sample'
 
 include 'gateway', 'backend'
+
+include 'libs:platform-core'

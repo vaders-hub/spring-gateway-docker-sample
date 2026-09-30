@@ -3,14 +3,14 @@
 11단계의 member/product 조회와 주문 견적에 실제 저장소를 연결합니다.
 기본 `local`은 기존 fixture, `local,persistence`는 PostgreSQL을 사용합니다.
 `persistence`는 lifecycle profile을 대체하는 이름이 아니라 저장소 선택용 추가 profile입니다.
-이 예제의 학습 기능은 local/test에서만 허용합니다. 운영 배포를 바로 활성화하는 설정은 아닙니다.
+dev/staging/prod는 기본 JPA이며 DB_URL/DB_USERNAME/DB_PASSWORD가 필수입니다. API는 모든 프로필에서 같습니다.
 
 ## 요청과 저장 흐름
 
 ```mermaid
 flowchart LR
   Client -->|JWT| Gateway
-  Gateway -->|JWT 재검증| Controller[OrderPersistenceController]
+  Gateway -->|JWT 재검증| Controller[OrderController]
   Controller -->|DTO 검증 후 업무 값| Service[PlaceOrderService]
   Service -->|서버 가격 조회| Quote[OrderQuoteService / OrderCatalog]
   Service -->|application port| Adapter[JpaOrderRepository]
@@ -19,7 +19,7 @@ flowchart LR
   Flyway -->|V1 DDL| DB
 ```
 
-1. SecurityFilterChain이 JWT와 api.write/api.read scope를 검사합니다.
+1. SecurityFilterChain은 JWT 인증, Controller 메서드 보안은 api.write/api.read 권한을 검사합니다.
 2. Controller가 입력 DTO를 검증합니다. 소유자는 요청 JSON 대신 검증된 JWT의 subject를 사용합니다.
 3. PlaceOrderService의 `@Transactional`이 회원·상품 조회, 견적 계산, 저장을 묶습니다.
 4. Repository adapter가 domain record를 JPA Entity로 변환합니다. `saveAndFlush` 후에도 commit 전 실패하면 rollback됩니다.
@@ -97,11 +97,11 @@ lab_api GET "/api/orders/$order_id"
 |---|---|
 | POST /api/orders | api.write, 201 data/meta |
 | GET /api/orders/{UUID} | api.read + JWT 소유자 일치, 200 data/meta |
-| 다른 사용자의 주문 / 없는 주문 | 404 NOT_FOUND; 존재 여부를 구분해 노출하지 않음 |
+| 다른 사용자의 주문 / 없는 주문 | 404 ORDER_NOT_FOUND; 존재 여부를 구분해 노출하지 않음 |
 | 수량 0/101, 잘못된 DTO | 400 INVALID_REQUEST |
 | 인증 누락 / scope 부족 | 401 / 403 |
-| 존재하지 않는 회원/상품 | 404, 저장 없음 |
-| fixture 모드에서 주문 저장/단건 조회 | 해당 Controller가 없어 유효한 scope 요청은 404 |
+| 주문 본문에 없는 회원/상품 참조 | 422 INVALID_MEMBER_REFERENCE / INVALID_PRODUCT_REFERENCE, 저장 없음 |
+| fixture 모드에서 주문 저장/단건 조회 | 같은 API의 201/200. 메모리 저장이므로 재시작 후 소멸 |
 
 회원은 업무 예제 데이터이며 JWT 로그인 계정과 연결하지 않았습니다. 이 단계의 소유권은 **주문**에 적용합니다.
 계정 가입·결제·재고 차감·주문 수정/삭제·멱등키는 아직 없습니다. 같은 POST를 다시 보내면 별도 주문이 생성됩니다.
@@ -153,11 +153,11 @@ flush 후 실제 rollback, DB CHECK/FK, 상품 변경 후 주문 snapshot 유지
 코드는 아래 순서로 읽습니다. 주요 진입점 주석은 동작을 반복 설명하기보다 경계와 설정 이유를 설명합니다.
 
 1. 기존 단계: MemberController/MemberMapper → MemberService → FixtureMemberRepository.
-2. 저장소 교체: ConditionalOnLearningFeature/Persistence → JpaMemberRepository → MemberEntity.
-3. 주문: OrderPersistenceController → command/PlaceOrderService → query/OrderQuoteService → integration/LocalOrderCatalog → JpaOrderRepository. 본인 조회는 query/OrderQueryService가 담당합니다.
+2. 저장소 교체: infrastructure의 @Profile → JpaMemberRepository → MemberEntity.
+3. 주문: OrderController → command/PlaceOrderService → application/OrderQuoteService → integration/LocalOrderCatalog → JpaOrderRepository. 본인 조회는 query/OrderQueryService가 담당합니다.
    [13단계](13-feature-boundaries-and-growth.md)에 contract/port와 전체 하위 패키지 분류가 정리돼 있습니다.
 4. 데이터: V1 migration → application-persistence.yml → scripts/sql/learning-catalog.sql.
-5. 검증: ArchitectureTest → PersistenceIntegrationTest의 rollback/소유권/snapshot 테스트.
+5. 검증: ArchitectureTest → order/infrastructure/persistence/OrderPersistenceIntegrationTest의 rollback/소유권/snapshot 테스트.
 
 공식 참고: [Boot DB 초기화](https://docs.spring.io/spring-boot/how-to/data-initialization.html),
 [Testcontainers PostgreSQL](https://java.testcontainers.org/modules/databases/postgres/),
@@ -187,3 +187,6 @@ Boot 4.0.8 BOM으로 JPA/Flyway/JDBC/Testcontainers 버전을 맞추며 PostgreS
 - 실제 DB의 Flyway V1 success=true, Backend/PostgreSQL healthy, Prometheus의 Gateway/Backend target 모두 UP을 확인했습니다.
 - 현재 Backend는 local,persistence와 기존 observability overlay 조합으로 실행 중입니다. 신규 예제 회원·상품과 검증용 주문 1건이 전용 DB에 남아 있습니다.
 - 단계 체크박스는 학습자 직접 확인용입니다. Kubernetes DB 배포·장애 중 readiness 전환·백업 복원·브라우저 Swagger 조작은 이번 실행 검증에 포함하지 않았습니다.
+
+
+> 현재 구조 보완: [17단계](17-reference-architecture.md). 기능 flag 제거, 단일 주문 API, feature 경로 Bean/메서드 권한, 기능별 오류 코드, 공유 모듈과 루트 빌드를 적용했습니다. 이전 단계의 검증 수는 당시 기록입니다.

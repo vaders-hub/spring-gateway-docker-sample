@@ -1,7 +1,7 @@
 package com.example.backend.common.config;
 
 import com.example.backend.common.security.SecurityProblemWriter;
-import com.example.backend.common.security.JwtAuthorities;
+import com.example.platform.security.JwtAuthorities;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import com.example.backend.common.config.properties.JwtProperties;
 import com.example.backend.common.config.properties.ObservabilityProperties;
@@ -12,13 +12,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
+import com.example.backend.common.security.FeatureRoutes;
+import java.util.List;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
-import static org.springframework.security.oauth2.core.authorization.OAuth2AuthorizationManagers.hasScope;
+
 
 @EnableMethodSecurity
 @Configuration(proxyBeanMethods = false)
@@ -29,9 +30,9 @@ class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObservabilityProperties observabilityProperties,
-            SecurityProblemWriter problems, Environment environment, JwtProperties jwtProperties) throws Exception {
+            SecurityProblemWriter problems, Environment environment, JwtProperties jwtProperties, List<FeatureRoutes> routes) throws Exception {
         configureStateless(http);
-        configureAuthorization(http, observabilityProperties, environment);
+        configureAuthorization(http, observabilityProperties, environment, routes);
         configureJwt(http, problems, jwtProperties.usesJwks());
         return http.build();
     }
@@ -50,7 +51,7 @@ class SecurityConfig {
     }
 
     private void configureAuthorization(HttpSecurity http,
-            ObservabilityProperties observabilityProperties, Environment environment) throws Exception {
+            ObservabilityProperties observabilityProperties, Environment environment, List<FeatureRoutes> routes) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> {
                     // 컨테이너 내부 오류 dispatch만 허용한다. 외부의 /error 직접 요청은 아래 기본 거부 정책을 따른다.
@@ -62,16 +63,10 @@ class SecurityConfig {
                     else {
                         authorize.requestMatchers("/actuator/prometheus").authenticated();
                     }
-                    // 경로/메서드의 기본 권한만 관리한다. 세부 권한은 feature 메서드가 소유한다.
-                    requireScope(authorize, HttpMethod.GET, "api.read",
-                            "/hello", "/members", "/members/**", "/products", "/products/**", "/orders", "/orders/**");
-                    requireScope(authorize, HttpMethod.HEAD, "api.read",
-                            "/hello", "/members", "/members/**", "/products", "/products/**", "/orders", "/orders/**");
-                    for (var method : java.util.List.of(HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)) {
-                        requireScope(authorize, method, "api.write", "/members", "/members/**", "/products", "/products/**", "/orders", "/orders/**");
+                    // 새 기능은 자신의 api 패키지에서 경로를 등록한다. scope는 메서드 어노테이션 한 곳에만 둔다.
+                    for (var feature : routes) {
+                        authorize.requestMatchers(feature.paths().toArray(String[]::new)).authenticated();
                     }
-                    requireScope(authorize, HttpMethod.POST, "api.write", "/echo");
-                    // URL 권한 뒤의 주문 소유권 등 업무 정책은 각 feature application에서 검사한다.
                     if (environment.getProperty("app.learning.docs-enabled", Boolean.class, false)) {
                         // Backend 로컬 문서 UI 부트스트랩용. 업무 API의 JWT 인가는 그대로 유지한다.
                         authorize.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**",
@@ -94,10 +89,4 @@ class SecurityConfig {
                         .accessDeniedHandler(problems.accessDeniedHandler()));
     }
 
-    private void requireScope(
-            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorize,
-            HttpMethod method, String scope, String... paths) {
-        // 실제 등록된 업무 URL만 나열한다. 편의를 위해 모든 경로를 허용하지 않는다.
-        authorize.requestMatchers(method, paths).access(hasScope(scope));
-    }
 }

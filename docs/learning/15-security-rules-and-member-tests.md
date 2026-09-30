@@ -12,7 +12,7 @@ Gateway(WebFlux)와 Backend(MVC)의 `SecurityConfig`는 각 스택을 유지하�
 
 ```java
 configureStateless(http);
-configureAuthorization(http, observabilityProperties /* Backend는 environment도 전달 */);
+configureAuthorization(http, observabilityProperties /* Backend는 environment와 FeatureRoutes 목록도 전달 */);
 configureJwt(http, problems, /* JWKS 방식 여부 */ oidc);
 return http.build();
 ```
@@ -22,9 +22,9 @@ return http.build();
 | configureStateless | 세션/요청 캐시/기본 로그인 방식과 CORS/CSRF 설정 |
 | configureAuthorization | 공개 URL → 구체적인 제한 → 일반 업무 URL → 기본 정책 |
 | configureJwt | JWT 인증과 인증·인가 실패의 공통 응답 writer 연결 |
-| requireScope | 반복되는 메서드·경로·scope 등록만 공통화 |
+| requireScope (Gateway) | coarse 메서드·경로·scope 등록만 공통화 |
 
-Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 feature 경로와 HTTP 메서드의 기본 정책을 등록하고 세부 권한을 메서드에서 검사합니다.
+Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 feature가 등록한 경로의 인증만 요구하며 scope는 메서드에서 검사합니다.
 두 서비스의 Security API를 하나의 추상 부모 클래스나 util로 감싸지 않습니다.
 규칙이 더 커질 때 `GatewayAuthorization`/`BackendAuthorization`으로 이동할 수 있으며, 현재는 private 메서드로 충분합니다.
 회원/주문 소유권 같은 업무 권한은 각 feature의 application에서 검사하는 기존 원칙을 유지합니다.
@@ -37,12 +37,12 @@ Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 feat
 | `/api/members/{id}` | api.read | 양의 정수 ID 회원 조회 |
 | `/api/members/admin` | api.read + member.admin | 관리 권한이 필요한 회원 목록 |
 
-Backend 직접 URL은 `/api`를 제외합니다. 기존 local/test 목업 또는 persistence 조건에서만 member Controller가 활성화됩니다.
+Backend 직접 URL은 `/api`를 제외합니다. member Controller는 모든 프로필에서 활성화되고 저장소만 fixture/JPA 중 선택됩니다.
 관리 경로는 현재 일반 목록과 같은 DTO/서비스를 재사용하는 권한 학습용 읽기 API입니다.
 일반/관리 handler를 분리하고 공통 응답 매핑과 Service를 재사용합니다. 관리 기능/정보가 달라지면 별도 DTO·유스케이스로 분리합니다.
 
 현재 `/members/admin`의 추가 권한은 `@RequireMemberAdmin` 메서드 보안으로 검사합니다.
-SecurityConfig의 feature 기본 읽기 정책을 통과한 뒤 api.read + member.admin을 모두 요구합니다.
+SecurityConfig의 인증 정책을 통과한 뒤 api.read + member.admin을 모두 요구합니다.
 URL 규칙 자체는 여전히 먼저 일치하는 규칙이 적용되므로 Gateway 관리 경로 차단 같은 구체적 제한은 일반 허용보다 먼저 선언합니다.
 
 기존 데모 로그인은 `api.read api.write`만 발급합니다. 일반 로그인으로 관리 경로를 호출하면 403이 정상입니다.
@@ -86,12 +86,12 @@ lab_logout
 | 토큰 없음/서명 변조/만료/issuer·audience 불일치/로그아웃 토큰 | 401 UNAUTHORIZED | Gateway, Backend 각각의 JWT 인증 |
 | 일반 토큰으로 관리 목록 접근 | 403 ACCESS_DENIED | Gateway의 api.read 통과 후 Backend의 member.admin 검사 |
 | api.read 없는 토큰으로 회원 조회 | 403 ACCESS_DENIED | Gateway 또는 Backend scope 검사 |
-| 형식이 잘못됐거나 0·음수인 ID | 400 INVALID_REQUEST | 인증·인가 통과 후 Backend 입력 검증 |
-| 존재하지 않는 양수 ID | 404 NOT_FOUND | Backend member application 조회 |
+| 형식이 잘못됐거나 0·음수인 ID | 400 INVALID_REQUEST | 인증 후 Backend 입력 바인딩/검증 |
+| 존재하지 않는 양수 ID | 404 MEMBER_NOT_FOUND | Backend member application 조회 |
 | 빠른 반복 호출 | 429 TOO_MANY_REQUESTS | 기존 Gateway Redis rate limit |
 | 활성 토큰 저장소 장애 | 503 SERVICE_UNAVAILABLE | JWT 활성 상태 검사 |
 
-400·404는 JWT 오류가 아닙니다. 인증이 안 되면 잘못된 ID도 먼저 401, scope가 부족하면 먼저 403입니다.
+400·404는 JWT 오류가 아닙니다. 인증이 안 되면 잘못된 ID도 먼저 401입니다. Gateway는 scope를 먼저 검사하지만 Backend 직접 호출은 인자 바인딩이 메서드 권한 검사보다 먼저여서 잘못된 입력의 400이 우선할 수 있습니다.
 HTTP/JSON 테스트는 `requestId`, Problem Details 형식 및 민감값 미노출도 검사합니다.
 관리 경로의 권한 판단은 Backend가 담당하므로 향후 Gateway 외의 내부 호출에서도 유지됩니다.
 
@@ -116,3 +116,6 @@ HTTP/JSON 테스트는 `requestId`, Problem Details 형식 및 민감값 미노�
 - Compose Gateway/Backend 이미지를 갱신하고 기존 PostgreSQL/관측 overlay를 유지했습니다. Redis/DB 데이터는 초기화하지 않았습니다.
 - 실제 `check-member-security.sh`에서 누락 토큰 401, 회원 목록 200, 관리 권한 부족 403, 문자/0 ID 400, 미존재 회원 404, 변조/로그아웃 토큰 401을 확인했습니다.
 - 앱 healthy 및 Prometheus 두 target UP, 셸 문법과 diff 형식을 확인했습니다. Kubernetes 실제 배포는 이번에 실행하지 않았습니다.
+
+
+> 현재 구조 보완: [17단계](17-reference-architecture.md). 기능 flag 제거, 단일 주문 API, feature 경로 Bean/메서드 권한, 기능별 오류 코드, 공유 모듈과 루트 빌드를 적용했습니다. 이전 단계의 검증 수는 당시 기록입니다.

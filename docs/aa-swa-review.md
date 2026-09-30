@@ -32,7 +32,7 @@
 - Backend: 명시한 업무/관리 경로와 내부 ERROR dispatch 외에는 denyAll을 적용한다.
   유효한 JWT를 사용한 미등록 경로·메서드는 403이다. 이전 인증된 `/missing`·`/error`의 404가 403으로 바뀐다.
 - `/hello` GET/HEAD와 `/echo` POST는 기존 scope 규칙을 유지한다.
-  새 업무 Controller를 만들 때 경로·메서드·scope를 SecurityConfig에 함께 등록해야 한다.
+  새 업무 Controller는 자기 api 패키지의 FeatureRoutes와 메서드 권한으로 등록한다.
 - 직접 `/actuator/health/**`·`/actuator/info`와 공개 여부 설정에 따른 `/actuator/prometheus` 정책은 유지한다.
   학습 Compose의 Prometheus scrape 주소는 `/api`가 붙지 않은 서비스별 `/actuator/prometheus`이다.
 - Backend의 `DispatcherType.ERROR`는 계속 허용한다. Servlet filter 예외/sendError가 인증 오류로
@@ -118,3 +118,8 @@ MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=false bash ./gradlew --offline --no-daemo
 승인된 보안 정책에 대해 관리 우회 경로 차단·인가 규칙 없는 Controller 차단·공개/인증 필요 Prometheus와 health/info 접근도 통과했다.
 테스트는 별도 로컬 HTTP 서버를 사용하며 실제 Redis 판정은 일부 spy로 고정한다.
 Compose/kind 컨테이너 재기동·이미지 재빌드·부하 검증은 수행하지 않는다.
+
+
+## 2026-09-30 추가 검토
+
+이 문서의 이전 독립 빌드/common 복제 판단은 [17단계](learning/17-reference-architecture.md)에서 대체했다. 플랫폼 계약은 공유 모듈로 추출하고 웹 스택 처리기는 유지했다. API/application은 항상 로딩하고 저장소만 profile로 선택하며, feature URL/오류 코드는 각 기능이 소유한다.

@@ -57,11 +57,11 @@ kind get clusters
 # [조회] kubectl 접속 설정 목록 확인. 클러스터 존재와 접속 설정 존재는 별개입니다.
 kubectl config get-contexts
 # [빌드] backend/Dockerfile로 local-backend:dev 이미지 생성. 앱 컨테이너를 실행하지는 않습니다.
-docker build -t local-backend:dev ./backend
+docker build -f backend/Dockerfile -t local-backend:dev .
 # 직전 명령의 종료 코드($?)가 0이 아니면 현재 셸을 종료해 다음 단계 진행을 막습니다.
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Backend image build failed.' >&2; exit 1; fi
 # [빌드] 같은 방식으로 Spring Cloud Gateway 이미지 생성.
-docker build -t local-gateway:dev ./gateway
+docker build -f gateway/Dockerfile -t local-gateway:dev .
 if [ "$?" -ne 0 ]; then printf '%s\n' 'Gateway image build failed.' >&2; exit 1; fi
 ```
 

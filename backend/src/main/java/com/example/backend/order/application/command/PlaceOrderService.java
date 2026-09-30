@@ -1,22 +1,22 @@
 package com.example.backend.order.application.command;
 
-import com.example.backend.common.code.ErrorCode;
-import com.example.backend.common.config.ConditionalOnLearningPersistence;
-import com.example.backend.common.exception.BusinessException;
+import com.example.platform.code.CommonErrorCode;
+import com.example.platform.exception.BusinessException;
 import com.example.backend.order.domain.StoredOrder;
 import com.example.backend.order.application.port.OrderRepository;
-import com.example.backend.order.application.query.OrderQuoteService;
-import java.time.Instant;
+import com.example.backend.order.application.OrderQuoteService;
+import java.time.Clock;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@ConditionalOnLearningPersistence
 public class PlaceOrderService {
     private final OrderQuoteService quotes;
     private final OrderRepository orders;
-    public PlaceOrderService(OrderQuoteService quotes, OrderRepository orders) {
+    private final Clock clock;
+    public PlaceOrderService(OrderQuoteService quotes, OrderRepository orders, Clock clock) {
+        this.clock = clock;
         this.quotes = quotes;
         this.orders = orders;
     }
@@ -25,9 +25,9 @@ public class PlaceOrderService {
     @Transactional
     public StoredOrder place(long memberId, long productId, int quantity, String ownerSubject) {
         if (ownerSubject == null || ownerSubject.isBlank() || ownerSubject.length() > 255) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
         var quote = quotes.preview(memberId, productId, quantity);
-        return orders.save(new StoredOrder(UUID.randomUUID(), ownerSubject, quote, Instant.now()));
+        return orders.save(new StoredOrder(UUID.randomUUID(), ownerSubject, quote, clock.instant()));
     }
 }

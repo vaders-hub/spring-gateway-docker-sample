@@ -1,6 +1,4 @@
 package com.example.backend.product.contract;
-
-/** 상품 feature의 공개 조회 경계. HTTP 호출이 아닌 동일 애플리케이션 안의 Java 인터페이스다. */
-public interface ProductLookup {
-    ProductSnapshot getProduct(long productId);
-}
+import java.util.Optional;
+/** 부재를 값으로 전달하며 HTTP 의미는 호출자에게 맡긴다. */
+public interface ProductLookup { Optional<ProductSnapshot> findProduct(long productId); }

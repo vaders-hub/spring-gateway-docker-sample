@@ -49,7 +49,7 @@ Backend
 ├── product                           같은 경계, Product와 불변 상품 데이터
 └── order
     ├── api/dto                       OrderPreviewRequest/Response + Mapper
-    ├── application                   query/OrderQuoteService / port/OrderCatalog
+    ├── application                   application/OrderQuoteService / port/OrderCatalog
     ├── domain                        OrderQuote 금액 계산
     └── infrastructure/integration    LocalOrderCatalog: 회원/상품 공개 계약 연결
 ```
@@ -73,9 +73,8 @@ Pod 메모리에 변경 가능한 주문 상태를 보관하지 않아 기존 st
 | GET /api/products/1 | /products/1 | api.read | Keyboard, 50000 KRW |
 | POST /api/orders/preview | /orders/preview | api.write | 견적; 저장하지 않으므로 200 |
 
-동작 조건: local/test 프로필 + app.learning.mock-enabled=true.
-local YAML은 켜져 있고 test는 필요한 통합 테스트에서만 켭니다. 12단계 persistence 조합에서는 mock을 끄고 JPA adapter로 같은 기능을 제공합니다. dev/staging/prod에서 강제로 켜면 기동 실패입니다.
-OFF일 때 Controller/Service/fixture가 없으므로 유효한 scope 요청은 404이며, 인증 누락은 계속 401입니다.
+현재는 모든 profile에서 API/application을 등록합니다. local/test 기본은 fixture, persistence 추가 또는 dev/staging/prod는 JPA입니다.
+fixture에서도 주문 생성/본인 조회를 제공하지만 데이터는 메모리에만 남습니다. 아래 초기 1차 범위와 달라진 현재 구조는 [17단계](17-reference-architecture.md)를 따릅니다.
 Gateway의 Redis 제한은 그대로 적용됩니다. 연속 실행으로 429가 나면 토큰 버킷 충전 후 다시 확인합니다.
 
 기존 Compose 실행 환경에서 **새 이미지를 빌드한 뒤** 실습합니다. 아래 명령은 이 문서의 안내이며 자동 배포를 뜻하지 않습니다.
@@ -92,7 +91,7 @@ lab_api POST /api/orders/preview '{"memberId":1,"productId":1,"quantity":2}'
 lab_api POST /api/orders/preview '{"memberId":1,"productId":1,"quantity":0}'
 # 400 INVALID_REQUEST
 lab_api GET /api/members/999
-# 404 NOT_FOUND
+# 404 MEMBER_NOT_FOUND
 ```
 
 ## OpenAPI와 Swagger UI
@@ -159,3 +158,6 @@ Compose/kind 이미지 재빌드·UI 브라우저 실습·PostgreSQL 기동은 �
 - [ ] Swagger Backend 직접 호출과 Gateway 호출의 경로·제한 차이를 확인했다.
 - [ ] ArchUnit 규칙의 금지 의존 방향과 도메인 계산 테스트의 역할을 설명했다.
 - [ ] 현재 완료된 1차와 12단계 PostgreSQL 구현/후속 외부 연동 단계를 구분했다.
+
+
+> 현재 구조 보완: [17단계](17-reference-architecture.md). 기능 flag 제거, 단일 주문 API, feature 경로 Bean/메서드 권한, 기능별 오류 코드, 공유 모듈과 루트 빌드를 적용했습니다. 이전 단계의 검증 수는 당시 기록입니다.

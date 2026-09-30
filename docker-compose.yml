@@ -3,7 +3,8 @@
 services:
   gateway:
     build:
-      context: ./gateway
+      context: .
+      dockerfile: gateway/Dockerfile
     container_name: local-gateway
     # 호스트에는 Gateway만 공개한다. backend/redis 주소는 아래 서비스 이름으로 해석된다.
     ports:
@@ -85,7 +86,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: local-backend
     expose:
       # expose는 호스트 포트를 열거나 접근 제어를 강제하는 설정이 아니다.

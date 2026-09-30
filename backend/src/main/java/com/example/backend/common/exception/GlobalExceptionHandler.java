@@ -1,7 +1,9 @@
 package com.example.backend.common.exception;
+import com.example.platform.exception.ProblemDetails;
+import com.example.platform.exception.BusinessException;
 
-import com.example.backend.common.code.ErrorCode;
-import com.example.backend.common.util.ErrorDiagnostics;
+import com.example.platform.code.CommonErrorCode;
+import com.example.platform.util.ErrorDiagnostics;
 import com.example.backend.common.web.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -35,7 +37,7 @@ class GlobalExceptionHandler {
     ResponseEntity<ProblemDetail> handleValidation(
             MethodArgumentNotValidException exception,
             HttpServletRequest request) {
-        ResponseEntity<ProblemDetail> response = problem(ErrorCode.INVALID_REQUEST, request);
+        ResponseEntity<ProblemDetail> response = problem(CommonErrorCode.INVALID_REQUEST, request);
         response.getBody().setProperty("errors", exception.getFieldErrors().stream()
                 .map(error -> Map.of(
                         "field", error.getField(),
@@ -50,7 +52,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     ResponseEntity<ProblemDetail> handleTypeMismatch(
             MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
-        var response = problem(ErrorCode.INVALID_REQUEST, request);
+        var response = problem(CommonErrorCode.INVALID_REQUEST, request);
         response.getBody().setProperty("errors", java.util.List.of(
                 Map.of("field", exception.getName(), "message", "invalid value")));
         return response;
@@ -60,7 +62,7 @@ class GlobalExceptionHandler {
     ResponseEntity<ProblemDetail> handleUnreadableRequest(
             HttpMessageNotReadableException exception,
             HttpServletRequest request) {
-        var response = problem(ErrorCode.INVALID_REQUEST, request);
+        var response = problem(CommonErrorCode.INVALID_REQUEST, request);
         response.getBody().setDetail("The request body is missing or malformed.");
         return response;
     }
@@ -70,7 +72,7 @@ class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request) {
         if (exception instanceof AccessDeniedException) {
-            return problem(ErrorCode.ACCESS_DENIED, request);
+            return problem(CommonErrorCode.ACCESS_DENIED, request);
         }
         // 프레임워크의 4xx/5xx 상태와 Allow 같은 응답 헤더를 보존한다.
         if (exception instanceof ErrorResponse error && error.getStatusCode().isError()) {
@@ -85,10 +87,10 @@ class GlobalExceptionHandler {
                 .addKeyValue("requestId", requestId)
                 .addKeyValue("path", request.getRequestURI())
                 .log("unhandled_request_error");
-        return problem(ErrorCode.INTERNAL_ERROR, request);
+        return problem(CommonErrorCode.INTERNAL_ERROR, request);
     }
 
-    private ResponseEntity<ProblemDetail> problem(ErrorCode code, HttpServletRequest request) {
+    private ResponseEntity<ProblemDetail> problem(com.example.platform.code.ErrorCode code, HttpServletRequest request) {
         return ProblemDetails.forCode(code, requestId(request), request.getRequestURI());
     }
 

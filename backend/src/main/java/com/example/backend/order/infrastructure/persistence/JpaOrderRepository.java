@@ -1,6 +1,5 @@
 package com.example.backend.order.infrastructure.persistence;
 
-import com.example.backend.common.config.ConditionalOnLearningPersistence;
 import com.example.backend.order.application.port.OrderRepository;
 import com.example.backend.order.domain.StoredOrder;
 import java.util.Optional;
@@ -8,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@ConditionalOnLearningPersistence
+@org.springframework.context.annotation.Profile("(!local & !test) | persistence")
 class JpaOrderRepository implements OrderRepository {
     private final OrderJpaRepository repository;
     JpaOrderRepository(OrderJpaRepository repository) { this.repository = repository; }

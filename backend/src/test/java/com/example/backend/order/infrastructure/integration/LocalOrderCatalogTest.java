@@ -1,11 +1,11 @@
 package com.example.backend.order.infrastructure.integration;
 
-import com.example.backend.common.code.ErrorCode;
-import com.example.backend.common.exception.BusinessException;
+import com.example.platform.code.CommonErrorCode;
+import com.example.platform.exception.BusinessException;
 import com.example.backend.member.contract.MemberLookup;
 import com.example.backend.product.contract.ProductLookup;
 import com.example.backend.product.contract.ProductSnapshot;
-import com.example.backend.order.application.query.OrderQuoteService;
+import com.example.backend.order.application.OrderQuoteService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
@@ -16,10 +16,11 @@ class LocalOrderCatalogTest {
     void quoteUsesPublishedContractsAndPreservesMoneyAndCurrency() {
         var members = mock(MemberLookup.class);
         var products = mock(ProductLookup.class);
-        when(products.getProduct(7)).thenReturn(new ProductSnapshot(7, "Sample", new BigDecimal("0.10"), "USD"));
+        when(members.exists(3)).thenReturn(true);
+        when(products.findProduct(7)).thenReturn(java.util.Optional.of(new ProductSnapshot(7, "Sample", new BigDecimal("0.10"), "USD")));
         var service = new OrderQuoteService(new LocalOrderCatalog(members, products));
         var quote = service.preview(3, 7, 3);
-        verify(members).requireExists(3);
+        verify(members).exists(3);
         assertThat(quote.productId()).isEqualTo(7);
         assertThat(quote.productName()).isEqualTo("Sample");
         assertThat(quote.currency()).isEqualTo("USD");
@@ -29,7 +30,7 @@ class LocalOrderCatalogTest {
     void failedMemberContractStopsTheCrossFeatureWorkflow() {
         var members = mock(MemberLookup.class);
         var products = mock(ProductLookup.class);
-        doThrow(new BusinessException(ErrorCode.NOT_FOUND)).when(members).requireExists(99);
+        when(members.exists(99)).thenReturn(false);
         var service = new OrderQuoteService(new LocalOrderCatalog(members, products));
         assertThatThrownBy(() -> service.preview(99, 7, 1)).isInstanceOf(BusinessException.class);
         verifyNoInteractions(products);

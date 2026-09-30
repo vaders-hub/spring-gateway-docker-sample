@@ -1,12 +1,11 @@
 package com.example.backend.member.api;
 
 import com.example.backend.common.security.permission.RequireRead;
-import com.example.backend.common.config.ConditionalOnLearningFeature;
-import com.example.backend.common.code.SuccessCode;
-import com.example.backend.common.response.*;
+import com.example.platform.code.SuccessCode;
+import com.example.platform.response.*;
 import com.example.backend.common.web.RequestContext;
 import com.example.backend.member.application.MemberService;
-import com.example.backend.member.application.RequireMemberAdmin;
+import com.example.backend.member.api.RequireMemberAdmin;
 import com.example.backend.member.api.dto.MemberResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
@@ -15,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@ConditionalOnLearningFeature
 @RequestMapping("/members")
 public class MemberController {
     private final MemberService service;
