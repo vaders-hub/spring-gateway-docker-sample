@@ -1,8 +1,10 @@
 # Persistence introduction gate
 
 [12단계](learning/12-postgresql-jpa-flyway.md)에 PostgreSQL/JPA/Flyway/Testcontainers를 적용했습니다.
-기본 local은 fixture이고 local,persistence에서만 DataSource/Hikari/JPA/migration이 활성화됩니다.
-기존 DB 없는 실습과 새로운 저장 실습을 구분합니다. fixture는 영속성/transaction 검증을 대신하지 않습니다.
+기본 `local`/`test`는 fixture입니다. 여기에 `persistence`를 추가하거나 `dev`/`staging`/`prod`를 사용하면
+DataSource/Hikari/JPA/Flyway가 활성화되며 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`가 필수입니다.
+두 저장소 구현은 같은 API 계약을 사용합니다. fixture 주문은 메모리 저장이며 재시작 시 사라집니다.
+fixture는 영속성/transaction 검증을 대신하지 않습니다.
 주문 저장/조회는 Service transaction, 소유권은 JWT subject, 테이블 변경은 Flyway가 담당합니다.
 
 ## 패키지와 계층
@@ -10,7 +12,7 @@
 - `<feature>/domain`: 업무 모델과 규칙
 - `<feature>/infrastructure/persistence`: 현재 JPA Entity (순수 domain record와 분리)
 - `<feature>/infrastructure/persistence`: 현재 Spring Data Repository와 application/port 구현
-- `<feature>/infrastructure/mybatis`: SQL Mapper와 DB 조회 모델
+- `<feature>/infrastructure/mybatis`: 향후 MyBatis 도입 시 SQL Mapper와 DB 조회 모델 (현재 미구현)
 - `<feature>/api/dto`: 외부 API 계약이며 Entity를 직접 참조하거나 반환하지 않음
 - `<feature>/application`: Service의 transaction 경계와 use case. API DTO에 의존하지 않음
 - `<feature>/api`: Controller의 HTTP mapping·검증·DTO 변환. `@Transactional` 사용 금지

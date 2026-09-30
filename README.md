@@ -70,7 +70,7 @@ Gateway의 `127.0.0.1:8080`만 공개되며 Backend `8081`과 Redis `6379`는 �
 
 ## VS Code / 로컬 Gradle
 
-저장소 루트가 `gateway`, `backend`를 포함하는 Gradle 멀티프로젝트이며 Gradle
+저장소 루트가 `gateway`, `backend`, `libs:platform-core`를 포함하는 Gradle 멀티프로젝트이며 Gradle
 Wrapper를 포함합니다. Windows VS Code의 WSL 확장으로 저장소 루트를 열고
 WSL에 JDK 25를 준비합니다. 아래 컴파일/테스트 명령은 필요할 때만 직접 실행합니다.
 
@@ -128,7 +128,9 @@ Redis에 만들어집니다.
 
 ## Feature와 라이브러리 확장
 
-Backend의 member/product/order는 기본 local에서 fixture 조회·견적을, local,persistence에서 PostgreSQL 조회·주문 저장을 제공합니다. 결제·재고 차감은 구현하지 않았습니다.
+Backend의 member/product/order는 기본 `local`/`test`에서 fixture 조회·견적·메모리 주문 저장을 제공합니다.
+`local`/`test`에 `persistence`를 추가하거나 `dev`/`staging`/`prod`를 사용하면 PostgreSQL/JPA로 저장합니다.
+API 계약은 동일하며 fixture 데이터는 프로세스 재시작 시 사라집니다. 결제·재고 차감은 구현하지 않았습니다.
 MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포함합니다.
 [11단계 안내와 후속 로드맵](docs/learning/11-features-and-library-roadmap.md)에서 실행 예제와 선택형 UI overlay를 확인하세요.
 [12단계 PostgreSQL/JPA/Flyway](docs/learning/12-postgresql-jpa-flyway.md)에는 DB 기동·주문 저장·재기동·Testcontainers 검증 절차가 있습니다.
@@ -143,7 +145,9 @@ PostgreSQL + JPA/Flyway/Testcontainers는 12단계에 구현되어 있으며, �
 ## 주요 구현 위치
 
 기능별 구조를 사용합니다. Backend는 hello/member/product/order, Gateway는 auth 안에 api/application/infrastructure를 두고,
-설정·보안·예외 처리와 공통 응답·enum·util은 common 아래에 둡니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
+앱별 설정·보안·HTTP 예외 처리와 요청 컨텍스트는 각 앱의 `common` 아래에 둡니다.
+응답·오류 계약과 JWT authority/토큰 키·진단 유틸은 `libs/platform-core`에서 공유합니다.
+업무 경로·권한·오류는 각 기능이 소유합니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
 
 ```text
 gateway/src/main/java/com/example/gateway/common/config/
@@ -190,18 +194,25 @@ backend/src/main/java/com/example/backend/hello/application/
 backend/src/main/java/com/example/backend/hello/api/dto/
   Backend 요청/응답 계약
 
+libs/platform-core/src/main/java/com/example/platform/
+  성공 envelope, ErrorCode/Problem Details 계약, JWT authority·토큰 키·진단 유틸
+
 */src/main/java/**/common/
-  성공 envelope, 오류 코드, Problem Details, 요청 컨텍스트
+  앱별 설정·보안·HTTP 예외 처리·요청 컨텍스트
 ```
 
-`/auth/login`(호환 별칭 `/auth/token`)과 `/auth/logout`은 구조 학습용 인증 API입니다. 운영에서는 데모 인증과
-공유 HS256 secret 대신 Cognito, Keycloak 같은 OIDC Provider 연동을 설계합니다.
-issuer/JWK 변경과 함께 Redis 활성 토큰 등록/철회 계약도 바꾸어야 합니다. 이 엔드포인트는 `local`, `dev`, `test` profile에서만 기본 활성화되고
-`staging`, `prod`에서는 Bean 자체가 생성되지 않습니다.
+`/auth/login`(호환 별칭 `/auth/token`)과 `/auth/logout`은 데모 HS256 인증 API입니다.
+데모 토큰은 Redis 활성 목록으로 검증하고 로그아웃 시 해당 토큰을 철회합니다.
+데모 발급이 활성화된 `local`, `dev`, `test`에서만 제공하며 `staging`, `prod` 및 `oidc`에서는 Bean이 생성되지 않습니다.
+16단계의 Keycloak OIDC 구성은 RS256/JWKS와 issuer/audience를 검증하고 데모 Redis 활성 목록을 조회하지 않습니다.
+OIDC 로그아웃 후에도 기존 Access Token은 만료까지 유효합니다. 실행·refresh 철회 정책은
+[16단계 안내](docs/learning/16-keycloak-and-method-security.md)를 참고하세요.
 
 ## 설정과 Profile
 
-- lifecycle profile: `local`, `dev`, `test`, `staging`, `prod` 중 정확히 하나. Backend는 local/test에서 저장소 선택용 `persistence`를 추가할 수 있음
+- lifecycle profile: `local`, `dev`, `test`, `staging`, `prod` 중 정확히 하나
+- 선택형 profile: Backend의 `local`/`test`에 저장소 선택용 `persistence` 추가 가능; 두 앱 모두 인증 선택용 `oidc` 추가 가능
+- DB 설정: `dev`/`staging`/`prod` 또는 `persistence` 사용 시 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 필수
 - deployment platform: `DEPLOYMENT_PLATFORM`으로 Docker Compose/Kubernetes 구분
 - 기본값: 각 모듈의 `application.yml`
 - 환경 차이: `application-{profile}.yml` 또는 배포 환경변수
@@ -225,7 +236,7 @@ Pod를 교체해야 합니다. Compose의 `.env`/`environment` 변경은 `docker
 - 설정 검증: `@ConfigurationProperties`로 Gateway의 `app.security`를 `SecurityProperties`에,
   Backend의 `app.security.jwt`를 `JwtProperties`에 바인딩. `@Validated`·검증 제약·record 생성자로
   필수값과 secret 길이를 검사하고, Gateway에서는 데모 암호 길이·TTL·CORS 조건도 검증
-- 환경 분리: lifecycle profile은 정확히 하나; Backend local/test의 선택형 persistence만 추가 허용
+- 환경 분리: lifecycle profile은 정확히 하나; Backend local/test의 선택형 `persistence`와 양쪽 앱의 선택형 `oidc` 허용
 - 내부 보안: Backend의 JWT 재검증과 Kubernetes NetworkPolicy
 - Timeout: Backend connect 2초/response 5초, Redis connect 2초/command 1초
 - Connection pool: Gateway Backend 연결을 최대 50개로 제한하고 acquire timeout 설정
@@ -242,8 +253,9 @@ Pod를 교체해야 합니다. Compose의 `.env`/`environment` 변경은 `docker
 Redis 장애 시 Gateway의 readiness를 내려 Kubernetes Service의 신규 트래픽 대상에서
 제외하도록 설정했습니다. 그러나 이것이 요청 단위 **fail-closed**를 보장하지는 않습니다.
 현재 사용하는 Spring Cloud Gateway 5.0.3의 RedisRateLimiter는 Redis 호출 오류 때 요청을
-허용하는 fallback이 있습니다. Compose 직접 접근, Pod port-forward, 기존 연결 및 probe
-반영 전 구간에서는 API가 통과할 수 있습니다. 엄격한 차단은 별도 구현과 장애 테스트가 필요합니다.
+허용하는 fallback이 있습니다. 데모 인증은 Redis 활성 토큰 조회 실패 시 `503`으로 차단합니다.
+활성 목록 조회를 생략하는 OIDC 모드에서는 Compose 직접 접근, Pod port-forward, 기존 연결 및 probe
+반영 전 구간의 요청이 Rate Limit 제한 없이 통과할 수 있습니다. 엄격한 차단은 별도 구현과 장애 테스트가 필요합니다.
 [공식 RedisRateLimiter 소스](https://github.com/spring-cloud/spring-cloud-gateway/blob/v5.0.3/spring-cloud-gateway-server-webflux/src/main/java/org/springframework/cloud/gateway/filter/ratelimit/RedisRateLimiter.java)
 
 Actuator는 `health`, `info`, `prometheus`만 노출합니다. Health와 info만 항상 익명
@@ -264,11 +276,10 @@ RFC 9457 `application/problem+json` 형식에 `errorCode`, `requestId`를 추가
 ControllerAdvice 밖에서 발생하는 Spring Security 401/403도 동일한 오류 형태로
 반환합니다. 상세 계약은 [API contract](docs/api-contract.md)를 참고합니다.
 
-현재 DB/JPA 의존성·Entity·HikariCP·`@Transactional`은 없습니다.
-학습용 불변 fixture Repository와 조회 계약만 추가했습니다. DB 도입 시 Entity와 API DTO를 분리하고 Flyway,
-`ddl-auto=validate`, Hikari pool/timeout/leak detection, Service 계층 transaction
-경계를 함께 도입합니다. 구체적인 기준은
-[Persistence introduction gate](docs/persistence-policy.md)에 정리했습니다.
+PostgreSQL/JPA Entity와 저장소, HikariCP, Flyway migration 및 Service 계층 `@Transactional`을 구현했습니다.
+Entity는 API DTO·domain과 분리하고 `open-in-view=false`, `ddl-auto=validate`,
+Flyway `clean-disabled=true`를 사용합니다. 현재 pool 상한은 5, 최소 idle은 1, 연결 대기는 3초입니다.
+환경별 저장소 선택과 확장 기준은 [Persistence 정책](docs/persistence-policy.md)을 참고하세요.
 
 OpenTelemetry span 생성과 W3C context 전파는 활성화되어 있지만 OTLP export는
 기본적으로 꺼져 있습니다. Collector를 배치한 환경에서 `OTEL_EXPORT_ENABLED=true`,
@@ -288,7 +299,7 @@ docker compose \
 ```
 
 - Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001`
+- Grafana: `http://localhost:3000`
 - Grafana 사용자: `admin`
 - Grafana 비밀번호: Git에서 제외된 `.env`의 `GRAFANA_ADMIN_PASSWORD`
 
@@ -298,12 +309,17 @@ Prometheus Operator/ServiceMonitor 또는 조직 표준 scrape 인증을 사용�
 
 ## 자동화 검증
 
+모든 모드는 Bash, `kubectl`, `python3`가 필요합니다. `.env`가 있으면 Docker Compose 설정도 검사합니다.
+
 ```bash
 # 기본: Bash 문법 / Kustomize 렌더링 / Compose 설정만 검사
 bash scripts/verify.sh
 
-# 명시적으로 선택할 때만 Java 컴파일과 테스트 실행
+# Java 컴파일·일반 테스트 (database 태그 제외, JDK 25 필요)
 bash scripts/verify.sh test
+
+# 실제 PostgreSQL·Redis 통합 테스트 (JDK 25와 Docker 필요)
+bash scripts/verify.sh database
 ```
 
 `.env`가 없으면 Compose 검사를, Grafana 암호가 없으면 관측 overlay 검사를 건너뛰고
@@ -312,8 +328,13 @@ bash scripts/verify.sh test
 기존 단위 테스트 외에 모듈별 `@SpringBootTest`와 실제 HTTP 요청을 추가했습니다.
 실제 서명 JWT의 401/403/200, issuer/audience/만료/서명, 읽기·쓰기 scope,
 Backend DTO 오류와 prod의 데모 발급 Bean 부재를 검증하도록 구성했습니다.
-Gateway 테스트는 테스트 전용 Controller를 사용하므로 실제 프록시/Redis 장애 검증은 별도입니다.
-테스트 코드 추가와 실행 성공은 다릅니다. 이번 변경에서는 컴파일·테스트를 실행하지 않았습니다.
+Gateway HTTP 테스트는 테스트 전용 Controller와 모의 Redis 구성 등을 사용하므로 실제 Backend 프록시,
+Redis Rate Limit 및 장애 동작 전체를 검증하지 않습니다. 해당 검증은 기동한 스택의 별도 실습으로 수행합니다.
+`test`는 Backend의 `database` 태그를 제외하며, `database`는 일회용 PostgreSQL·Redis를 사용하는
+`:backend:databaseTest`만 실행합니다. 두 모드는 먼저 정적 검사를 수행합니다.
+정적 검사 통과는 서비스 기동이나 런타임 동작의 성공을 의미하지 않습니다.
+기존 실행 결과는 [17단계의 날짜별 검증 기록](docs/learning/17-reference-architecture.md#검증-기록--2026-09-30)에
+정리되어 있습니다. 현재 환경의 실행 결과와 구분해서 읽으세요.
 `bootBuildInfo`와
 configuration processor도 빌드 과정에서 Actuator Build Info와 IDE 설정 메타데이터를
 생성합니다.
@@ -332,7 +353,9 @@ Docker Compose와 동일한 Gateway, Backend, Redis 구성을 Deployment와 Serv
 - 설정 분리: 공통 `app-config` ConfigMap / 필요한 키만 참조하는 Secret
 - 구성 구조: `k8s/base` + `k8s/overlays/{local,staging}`; 루트 `k8s`는 local 호환 진입점
 
-staging은 렌더링 학습용이며 별도 Secret/인증 제공자 준비 전에는 배포하지 않습니다.
+staging은 렌더링 학습용입니다. Backend는 JPA를 사용하므로 별도 PostgreSQL과
+`backend-db-secret`의 DB 연결 키 세 개, 인증 Secret/신뢰 구성이 필요합니다.
+[staging 준비 항목](k8s/overlays/staging/README.md)을 확인한 뒤 배포 환경을 구성하세요.
 NetworkPolicy는 [집행 검증 절차](docs/learning/08-network-policy-validation.md)를,
 Redis fail-closed와 CircuitBreaker/Retry는 [후속 설계](docs/resilience-policy.md)를 참고하세요.
 

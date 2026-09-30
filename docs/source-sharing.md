@@ -47,7 +47,9 @@ git config --local user.email 'YOUR_COMMIT_EMAIL'
 ```bash
 git add -- .editorconfig .env.example .gitattributes .gitignore .dockerignore \
   .vscode/settings.json .vscode/extensions.json README.md build.gradle settings.gradle \
-  gradlew gradlew.bat gradle gateway backend k8s observability scripts docs
+  gradlew gradlew.bat gradle gateway backend libs auth-ui keycloak k8s observability scripts docs \
+  docker-compose.yml docker-compose.persistence.yml docker-compose.keycloak.yml \
+  docker-compose.learning.yml docker-compose.observability.yml
 # Linux clone에서 ./gradlew로도 실행할 수 있도록 실행 비트 기록
 git update-index --chmod=+x gradlew
 git diff --cached --name-status

@@ -61,8 +61,9 @@ issuer/JWK 설정으로 보안 구성을 교체해야 합니다.
 ## 3. 호출
 
 구성 파일은 `base/`와 `overlays/local`로 정리했습니다. 기존 `apply -k k8s`는
-local overlay를 적용합니다. `overlays/staging`은 별도 Secret/인증 제공자가 필요한
-렌더링 학습용입니다. [환경별 비교 실습](../docs/learning/04-operations-and-recovery.md)을 참고하세요.
+local overlay를 적용합니다. `overlays/staging`은 별도 인증 설정과 PostgreSQL/DB Secret이 필요한
+렌더링 학습용입니다. [staging 준비 항목](overlays/staging/README.md)과
+[환경별 비교 실습](../docs/learning/04-operations-and-recovery.md)을 참고하세요.
 
 이전 버전에서 업그레이드할 때 ConfigMap 이름은 `gateway-config`에서 `app-config`로
 바뀝니다. Deployment 참조도 함께 변경했습니다. 예전 ConfigMap은 apply만으로 자동 삭제되지

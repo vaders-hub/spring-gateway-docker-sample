@@ -123,7 +123,8 @@ Docker는 루트 context에서 공유 모듈과 대상 서비스만 컴파일한
 
 ## 검증 범위
 
-ArchUnit으로 자기 domain 경계, feature 간 contract/integration, 순환, common 의존, API/application의 조건부 등록 금지,
-HTTP handler 권한 누락을 검사한다. 통합 테스트는 기능 api 및 infrastructure/persistence 패키지에 배치한다.
+Backend ArchUnit은 핵심 규칙만 검사한다: application → api/infrastructure 참조 금지, feature 간 순환 금지,
+HTTP handler 권한 누락 금지. 그 밖의 경계(domain, contract/integration, common 의존)는 위 원칙과 코드 리뷰로 유지한다.
+구조 규칙을 임시로 끄려면 `bash ./gradlew test -PskipArchitecture`로 실행한다(`architecture` 태그 제외). 통합 테스트는 기능 api 및 infrastructure/persistence 패키지에 배치한다.
 DB 테스트는 **prod 프로필 + 일회용 PostgreSQL/Redis**로 운영 설정의 API 등록·저장·rollback을 검증한다. 실제 운영 배포 검증은 아니다.
 Spring Modulith 도입은 보류한다. 현재 경계를 검증하는 데 필요한 규칙이 이미 있으며, 추가 모듈 이벤트/문서화 요구가 생길 때 Boot 호환 버전을 확인한다.

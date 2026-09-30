@@ -42,7 +42,10 @@ springBoot {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        // 구조 규칙을 임시로 끌 때: ./gradlew test -PskipArchitecture
+        if (project.hasProperty('skipArchitecture')) excludeTags 'architecture'
+    }
 }
 
 // Stable artifact name for root multi-project Docker builds; version remains in build info.
