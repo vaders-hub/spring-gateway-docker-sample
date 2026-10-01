@@ -1,10 +1,10 @@
 # Persistence introduction gate
 
 [12단계](learning/12-postgresql-jpa-flyway.md)에 PostgreSQL/JPA/Flyway/Testcontainers를 적용했습니다.
-기본 `local`/`test`는 fixture입니다. 여기에 `persistence`를 추가하거나 `dev`/`staging`/`prod`를 사용하면
+기본 `local`/`test`는 메모리 저장소입니다. 여기에 `persistence`를 추가하거나 `dev`/`staging`/`prod`를 사용하면
 DataSource/Hikari/JPA/Flyway가 활성화되며 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`가 필수입니다.
-두 저장소 구현은 같은 API 계약을 사용합니다. fixture 주문은 메모리 저장이며 재시작 시 사라집니다.
-fixture는 영속성/transaction 검증을 대신하지 않습니다.
+두 저장소 구현은 같은 API 계약을 사용합니다. 메모리에 저장한 주문 데이터는 재시작 시 사라집니다.
+메모리 저장소는 영속성/transaction 검증을 대신하지 않습니다.
 주문 저장/조회는 Service transaction, 소유권은 JWT subject, 테이블 변경은 Flyway가 담당합니다.
 
 ## 패키지와 계층
@@ -12,7 +12,7 @@ fixture는 영속성/transaction 검증을 대신하지 않습니다.
 - `<feature>/model`: 불변 업무 모델과 규칙.
 - `<feature>/repository`: 저장소 인터페이스. service 타입을 참조하지 않음.
 - `<feature>/repository/jpa`: Entity, Spring Data `*JpaRepository`, 직접 작성한 `*RepositoryJpaImpl`.
-- `<feature>/repository/fixture`: local/test 메모리 구현.
+- `<feature>/repository/Memory*Repository`: local/test 메모리 구현. 별도 하위 패키지는 두지 않음.
 - `<feature>/web/dto`: 외부 요청/응답 계약. Entity를 반환하지 않음.
 - `<feature>/service`와 `service/impl`: 업무 계약과 구현·트랜잭션 경계.
 - `<feature>/web`: HTTP 매핑·검증·DtoConverter. 트랜잭션 시작 책임을 두지 않음.

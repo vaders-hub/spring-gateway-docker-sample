@@ -8,7 +8,7 @@ member/product/order 등 기능 이름은 유지하고 내부를 web/service/rep
 | 상황 | 배치 | 기준 |
 |---|---|---|
 | HTTP DTO가 늘어남 | web/dto/request·response | 같은 업무 안의 역할 분류 |
-| 저장소 구현이 둘 이상 | repository/jpa·fixture | 업무와 구현 기술 분리 |
+| 저장소 구현이 둘 이상 | repository의 Memory*Repository와 jpa/ | 업무와 구현 기술 분리 |
 | 회원 주소·연락처 | member 내부부터 시작 | 독립 생명주기가 생길 때 분리 |
 | 주문 조회·저장 | OrderServiceImpl의 get/place | 메서드별 트랜잭션과 권한 책임 유지 |
 | 결제 승인·취소·정산 | payment 기능 | 독립 업무와 외부 연동 책임 |
@@ -24,7 +24,7 @@ member/                         product도 같은 기본 배치
 ├── service/                    MemberService
 │   └── impl/MemberServiceImpl
 ├── repository/                 MemberRepository
-│   ├── fixture/FixtureMemberRepository
+│   ├── MemoryMemberRepository
 │   └── jpa/                    MemberRepositoryJpaImpl, MemberJpaRepository, MemberEntity
 ├── model/Member
 └── error/MemberErrorCode
@@ -33,7 +33,7 @@ order/
 ├── web/                        OrderController, Routes, DtoConverter, dto/request·response
 ├── service/                    OrderService (preview/place/get)
 │   └── impl/OrderServiceImpl
-├── repository/                 OrderRepository, jpa/, fixture/
+├── repository/                 OrderRepository, MemoryOrderRepository, jpa/
 ├── model/                      OrderQuote, StoredOrder
 └── error/OrderErrorCode
 ```

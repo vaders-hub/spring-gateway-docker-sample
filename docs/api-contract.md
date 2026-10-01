@@ -178,13 +178,13 @@ committed 응답 보존은 단위 테스트로 확인하며 Compose/kind 재배�
 - `<feature>/web/dto`: 외부 요청/응답 계약
 - `common`: 요청 추적, 공통 응답과 오류 처리
 - `<feature>/model`: 업무 모델·규칙이 필요할 때 생성하며 API DTO와 분리
-- `<feature>/repository`: 저장소 인터페이스와 JPA/fixture 구현; service를 참조하지 않음
+- `<feature>/repository`: 저장소 인터페이스와 JPA/메모리 구현; service를 참조하지 않음
 
 Gateway와 Backend의 공통 응답/오류 계약은 libs/platform-core에 공유합니다. Servlet/WebFlux 처리기는 각 서비스가 소유합니다.
 
 ## 기능 API와 저장소
 
-모든 프로필에서 member/product/order API를 제공합니다. local/test 기본은 fixture, persistence 추가 또는 dev/staging/prod는 JPA입니다.
+모든 프로필에서 member/product/order API를 제공합니다. local/test 기본은 메모리 저장소, persistence 추가 또는 dev/staging/prod는 JPA입니다.
 GET은 api.read, 주문 POST는 api.write, 회원 관리자 GET은 api.read와 member.admin을 요구합니다.
 POST /orders/preview는 200 견적, POST /orders는 201 주문, GET /orders/{UUID}는 본인 주문만 반환합니다.
 같은 POST 재전송은 별도 주문을 만듭니다. 결제·재고 차감은 구현하지 않았습니다.

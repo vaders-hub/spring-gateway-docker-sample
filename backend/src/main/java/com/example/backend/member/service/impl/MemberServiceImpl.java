@@ -9,7 +9,7 @@ import com.example.backend.member.repository.MemberRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-// 저장소 port에만 의존하므로 fixture에서 JPA로 바꿔도 조회 업무 로직은 동일하다.
+// 저장소 인터페이스에만 의존하므로 메모리에서 JPA로 바꿔도 조회 업무 로직은 동일하다.
 @Service
 public class MemberServiceImpl implements MemberService {
     private final MemberRepository repository;

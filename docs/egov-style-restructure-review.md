@@ -33,10 +33,10 @@ com.example.backend
 │   │   ├── MemberService
 │   │   └── impl/MemberServiceImpl
 │   ├── repository
-│   │   ├── MemberRepository       fixture/JPA가 구현하는 저장소 인터페이스
+│   │   ├── MemberRepository       메모리/JPA 구현체가 구현하는 저장소 인터페이스
 │   │   ├── jpa                    MemberRepositoryJpaImpl, MemberJpaRepository,
 │   │   │                          MemberEntity
-│   │   └── fixture                FixtureMemberRepository
+│   │   └── MemoryMemberRepository
 │   ├── model                      Member
 │   └── error                      MemberErrorCode
 ├── product                        member와 같은 배치
@@ -52,7 +52,7 @@ com.example.backend
     │   ├── OrderRepository
     │   ├── jpa                    OrderRepositoryJpaImpl, OrderJpaRepository,
     │   │                          OrderEntity
-    │   └── fixture                FixtureOrderRepository
+    │   └── MemoryOrderRepository
     ├── model                      OrderQuote, StoredOrder
     └── error                      OrderErrorCode
 
@@ -70,7 +70,7 @@ libs/platform-core                기존 공통 응답·오류·인증 계약 �
 | 업무 서비스가 사용하는 저장소 인터페이스 | `MemberRepository` |
 | 직접 작성한 JPA 저장소 구현 | `MemberRepositoryJpaImpl` |
 | Spring Data가 구현하는 인터페이스 | `MemberJpaRepository` |
-| 기존 fixture 구현 | `FixtureMemberRepository` |
+| 기존 메모리 저장소 구현 | `MemoryMemberRepository` |
 
 `MemberRepositoryJpaImpl`은 `MemberRepository`를 구현하고 `MemberJpaRepository`를 주입받는 일반 저장소 Bean이다. `MemberJpaRepositoryImpl`이라는 이름은 사용하지 않는다. 기본 postfix가 `Impl`인 Spring Data는 스캔 범위의 저장소 인터페이스명 + `Impl`을 구형 커스텀 구현 탐색 규칙으로 인식할 수 있다. 의도하지 않은 자동 연결을 피하려는 명명 기준이며, 모든 `Impl` 접미사를 금지하는 뜻은 아니다. postfix·탐색 설정이 바뀌면 그 설정도 확인한다. [Spring Data 공식 문서](https://docs.spring.io/spring-data/jpa/reference/repositories/custom-implementations.html)
 
@@ -88,7 +88,7 @@ libs/platform-core                기존 공통 응답·오류·인증 계약 �
 | `feature/domain` | `feature/model` | 불변식·계산·불변 객체 유지 |
 | `application/port/*Repository` | `repository/*Repository` | 저장소 인터페이스와 반환 의미 유지 |
 | `infrastructure/persistence` | `repository/jpa` | Entity·Spring Data 인터페이스·프로필 유지, 직접 작성한 구현은 `*RepositoryJpaImpl` |
-| `infrastructure/fixture` | `repository/fixture` | JPA와 상호 배타적인 선택 조건 유지 |
+| `infrastructure/fixture` | `repository/Memory*Repository` | JPA와 상호 배타적인 선택 조건 유지 |
 | `MemberLookup`, `ProductLookup` | 기능별 Service 인터페이스에 필요한 조회 메서드 통합 | `exists`, `findProduct`와 실패 의미 유지 |
 | `product/contract/ProductSnapshot` | `product/service/ProductSnapshot` | 다른 기능에 공개하는 불변 조회 값, 내부 model·Entity 참조 금지 |
 | `OrderCatalog`, `LocalOrderCatalog` | 주문 통합 단계에서 제거 | 다른 기능의 Service 인터페이스를 직접 사용 |
@@ -131,7 +131,7 @@ libs/platform-core                기존 공통 응답·오류·인증 계약 �
 유지할 핵심 기준:
 
 - Service와 Repository는 웹 Controller·요청/응답 DTO에 의존하지 않는다.
-- Repository 인터페이스와 JPA/fixture 구현 전체는 모든 기능의 service 및 service 하위 패키지를 참조하지 않는다. 공개 snapshot 변환은 ServiceImpl에서 수행한다.
+- Repository 인터페이스와 JPA/메모리 구현 전체는 모든 기능의 service 및 service 하위 패키지를 참조하지 않는다. 공개 snapshot 변환은 ServiceImpl에서 수행한다.
 - Service 인터페이스는 구현체·JPA Entity·Spring Data Repository 타입을 노출하지 않는다.
 - 기능 간 참조는 상대 기능의 service 직속 패키지만 허용하고, 공개 값 타입도 그곳에 둔다. service.impl을 비롯한 하위 패키지는 허용하지 않는다. 기능 간 순환은 별도로 금지한다.
 - common과 platform-core는 업무 기능에 의존하지 않는다.
@@ -147,7 +147,7 @@ HTTP 권한 검사는 현재 `.api` 패키지를 선택하는 코드가 있으�
 
 - API URL, 성공 응답 envelope, Problem Details, 상태 코드와 요청 ID 처리.
 - `FeatureRoutes`, `@RequireRead`, `@RequireWrite`, `@RequireMemberAdmin`, Gateway scope 정책.
-- local/test fixture와 persistence 또는 dev/staging/prod JPA의 저장소 선택 조건.
+- local/test 메모리 저장소와 persistence 또는 dev/staging/prod JPA의 저장소 선택 조건.
 - DTO 검증, 서버 가격 계산, 주문 소유권, DB 제약 조건, Flyway migration.
 - Keycloak/OIDC·데모 인증 분리와 기존 로그아웃·토큰 처리 의미.
 - Docker/Kubernetes 배포 구성, 기존 DB와 볼륨.
@@ -185,7 +185,7 @@ Gateway는 `auth/api → auth/web`, `auth/application → auth/service` 중심�
 - 컴파일 및 MapStruct 생성 성공, Bean 주입 충돌 없음. `*RepositoryJpaImpl`이 의도한 저장소 Bean으로 등록되고 Spring Data 커스텀 구현으로 오인 연결되지 않음.
 - 기능별 회귀 테스트와 새 ArchUnit 규칙 통과, 권한 검사 대상이 비어 있지 않음. service 직속 공개 범위와 repository → service 역방향 의존 금지를 확인함.
 - 기존 200/201/400/401/403/404/422/429 계약 중 해당 기능의 기대 동작 유지.
-- fixture 및 JPA 환경의 API 등록·저장소 선택 확인.
+- 메모리 저장소 및 JPA 환경의 API 등록·저장소 선택 확인.
 - 본인 주문 조회, 타인 주문 차단, 서버 가격 계산, DB 저장·rollback 확인.
 - Gateway 비동기 인증·로그아웃 경로 및 기존 OIDC 구성이 유지됨. 이동한 AuthExceptionHandler가 데모 인증의 기존 401/503 오류를 처리하고, 적용 범위·프로필 조건이 유지됨.
 - 필요한 최종 런타임 확인은 현재 Compose 파일 조합을 유지하고 프로젝트 범위에서 수행함. 단순 상태 확인을 위해 정상 실행 중인 서비스를 불필요하게 재생성하지 않음.

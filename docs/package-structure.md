@@ -16,7 +16,7 @@ backend / com.example.backend
 │   ├── service                 MemberService, impl/MemberServiceImpl
 │   ├── repository              MemberRepository
 │   │   ├── jpa                 MemberRepositoryJpaImpl, MemberJpaRepository, MemberEntity
-│   │   └── fixture             FixtureMemberRepository
+│   │   └── MemoryMemberRepository
 │   ├── model                   Member
 │   └── error                   MemberErrorCode
 ├── product
@@ -24,7 +24,7 @@ backend / com.example.backend
 └── order
     ├── web                     OrderController, OrderRoutes, OrderDtoConverter, dto/
     ├── service                 OrderService, impl/OrderServiceImpl
-    ├── repository              OrderRepository, jpa/, fixture/
+    ├── repository              OrderRepository, MemoryOrderRepository, jpa/
     ├── model                   OrderQuote, StoredOrder
     └── error                   OrderErrorCode
 
@@ -50,6 +50,7 @@ libs/platform-core / com.example.platform
 - HTTP DTO와 MapStruct `*DtoConverter`는 기능의 `web`에 둔다. 생성 구현은 build/generated에 있으며 편집하거나 Git에 넣지 않는다.
 - `model`은 불변 업무 객체와 금액 계산 등 규칙을 담는다. JPA Entity·HTTP DTO와 구별한다.
 - 저장소 인터페이스는 `repository`, 직접 작성한 JPA 구현은 `repository/jpa/*RepositoryJpaImpl`, Spring Data 인터페이스는 `*JpaRepository`이다. `*JpaRepositoryImpl`은 Spring Data 커스텀 구현 탐색과 혼동되므로 사용하지 않는다.
+- 메모리 구현체는 `repository/Memory*Repository`에 직접 둔다. `fixture`나 `memory` 하위 패키지는 만들지 않는다. 회원·상품은 고정 샘플 목록을 조회하고, 주문은 메모리에 저장한다.
 - 기능 `error`의 오류 enum은 플랫폼 `ErrorCode`를 구현한다. `BusinessException`과 앱별 처리기가 Problem Details로 변환한다. 기존 공통 `exception` 패키지는 유지한다.
 - Gateway는 작은 인증 서비스의 클래스 배치를 정리했다. 형식만 맞추기 위한 Service/Impl·DAO·Entity는 추가하지 않는다. 실제 Redis 교체 경계인 `LoginSessions`는 유지한다.
 
@@ -57,7 +58,7 @@ libs/platform-core / com.example.platform
 
 `web → service 인터페이스 → service.impl → 자기 repository`를 기본으로 한다. 업무 모델과 오류는 자기 기능에서 사용한다.
 
-- Service와 Repository는 web을 참조하지 않는다. Repository 인터페이스·fixture·JPA 구현은 모든 기능의 service를 참조하지 않는다.
+- Service와 Repository는 web을 참조하지 않는다. Repository 인터페이스·메모리·JPA 구현은 모든 기능의 service를 참조하지 않는다.
 - 다른 기능에서 사용할 수 있는 패키지는 **상대 기능의 service 직속 패키지**다. `service.impl`, repository, model, error, web은 내부이다. ArchUnit에서 `..service..` 전체를 공개하지 않는다.
 - `MemberService.exists`는 boolean, `ProductService.findProduct`는 `Optional<ProductSnapshot>`을 반환한다. `ProductSnapshot`은 `product.service`의 공개 record이며 내부 model·Entity를 노출하지 않는다. ProductServiceImpl이 내부 Product를 snapshot으로 변환한다.
 - 같은 기능의 web에서 사용하는 `list/get`의 model 반환을 다른 기능에서 사용하지 않는다. 주문은 부재를 자신의 422 오류로 처리하고 상품/회원 단건 조회의 404를 가져오지 않는다.
@@ -79,11 +80,11 @@ Backend Controller/Service는 항상 등록하고 저장소 구현만 프로필�
 
 | lifecycle | 추가 profile | 저장소 | API |
 |---|---|---|---|
-| local / test | 없음 | fixture, 주문 메모리 저장 | 조회·견적·생성·본인 조회 |
+| local / test | 없음 | 메모리 저장소 | 조회·견적·생성·본인 조회 |
 | local / test | persistence | PostgreSQL/JPA | 동일 |
 | dev / staging / prod | 없음 | PostgreSQL/JPA | 동일 |
 
-JPA는 DB_URL·DB_USERNAME·DB_PASSWORD가 필수다. fixture는 재시작 시 사라지며 수평 확장 내구성을 검증하지 못한다. Swagger/OpenAPI는 기존 local/test 공개 설정을 따른다.
+JPA는 DB_URL·DB_USERNAME·DB_PASSWORD가 필수다. 메모리에 저장한 주문 데이터는 재시작 시 사라지며 수평 확장 내구성을 검증하지 못한다. Swagger/OpenAPI는 기존 local/test 공개 설정을 따른다.
 
 Gateway의 AuthController와 AuthExceptionHandler는 auth.web에 함께 있다. Advice의 basePackageClasses는 AuthController 패키지와 하위 Controller를 선택한다. Advice 자체의 같은 패키지 배치는 프레임워크 필수 조건이 아니다. 데모 발급 조건과 OIDC 분리, Mono와 비동기 Redis 흐름은 유지한다.
 
@@ -112,4 +113,4 @@ bash scripts/verify.sh
 
 Backend ArchUnit은 web 의존·저장소의 service 의존·공개 service 내부 구현 노출·기능 간 공개 패키지·common/platform 경계·순환·HTTP 메서드 권한을 검사한다. 권한 검사 대상이 비어도 실패한다. Gateway는 service/web/Redis 구현 경계·repository 역방향 의존·common/기능 경계·순환을 검사한다. 전환 검증에는 skipArchitecture를 사용하지 않는다.
 
-HTTP 테스트는 fixture와 인증 정책을, databaseTest는 일회용 PostgreSQL/Redis와 prod 프로필의 저장·소유권·rollback을 검증한다. 실제 운영 배포나 AWS/EKS 검증을 의미하지 않는다. 기존 Compose 재배포 시 scripts/reference-stack.sh와 기존 파일/profile 조합을 사용한다.
+HTTP 테스트는 메모리 저장소와 인증 정책을, databaseTest는 일회용 PostgreSQL/Redis와 prod 프로필의 저장·소유권·rollback을 검증한다. 실제 운영 배포나 AWS/EKS 검증을 의미하지 않는다. 기존 Compose 재배포 시 scripts/reference-stack.sh와 기존 파일/profile 조합을 사용한다.

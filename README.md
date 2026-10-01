@@ -128,9 +128,9 @@ Redis에 만들어집니다.
 
 ## Feature와 라이브러리 확장
 
-Backend의 member/product/order는 기본 `local`/`test`에서 fixture 조회·견적·메모리 주문 저장을 제공합니다.
+Backend의 member/product/order는 기본 `local`/`test`에서 메모리 저장소를 통한 조회·견적·주문 저장을 제공합니다.
 `local`/`test`에 `persistence`를 추가하거나 `dev`/`staging`/`prod`를 사용하면 PostgreSQL/JPA로 저장합니다.
-API 계약은 동일하며 fixture 데이터는 프로세스 재시작 시 사라집니다. 결제·재고 차감은 구현하지 않았습니다.
+API 계약은 동일하며 메모리에 저장한 주문 데이터는 프로세스 재시작 시 사라집니다. 결제·재고 차감은 구현하지 않았습니다.
 MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포함합니다.
 [11단계 안내와 후속 로드맵](docs/learning/11-features-and-library-roadmap.md)에서 실행 예제와 선택형 UI overlay를 확인하세요.
 [12단계 PostgreSQL/JPA/Flyway](docs/learning/12-postgresql-jpa-flyway.md)에는 DB 기동·주문 저장·재기동·Testcontainers 검증 절차가 있습니다.

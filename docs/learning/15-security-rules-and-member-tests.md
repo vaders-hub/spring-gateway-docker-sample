@@ -37,7 +37,7 @@ Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 feat
 | `/api/members/{id}` | api.read | 양의 정수 ID 회원 조회 |
 | `/api/members/admin` | api.read + member.admin | 관리 권한이 필요한 회원 목록 |
 
-Backend 직접 URL은 `/api`를 제외합니다. member Controller는 모든 프로필에서 활성화되고 저장소만 fixture/JPA 중 선택됩니다.
+Backend 직접 URL은 `/api`를 제외합니다. member Controller는 모든 프로필에서 활성화되고 저장소만 메모리/JPA 구현 중 선택됩니다.
 관리 경로는 현재 일반 목록과 같은 DTO/서비스를 재사용하는 권한 학습용 읽기 API입니다.
 일반/관리 handler를 분리하고 공통 응답 매핑과 Service를 재사용합니다. 관리 기능/정보가 달라지면 별도 DTO·유스케이스로 분리합니다.
 

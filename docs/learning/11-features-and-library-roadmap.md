@@ -37,16 +37,16 @@
 
 2026-10-01 구조 전환으로 Backend는 기능별 web/service/repository/model/error를 사용합니다.
 Controller와 `*DtoConverter`·DTO는 web, 업무 인터페이스는 service, 구현은 service/impl에 있습니다.
-JPA Entity와 Spring Data 인터페이스·저장소 구현은 repository/jpa, 메모리 저장소는 repository/fixture입니다.
+JPA Entity와 Spring Data 인터페이스·저장소 구현은 repository/jpa, 메모리 구현체 `Memory*Repository`는 repository 바로 아래에 둡니다.
 MapStruct 생성 코드는 build/generated에 두며 편집하거나 Git에 추가하지 않습니다. unmappedTargetPolicy=ERROR로 응답 필드 누락을 검사합니다.
 
 OrderServiceImpl은 MemberService.exists와 ProductService.findProduct를 사용합니다.
 공개 ProductSnapshot은 product.service에 있으며 model·Entity·웹 DTO를 노출하지 않습니다.
 ArchUnit은 [현재 경계](../package-structure.md)의 공개 service·역방향 의존·순환·권한을 검사합니다.
 
-초기 1차는 조회·견적만 제공했습니다. 현재는 fixture 메모리 주문 저장과 JPA 주문 저장·본인 조회도 제공합니다.
+초기 1차는 조회·견적만 제공했습니다. 현재는 메모리 주문 저장과 JPA 주문 저장·본인 조회도 제공합니다.
 금액은 서버 가격으로 계산하고 수량 1~100과 BigDecimal 불변식을 유지합니다. 결제·재고 차감은 미구현입니다.
-fixture 주문은 재시작하면 사라지므로 내구성 학습에는 [12단계](12-postgresql-jpa-flyway.md)의 JPA를 사용합니다.
+메모리 저장소 주문은 재시작하면 사라지므로 내구성 학습에는 [12단계](12-postgresql-jpa-flyway.md)의 JPA를 사용합니다.
 
 | Gateway 경로 | Backend 경로 | 권한 | 결과 |
 |---|---|---|---|
@@ -56,8 +56,8 @@ fixture 주문은 재시작하면 사라지므로 내구성 학습에는 [12단�
 | GET /api/products/1 | /products/1 | api.read | Keyboard, 50000 KRW |
 | POST /api/orders/preview | /orders/preview | api.write | 견적; 저장하지 않으므로 200 |
 
-현재는 모든 profile에서 Controller/Service을 등록합니다. local/test 기본은 fixture, persistence 추가 또는 dev/staging/prod는 JPA입니다.
-fixture에서도 주문 생성/본인 조회를 제공하지만 데이터는 메모리에만 남습니다. 아래 초기 1차 범위와 달라진 현재 구조는 [17단계](17-reference-architecture.md)를 따릅니다.
+현재는 모든 profile에서 Controller/Service을 등록합니다. local/test 기본은 메모리 저장소, persistence 추가 또는 dev/staging/prod는 JPA입니다.
+메모리 저장소에서도 주문 생성/본인 조회를 제공하지만 데이터는 메모리에만 남습니다. 아래 초기 1차 범위와 달라진 현재 구조는 [17단계](17-reference-architecture.md)를 따릅니다.
 Gateway의 Redis 제한은 그대로 적용됩니다. 연속 실행으로 429가 나면 토큰 버킷 충전 후 다시 확인합니다.
 
 기존 Compose 실행 환경에서 **새 이미지를 빌드한 뒤** 실습합니다. 아래 명령은 이 문서의 안내이며 자동 배포를 뜻하지 않습니다.
@@ -105,7 +105,7 @@ docker compose -f docker-compose.yml up -d --no-deps --force-recreate backend
 ## 다음 적용 순서와 완료 기준
 
 1. **2차 PostgreSQL + JPA + Flyway + Testcontainers** ([12단계 구현](12-postgresql-jpa-flyway.md)): 전용 Compose DB/volume,
-   환경변수 자격증명, migration V1, 회원·상품 fixture를 JPA adapter로 교체,
+   환경변수 자격증명, migration V1, 회원·상품 메모리 저장소를 JPA 구현체로 교체,
    주문 저장/조회와 transaction·제약·rollback·재기동 데이터 유지 검증.
    학습용 데이터를 production migration에 자동 주입하지 않습니다.
 2. **3차 외부 조회 + WireMock + Resilience4j**: 예를 들어 배송비/재고 조회를 명시적 port와
@@ -121,7 +121,7 @@ Oracle/MyBatis는 기존 06단계의 별도 확장 예제로 유지하며 Postgr
 ## 검증과 단계 체크
 
 2026-09-29 자동 검증: Backend 43개 + Gateway 53개 = **96개 통과**, 실패·오류·건너뜀 0.
-MapStruct 생성/컴파일, 실제 HTTP fixture·견적·JWT·검증·오류·OpenAPI/Swagger UI 응답,
+MapStruct 생성/컴파일, 실제 HTTP 메모리 저장소·견적·JWT·검증·오류·OpenAPI/Swagger UI 응답,
 ArchUnit과 local/test 보호를 확인했습니다. Compose learning overlay는 config --quiet 검증을 통과했습니다.
 브라우저 조작과 실행 중인 Compose/kind 재배포, PostgreSQL 기동은 수행하지 않았습니다.
 
@@ -136,7 +136,7 @@ MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=false bash ./gradlew --no-daemon \
 Compose/kind 이미지 재빌드·UI 브라우저 실습·PostgreSQL 기동은 별도 실행 결과로 기록합니다.
 
 - [ ] Controller → Service → Repository/Adapter와 domain 결과 → Mapper → 응답 흐름을 추적했다.
-- [ ] DTO 검증 400, 인증 401, 권한 403, 없는 fixture 404를 구분했다.
+- [ ] DTO 검증 400, 인증 401, 권한 403, 없는 샘플 데이터 404를 구분했다.
 - [ ] 견적 100000 KRW를 확인하고 실제 주문이 저장되지 않음을 설명했다.
 - [ ] Swagger Backend 직접 호출과 Gateway 호출의 경로·제한 차이를 확인했다.
 - [ ] ArchUnit 규칙의 금지 의존 방향과 도메인 계산 테스트의 역할을 설명했다.

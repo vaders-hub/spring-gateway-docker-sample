@@ -39,9 +39,9 @@ Contract 자체는 이 HTTP 상태를 알지 못한다. 같은 부재라도 경�
 
 ## 프로필과 보안
 
-local/test는 fixture, local/test+persistence 및 dev/staging/prod는 JPA이다. API 표면은 같다.
+local/test는 메모리 저장소, local/test+persistence 및 dev/staging/prod는 JPA이다. API 표면은 같다.
 운영형 프로필에는 DB 환경변수 세 개가 필수다. 기존 staging Kubernetes 샘플을 사용할 때도 DB 연결/Secret/네트워크를 먼저 구성해야 한다.
-fixture 주문 데이터는 메모리이므로 수평 확장/재시작 내구성을 검증할 때 사용하지 않는다.
+메모리 주문 데이터는 수평 확장/재시작 내구성을 검증할 때 사용하지 않는다.
 기존 로컬 persistence 볼륨과 Keycloak realm은 초기화하지 않는다.
 
 Backend는 feature 경로 Bean을 모아 인증을 요구하고 나머지를 거부한다.
@@ -72,7 +72,7 @@ DB 테스트는 일회용 PostgreSQL/Redis와 prod 프로필을 사용한다. �
 
 ## 단계 체크
 
-- [ ] local fixture와 JPA에서 같은 Controller/API가 등록되는 이유를 설명한다.
+- [ ] local 메모리 저장소와 JPA에서 같은 Controller/API가 등록되는 이유를 설명한다.
 - [ ] FeatureRoutes는 경로, 메서드 어노테이션은 권한, service는 업무 소유권을 담당함을 추적한다.
 - [ ] 404 리소스 부재와 422 본문 참조 오류를 실제 응답으로 구분한다.
 - [ ] TokenKey 구현이 공유 모듈 한 곳에 있으며 Servlet/WebFlux I/O 구현은 분리됨을 확인한다.

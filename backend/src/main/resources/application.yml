@@ -113,7 +113,7 @@ springdoc:
 
 
 ---
-# local/test fixture 모드만 DB 구성을 제외한다. dev/staging/prod는 기본 JPA이다.
+# local/test 메모리 저장소 모드만 DB 구성을 제외한다. dev/staging/prod는 기본 JPA이다.
 spring:
   config:
     activate:

@@ -1,7 +1,7 @@
 # 12. PostgreSQL · JPA · Flyway · Testcontainers
 
 11단계의 member/product 조회와 주문 견적에 실제 저장소를 연결합니다.
-기본 `local`은 기존 fixture, `local,persistence`는 PostgreSQL을 사용합니다.
+기본 `local`은 기존 메모리 저장소, `local,persistence`는 PostgreSQL을 사용합니다.
 `persistence`는 lifecycle profile을 대체하는 이름이 아니라 저장소 선택용 추가 profile입니다.
 dev/staging/prod는 기본 JPA이며 DB_URL/DB_USERNAME/DB_PASSWORD가 필수입니다. API는 모든 프로필에서 같습니다.
 
@@ -34,7 +34,7 @@ FK는 존재하지 않는 회원/상품을 참조한 주문과 참조 중인 부
 
 | 설정 | 의미 |
 |---|---|
-| 기본 local | DB 자동 구성 제외, 고정 fixture 사용; 앞 단계/기존 kind 실습 유지 |
+| 기본 local | DB 자동 구성 제외, 고정 메모리 저장소 사용; 앞 단계/기존 kind 실습 유지 |
 | local,persistence | mock=false, persistence=true; JPA adapter와 주문 저장 API 등록 |
 | DB_URL/DB_USERNAME/DB_PASSWORD | Compose environment → Spring DataSource; `.env` 자체를 Spring이 읽지 않음 |
 | Flyway V1 | 테이블·CHECK·FK·인덱스 생성, schema history에 버전/checksum 기록 |
@@ -101,7 +101,7 @@ lab_api GET "/api/orders/$order_id"
 | 수량 0/101, 잘못된 DTO | 400 INVALID_REQUEST |
 | 인증 누락 / scope 부족 | 401 / 403 |
 | 주문 본문에 없는 회원/상품 참조 | 422 INVALID_MEMBER_REFERENCE / INVALID_PRODUCT_REFERENCE, 저장 없음 |
-| fixture 모드에서 주문 저장/단건 조회 | 같은 API의 201/200. 메모리 저장이므로 재시작 후 소멸 |
+| 메모리 저장소 모드에서 주문 저장/단건 조회 | 같은 API의 201/200. 메모리 저장이므로 재시작 후 소멸 |
 
 회원은 업무 예제 데이터이며 JWT 로그인 계정과 연결하지 않았습니다. 이 단계의 소유권은 **주문**에 적용합니다.
 계정 가입·결제·재고 차감·주문 수정/삭제·멱등키는 아직 없습니다. 같은 POST를 다시 보내면 별도 주문이 생성됩니다.
@@ -122,7 +122,7 @@ lab_api GET "/api/orders/$order_id"
 
 DB 장애 중에는 readiness가 DOWN이 될 수 있습니다. liveness와 readiness를 혼동하지 않습니다.
 저장 데이터를 유지하려면 `down -v`나 `docker volume prune`을 사용하지 않습니다.
-기본 fixture 실습으로 되돌릴 때는 Backend만 기본 Compose로 재생성하고 DB는 중지합니다.
+기본 메모리 저장소 실습으로 되돌릴 때는 Backend만 기본 Compose로 재생성하고 DB는 중지합니다.
 
 ```bash
 docker compose -f docker-compose.yml up -d --no-deps --force-recreate backend
@@ -132,7 +132,7 @@ docker compose -f docker-compose.yml -f docker-compose.persistence.yml stop post
 volume에 데이터가 있으면 `.env`의 POSTGRES_PASSWORD만 바꿔도 DB 사용자의 비밀번호는 바뀌지 않습니다.
 운영에서는 migration용 DDL 계정과 앱용 최소 권한 계정을 분리하고 Secret 관리·백업/복원·connection 예산을 보완해야 합니다.
 이 로컬 예제는 한 계정으로 초기화/migration/앱 연결을 학습합니다. DB가 생겼다고 Pod에 세션 상태를 저장하지 않습니다.
-Kubernetes PostgreSQL StatefulSet/Secret/PVC 배포는 이 단계의 Compose 구현과 별도이며 기존 kind 매니페스트는 fixture 모드입니다.
+Kubernetes PostgreSQL StatefulSet/Secret/PVC 배포는 이 단계의 Compose 구현과 별도이며 기존 kind 매니페스트는 메모리 저장소 모드입니다.
 
 ## 자동 검증과 코드 읽기 순서
 
@@ -153,7 +153,7 @@ flush 후 실제 rollback, DB CHECK/FK, 상품 변경 후 주문 snapshot 유지
 코드는 아래 순서로 읽습니다. 주요 진입점 주석은 동작을 반복 설명하기보다 경계와 설정 이유를 설명합니다.
 
 1. 조회: MemberController/MemberDtoConverter → MemberService → MemberServiceImpl → MemberRepository.
-2. 저장소 교체: repository의 @Profile → MemberRepositoryJpaImpl 또는 FixtureMemberRepository.
+2. 저장소 교체: repository의 @Profile → MemberRepositoryJpaImpl 또는 MemoryMemberRepository.
 3. 주문: OrderController → OrderService → OrderServiceImpl → MemberService/ProductService 및 OrderRepository.
    public place의 쓰기 트랜잭션과 get의 readOnly·소유자 조건을 유지합니다. [13단계](13-feature-boundaries-and-growth.md)에 공개 경계를 설명합니다.
 4. 데이터: V1 migration → application-persistence.yml → scripts/sql/learning-catalog.sql.
