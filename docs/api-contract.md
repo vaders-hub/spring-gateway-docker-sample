@@ -184,9 +184,10 @@ Gateway와 Backend의 공통 응답/오류 계약은 libs/platform-core에 공�
 
 ## 기능 API와 저장소
 
-모든 프로필에서 member/product/order API를 제공합니다. local/test 기본은 메모리 저장소, persistence 추가 또는 dev/staging/prod는 JPA입니다.
+모든 프로필에서 member/product/order API를 제공합니다. local/test 기본은 메모리 저장소, persistence 추가 또는 dev/staging/prod는 JPA입니다. 추가 mybatis 프로필은 같은 기존 API를 SQL 저장소로 제공합니다.
 GET은 api.read, 주문 POST는 api.write, 회원 관리자 GET은 api.read와 member.admin을 요구합니다.
 POST /orders/preview는 200 견적, POST /orders는 201 주문, GET /orders/{UUID}는 본인 주문만 반환합니다.
+mybatis 선택 시 GET /orders(api.read)에 본인 주문 검색을 추가합니다. memberId, productName, minimumTotal, page(0~10000), size(1~100)를 받으며 data={items,total,page,size}를 반환합니다. 기본 page=0,size=20이고 소유자는 JWT에서만 가져옵니다. 상세 계약은 [18단계](learning/18-mybatis-and-sql-queries.md)를 따릅니다.
 같은 POST 재전송은 별도 주문을 만듭니다. 결제·재고 차감은 구현하지 않았습니다.
 
 GET 부재는 MEMBER_NOT_FOUND / PRODUCT_NOT_FOUND / ORDER_NOT_FOUND(404),

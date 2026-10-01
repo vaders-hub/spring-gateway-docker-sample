@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.order.repository.mybatis.OrderSqlMapper">
+  <resultMap id="order" type="com.example.backend.order.repository.mybatis.OrderRow">
+    <constructor>
+      <idArg name="id" column="id" javaType="java.util.UUID"/>
+      <arg name="ownerSubject" column="owner_subject" javaType="string"/>
+      <arg name="memberId" column="member_id" javaType="_long"/>
+      <arg name="productId" column="product_id" javaType="_long"/>
+      <arg name="productName" column="product_name" javaType="string"/>
+      <arg name="quantity" column="quantity" javaType="_int"/>
+      <arg name="unitPrice" column="unit_price" javaType="java.math.BigDecimal"/>
+      <arg name="currency" column="currency" javaType="string"/>
+      <arg name="createdAt" column="created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="summary" type="com.example.backend.order.model.OrderSummary">
+    <constructor>
+      <idArg name="id" column="id" javaType="java.util.UUID"/>
+      <arg name="memberId" column="member_id" javaType="_long"/>
+      <arg name="memberName" column="member_name" javaType="string"/>
+      <arg name="productId" column="product_id" javaType="_long"/>
+      <arg name="productName" column="product_name" javaType="string"/>
+      <arg name="currentProductName" column="current_product_name" javaType="string"/>
+      <arg name="quantity" column="quantity" javaType="_int"/>
+      <arg name="unitPrice" column="unit_price" javaType="java.math.BigDecimal"/>
+      <arg name="totalPrice" column="total_price" javaType="java.math.BigDecimal"/>
+      <arg name="currency" column="currency" javaType="string"/>
+      <arg name="createdAt" column="created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <insert id="insert">
+    INSERT INTO purchase_orders (id, owner_subject, member_id, product_id, product_name, quantity, unit_price, currency, created_at)
+    VALUES (#{id}, #{ownerSubject}, #{memberId}, #{productId}, #{productName}, #{quantity}, #{unitPrice}, #{currency}, #{createdAt})
+  </insert>
+  <select id="findByIdAndOwnerSubject" resultMap="order">
+    SELECT id, owner_subject, member_id, product_id, product_name, quantity, unit_price, currency, created_at
+    FROM purchase_orders WHERE id = #{id} AND owner_subject = #{ownerSubject}
+  </select>
+  <!-- items/count가 JOIN과 필터를 공유한다. 소유자 조건은 선택 조건 바깥에 항상 둔다. -->
+  <sql id="searchFromAndWhere">
+    FROM purchase_orders o
+    JOIN members m ON m.id = o.member_id
+    JOIN products p ON p.id = o.product_id
+    <where>
+      o.owner_subject = #{ownerSubject}
+      <if test="criteria.memberId != null">AND o.member_id = #{criteria.memberId}</if>
+      <if test="criteria.productName != null">
+        AND position(lower(#{criteria.productName}) in lower(o.product_name)) &gt; 0
+      </if>
+      <if test="criteria.minimumTotal != null">
+        AND o.unit_price * o.quantity &gt;= #{criteria.minimumTotal}
+      </if>
+    </where>
+  </sql>
+  <select id="search" resultMap="summary">
+    SELECT o.id, o.member_id, m.display_name AS member_name, o.product_id, o.product_name,
+           p.name AS current_product_name, o.quantity, o.unit_price, o.unit_price * o.quantity AS total_price,
+           o.currency, o.created_at
+    <include refid="searchFromAndWhere"/>
+    ORDER BY o.created_at DESC, o.id DESC
+    LIMIT #{criteria.size} OFFSET #{criteria.offset}
+  </select>
+  <select id="count" resultType="long">
+    SELECT count(*) <include refid="searchFromAndWhere"/>
+  </select>
+</mapper>

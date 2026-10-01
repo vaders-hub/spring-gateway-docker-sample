@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-@org.springframework.context.annotation.Profile("(!local & !test) | persistence")
+@org.springframework.context.annotation.Profile("((!local & !test) | persistence) & !mybatis")
 @Transactional(readOnly = true)
 class MemberRepositoryJpaImpl implements MemberRepository {
     private final MemberJpaRepository repository;

@@ -8,6 +8,15 @@ args=(-f docker-compose.yml -f docker-compose.persistence.yml -f docker-compose.
 if grep -Eq '^GRAFANA_ADMIN_PASSWORD=.+$' .env 2>/dev/null; then
   args+=(-f docker-compose.observability.yml --profile observability)
 fi
+# SQL 학습도 같은 Keycloak/관측 구성과 DB 볼륨을 유지한다.
+case "${BACKEND_STORAGE:-jpa}" in
+  jpa) ;;
+  mybatis)
+    args+=(-f docker-compose.mybatis.yml)
+    export MYBATIS_BACKEND_PROFILES=local,mybatis,oidc
+    ;;
+  *) printf '%s\n' 'BACKEND_STORAGE must be jpa or mybatis.' >&2; exit 2 ;;
+esac
 case "${1:-status}" in
   prepare)
     bash scripts/new-local-env.sh

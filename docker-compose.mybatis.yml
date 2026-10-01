@@ -1,0 +1,5 @@
+# 기본 Compose + persistence overlay 뒤에 추가한다. PostgreSQL 스키마/볼륨은 공유한다.
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: ${MYBATIS_BACKEND_PROFILES:-local,mybatis}

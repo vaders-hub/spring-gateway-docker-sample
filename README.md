@@ -13,7 +13,7 @@ Pod 교체 시 데이터 보존과 백업·복원을 학습할 수 있습니다.
 [10단계 Spring Boot 기본 구성 검증](docs/learning/10-spring-boot-readiness.md)에서는
 Stateless·설정 외부화·probe·stdout 로그·graceful shutdown을 검증하고 후속 장애 정책을 정리합니다.
 실제 AWS 리소스를 만들지 않고 Compose → kind → Gateway API → 운영 실습 순서로 진행하며,
-Spring Boot 설정과 Oracle/JPA/MyBatis 확장 계획도 별도로 구분합니다.
+Spring Boot 설정과 PostgreSQL/JPA·MyBatis 구현, Oracle 확장 계획을 구분합니다.
 
 소스 공유·최초 커밋·새 PC 설정은 [Git 공유 가이드](docs/source-sharing.md)를 참고하세요.
 실제 `.env`는 공유하지 않고 각 환경에서 생성합니다.
@@ -129,10 +129,11 @@ Redis에 만들어집니다.
 ## Feature와 라이브러리 확장
 
 Backend의 member/product/order는 기본 `local`/`test`에서 메모리 저장소를 통한 조회·견적·주문 저장을 제공합니다.
-`local`/`test`에 `persistence`를 추가하거나 `dev`/`staging`/`prod`를 사용하면 PostgreSQL/JPA로 저장합니다.
+`local`/`test`에 `persistence`를 추가하거나 `dev`/`staging`/`prod`를 사용하면 PostgreSQL/JPA로 저장합니다. 추가 `mybatis` 프로필을 선택하면 같은 DB/API의 MyBatis 구현을 사용합니다.
 API 계약은 동일하며 메모리에 저장한 주문 데이터는 프로세스 재시작 시 사라집니다. 결제·재고 차감은 구현하지 않았습니다.
 MapStruct DTO 매핑, Backend Swagger/OpenAPI, 양쪽 ArchUnit 테스트를 포함합니다.
 [11단계 안내와 후속 로드맵](docs/learning/11-features-and-library-roadmap.md)에서 실행 예제와 선택형 UI overlay를 확인하세요.
+[18단계 MyBatis 저장소 교체·동적 SQL·JOIN·페이징](docs/learning/18-mybatis-and-sql-queries.md)도 선택형 예제로 제공합니다.
 [12단계 PostgreSQL/JPA/Flyway](docs/learning/12-postgresql-jpa-flyway.md)에는 DB 기동·주문 저장·재기동·Testcontainers 검증 절차가 있습니다.
 [13단계 Feature 경계와 확장](docs/learning/13-feature-boundaries-and-growth.md)에는 하위 패키지 분류와 기능 간 공개 계약, 순환 의존을 피하는 설계 기준이 있습니다.
 

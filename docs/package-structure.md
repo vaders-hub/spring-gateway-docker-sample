@@ -1,6 +1,6 @@
 # 기능별 web / service / repository 구조
 
-2026-10-01에 [구조 전환 설계](egov-style-restructure-review.md)를 적용했다. 국내 Service/ServiceImpl 관례를 사용하되 JPA, 불변 업무 모델, HTTP DTO와 공통 플랫폼 계약을 유지한다. 전자정부 프레임워크 라이브러리나 MyBatis를 도입한 것은 아니다.
+2026-10-01에 [구조 전환 설계](egov-style-restructure-review.md)를 적용했다. 국내 Service/ServiceImpl 관례를 사용하되 JPA, 불변 업무 모델, HTTP DTO와 공통 플랫폼 계약을 유지한다. 전자정부 프레임워크 라이브러리는 도입하지 않았다. 이후 선택형 [MyBatis 예제](learning/18-mybatis-and-sql-queries.md)를 추가했다.
 
 ## 현재 배치
 
@@ -16,6 +16,7 @@ backend / com.example.backend
 │   ├── service                 MemberService, impl/MemberServiceImpl
 │   ├── repository              MemberRepository
 │   │   ├── jpa                 MemberRepositoryJpaImpl, MemberJpaRepository, MemberEntity
+│   │   ├── mybatis             MemberRepositoryMyBatisImpl, MemberSqlMapper, MemberMyBatisConfig
 │   │   └── MemoryMemberRepository
 │   ├── model                   Member
 │   └── error                   MemberErrorCode
@@ -23,9 +24,9 @@ backend / com.example.backend
 │   └── service                 ProductService, ProductSnapshot, impl/ProductServiceImpl
 └── order
     ├── web                     OrderController, OrderRoutes, OrderDtoConverter, dto/
-    ├── service                 OrderService, impl/OrderServiceImpl
-    ├── repository              OrderRepository, MemoryOrderRepository, jpa/
-    ├── model                   OrderQuote, StoredOrder
+    ├── service                 OrderService, OrderSearchService, impl/
+    ├── repository              OrderRepository, MemoryOrderRepository, jpa/, mybatis/
+    ├── model                   OrderQuote, StoredOrder, OrderSearchCriteria, OrderSummary, OrderSearchResult
     └── error                   OrderErrorCode
 
 gateway / com.example.gateway
@@ -52,6 +53,7 @@ libs/platform-core / com.example.platform
 - 저장소 인터페이스는 `repository`, 직접 작성한 JPA 구현은 `repository/jpa/*RepositoryJpaImpl`, Spring Data 인터페이스는 `*JpaRepository`이다. `*JpaRepositoryImpl`은 Spring Data 커스텀 구현 탐색과 혼동되므로 사용하지 않는다.
 - 메모리 구현체는 `repository/Memory*Repository`에 직접 둔다. `fixture`나 `memory` 하위 패키지는 만들지 않는다. 회원·상품은 고정 샘플 목록을 조회하고, 주문은 메모리에 저장한다.
 - 기능 `error`의 오류 enum은 플랫폼 `ErrorCode`를 구현한다. `BusinessException`과 앱별 처리기가 Problem Details로 변환한다. 기존 공통 `exception` 패키지는 유지한다.
+- MyBatis 구현은 `repository/mybatis/*RepositoryMyBatisImpl`, SQL 인터페이스는 `*SqlMapper`, XML은 `resources/mapper/<feature>`에 둔다. SQL Mapper와 MapStruct DTO Converter를 구분한다.
 - Gateway는 작은 인증 서비스의 클래스 배치를 정리했다. 형식만 맞추기 위한 Service/Impl·DAO·Entity는 추가하지 않는다. 실제 Redis 교체 경계인 `LoginSessions`는 유지한다.
 
 ## 의존 방향과 공개 범위
@@ -83,8 +85,9 @@ Backend Controller/Service는 항상 등록하고 저장소 구현만 프로필�
 | local / test | 없음 | 메모리 저장소 | 조회·견적·생성·본인 조회 |
 | local / test | persistence | PostgreSQL/JPA | 동일 |
 | dev / staging / prod | 없음 | PostgreSQL/JPA | 동일 |
+| 하나의 lifecycle | mybatis | PostgreSQL/MyBatis | 동일 + 본인 주문 조건 검색 |
 
-JPA는 DB_URL·DB_USERNAME·DB_PASSWORD가 필수다. 메모리에 저장한 주문 데이터는 재시작 시 사라지며 수평 확장 내구성을 검증하지 못한다. Swagger/OpenAPI는 기존 local/test 공개 설정을 따른다.
+JPA/MyBatis는 DB_URL·DB_USERNAME·DB_PASSWORD가 필수다. persistence와 mybatis는 동시에 선택하지 않는다. 메모리에 저장한 주문 데이터는 재시작 시 사라지며 수평 확장 내구성을 검증하지 못한다. Swagger/OpenAPI는 기존 local/test 공개 설정을 따른다.
 
 Gateway의 AuthController와 AuthExceptionHandler는 auth.web에 함께 있다. Advice의 basePackageClasses는 AuthController 패키지와 하위 Controller를 선택한다. Advice 자체의 같은 패키지 배치는 프레임워크 필수 조건이 아니다. 데모 발급 조건과 OIDC 분리, Mono와 비동기 Redis 흐름은 유지한다.
 
@@ -113,4 +116,4 @@ bash scripts/verify.sh
 
 Backend ArchUnit은 web 의존·저장소의 service 의존·공개 service 내부 구현 노출·기능 간 공개 패키지·common/platform 경계·순환·HTTP 메서드 권한을 검사한다. 권한 검사 대상이 비어도 실패한다. Gateway는 service/web/Redis 구현 경계·repository 역방향 의존·common/기능 경계·순환을 검사한다. 전환 검증에는 skipArchitecture를 사용하지 않는다.
 
-HTTP 테스트는 메모리 저장소와 인증 정책을, databaseTest는 일회용 PostgreSQL/Redis와 prod 프로필의 저장·소유권·rollback을 검증한다. 실제 운영 배포나 AWS/EKS 검증을 의미하지 않는다. 기존 Compose 재배포 시 scripts/reference-stack.sh와 기존 파일/profile 조합을 사용한다.
+HTTP 테스트는 메모리 저장소와 인증 정책을, databaseTest는 일회용 PostgreSQL/Redis에서 prod JPA와 prod,mybatis의 공통 저장·소유권·rollback 계약 및 MyBatis 검색을 검증한다. 실제 운영 배포나 AWS/EKS 검증을 의미하지 않는다. 기존 Compose 재배포 시 scripts/reference-stack.sh와 기존 파일/profile 조합을 사용한다.

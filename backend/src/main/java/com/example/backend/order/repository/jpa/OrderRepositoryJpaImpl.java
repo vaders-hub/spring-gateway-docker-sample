@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@org.springframework.context.annotation.Profile("(!local & !test) | persistence")
+@org.springframework.context.annotation.Profile("((!local & !test) | persistence) & !mybatis")
 class OrderRepositoryJpaImpl implements OrderRepository {
     private final OrderJpaRepository repository;
     OrderRepositoryJpaImpl(OrderJpaRepository repository) { this.repository = repository; }

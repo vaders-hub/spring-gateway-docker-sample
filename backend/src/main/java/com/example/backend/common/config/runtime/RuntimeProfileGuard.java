@@ -23,15 +23,16 @@ class RuntimeProfileGuard {
     @PostConstruct
     void validateActiveProfile() {
         String[] activeProfiles = environment.getActiveProfiles();
-        // lifecycle은 여전히 정확히 하나다. persistence(DB)와 oidc(인증)를 추가 profile로 허용한다.
+        // lifecycle은 정확히 하나다. persistence(JPA), mybatis(SQL), oidc(인증)는 추가 선택이다.
         var lifecycle = Arrays.stream(activeProfiles).filter(ALLOWED_PROFILES::contains).toList();
         boolean unsupported = Arrays.stream(activeProfiles)
-                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !profile.equals("persistence") && !profile.equals("oidc"));
+                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !Set.of("persistence", "mybatis", "oidc").contains(profile));
         if (lifecycle.size() != 1 || unsupported
+                || (Arrays.asList(activeProfiles).contains("mybatis") && Arrays.asList(activeProfiles).contains("persistence"))
                 || (Arrays.asList(activeProfiles).contains("persistence")
                     && !Set.of("local", "test").contains(lifecycle.getFirst()))) {
             throw new IllegalStateException(
-                    "Exactly one lifecycle profile must be active; persistence is optional in local/test: "
+                    "Exactly one lifecycle profile must be active; persistence is optional in local/test and cannot be combined with mybatis: "
                             + ALLOWED_PROFILES
                             + "; active="
                             + Arrays.toString(activeProfiles));

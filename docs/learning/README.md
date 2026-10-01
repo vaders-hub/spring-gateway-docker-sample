@@ -45,6 +45,7 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 14 (인증 확장) | [로그인·로그아웃](14-login-and-logout.md) | 활성 토큰 등록/삭제, Redis 공유 검증 | 로그아웃 후 양쪽 서비스 401, 저장소 장애 503 |
 | 15 (보안 설정) | [설정 간소화·member 40x](15-security-rules-and-member-tests.md) | 역할별 설정, 관리 scope, JWT/입력 오류 대조 | 일반 조회 200·관리 조회 403, 토큰 오류 401 |
 | 16 (실무 인증) | [Keycloak·메서드 보안·서비스 인증](16-keycloak-and-method-security.md) | Code + PKCE, Client Credentials, JWKS, feature 권한 | 실제 발급 토큰으로 200/401/403, 로그아웃 정책 구분 |
+| 18 (SQL 조회) | [MyBatis 저장소·SQL 검색](18-mybatis-and-sql-queries.md) | PostgreSQL 저장소 교체, 동적 SQL, JOIN, 페이징 | 공통 API·소유권·rollback과 검색 검증 |
 | 4단계 후속 | [장애 정책 설계](../resilience-policy.md) | fail-closed·CircuitBreaker·Retry 설계 | 기본 동작과 미구현 과제 구분 |
 
 1~2단계는 Compose, 3~5단계는 kind입니다. **Compose와 kind를 기본 설정으로 동시에
@@ -63,7 +64,7 @@ kind는 로컬 Kubernetes이지 AWS EKS 에뮬레이터가 아닙니다. IAM, VP
 | 매니페스트 존재 | Compose, kind 기본 리소스, 선택형 Envoy/Gateway API |
 | Compose 관측 설정 존재 | Prometheus scrape, Grafana datasource; 완성 dashboard는 없음 |
 | 계측 설정만 존재 | OpenTelemetry; Collector/trace 저장소는 없고 export는 기본 off |
-| DB 학습 구현 | 12단계 PostgreSQL/JPA/Flyway·주문 저장·Testcontainers. Oracle/MyBatis 혼합은 별도 후속 |
+| DB 학습 구현 | 12단계 PostgreSQL/JPA와 18단계 MyBatis 교체·검색·Testcontainers. Oracle·혼합 쓰기는 후속 |
 | 보안 보완 과제 | Redis 오류 시 요청 단위 fail-closed; 현재 readiness 제외와 별개 |
 | 저장소 실습 문서 존재 | 09에 PVC/Deployment YAML과 백업·복원 절차 포함; 실행 시에만 전용 리소스 생성 |
 | Spring Boot 보완 문서 존재 | 10에 Stateless 실습과 설정 관리표; 지연 fixture/처리 중 종료 검증은 추가 구현 필요 |

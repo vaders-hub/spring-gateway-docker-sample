@@ -93,7 +93,7 @@ kind의 Redis도 이 단계에서는 영속 저장소를 사용하는 데이터�
 - **10 · Spring Boot**: Stateless 인증, 설정 외부화, health, stdout 로그, graceful shutdown과 미완료 장애 정책을 함께 검증합니다.
 
 현재 학습 계획은 **08까지 진행한 뒤 AA 영역을 보강**하는 것입니다. 09–10은 이후 선택·보강 범위로 구분합니다.
-Oracle/JPA/MyBatis, OTel Collector/trace 저장소, 실제 AWS 리소스는 현재 구성에 포함되지 않습니다.
+기본 kind 구성에는 DB를 추가하지 않습니다. 선택형 PostgreSQL/JPA는 12단계, MyBatis 저장소·SQL 검색은 18단계에 구현했습니다. Oracle, OTel Collector/trace 저장소, 실제 AWS 리소스는 포함되지 않습니다.
 kind는 EKS 에뮬레이터가 아니며 AWS 자원 생성은 이 무료 로컬 학습의 실행 범위 밖입니다.
 
 ## 구성도의 근거 파일

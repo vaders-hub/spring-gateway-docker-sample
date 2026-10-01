@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 // API 계약은 JPA와 같다. 재시작 시 소멸하며 DB 트랜잭션 검증의 대체물은 아니다.
 @Repository
-@Profile("(local | test) & !persistence")
+@Profile("(local | test) & !persistence & !mybatis")
 class MemoryOrderRepository implements OrderRepository {
     private final ConcurrentHashMap<UUID, StoredOrder> orders = new ConcurrentHashMap<>();
     public StoredOrder save(StoredOrder order) { orders.put(order.id(), order); return order; }

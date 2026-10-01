@@ -21,6 +21,7 @@ else
 fi
 if grep -Eq '^KC_DB_PASSWORD=.+$' .env 2>/dev/null; then
   bash scripts/reference-stack.sh config
+  BACKEND_STORAGE=mybatis bash scripts/reference-stack.sh config
 fi
 python3 -m json.tool keycloak/gateway-lab-realm.json >/dev/null
 printf '%s\n' 'Static checks passed. No deployment or runtime behavior was verified.'

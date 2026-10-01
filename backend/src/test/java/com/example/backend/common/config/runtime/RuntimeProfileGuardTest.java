@@ -7,6 +7,24 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 class RuntimeProfileGuardTest {
+    @Test
+    void permitsMyBatisWithOneLifecycleAndOidc() {
+        var env = new MockEnvironment();
+        for (String lifecycle : java.util.List.of("local", "test", "dev", "staging", "prod")) {
+            env.setActiveProfiles(lifecycle, "mybatis", "oidc");
+            assertThatNoException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+        }
+    }
+
+    @Test
+    void rejectsMyBatisWithoutLifecycleOrAlongsideJpaSelection() {
+        var env = new MockEnvironment();
+        env.setActiveProfiles("mybatis");
+        assertThatIllegalStateException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+        env.setActiveProfiles("test", "persistence", "mybatis");
+        assertThatIllegalStateException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+    }
+
 
     @Test
     void rejectsPublicMetricsInProduction() {

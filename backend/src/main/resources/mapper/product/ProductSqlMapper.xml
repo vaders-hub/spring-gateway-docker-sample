@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.product.repository.mybatis.ProductSqlMapper">
+  <resultMap id="product" type="com.example.backend.product.model.Product">
+    <constructor>
+      <idArg name="id" column="id" javaType="_long"/>
+      <arg name="name" column="name" javaType="string"/>
+      <arg name="unitPrice" column="unit_price" javaType="java.math.BigDecimal"/>
+      <arg name="currency" column="currency" javaType="string"/>
+    </constructor>
+  </resultMap>
+  <select id="findAll" resultMap="product">
+    SELECT id, name, unit_price, currency FROM products ORDER BY id
+  </select>
+  <select id="findById" resultMap="product">
+    SELECT id, name, unit_price, currency FROM products WHERE id = #{id}
+  </select>
+</mapper>

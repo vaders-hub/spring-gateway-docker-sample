@@ -16,7 +16,7 @@
 | MapStruct 1.6.3 | 이번 적용. Backend API DTO 변환과 컴파일 시 매핑 누락 검사 |
 | springdoc-openapi 3.0.3 | 이번 적용. Boot 4.0.x용 Backend OpenAPI/Swagger UI |
 | ArchUnit 1.5.1 | 이번 적용. 양쪽 모듈 패키지 의존 검사. 별도 JUnit 엔진 대신 core API 사용 |
-| Spring Data JPA/JDBC + PostgreSQL | [12단계](12-postgresql-jpa-flyway.md) 적용. 우선 JPA, 복잡한 SQL 요구가 생길 때 JDBC/MyBatis 검토 |
+| Spring Data JPA/JDBC + PostgreSQL | [12단계](12-postgresql-jpa-flyway.md) 적용. 우선 JPA, [18단계](18-mybatis-and-sql-queries.md)에 MyBatis 교체·조건 검색·JOIN·페이징 추가 |
 | Flyway | [12단계](12-postgresql-jpa-flyway.md) 적용. PostgreSQL 스키마 migration과 앱 기동을 함께 검증 |
 | Testcontainers | [12단계](12-postgresql-jpa-flyway.md) 적용. 실제 PostgreSQL로 migration·Repository·rollback 검증 |
 | RestClient / WebClient | 3차. Backend 외부 조회는 RestClient, 비동기 스트림이 필요할 때 WebClient. Gateway의 Netty 스레드에서는 blocking 호출 금지 |
@@ -115,7 +115,7 @@ docker compose -f docker-compose.yml up -d --no-deps --force-recreate backend
    실제 이벤트/비동기 작업을 추가할 때 Awaitility로 완료 조건을 검증합니다.
 4. **선택 비교**: Lombok, sealed class, virtual threads 등은 적용 전후 이득과 제약을 비교한 뒤 도입합니다.
 
-Oracle/MyBatis는 기존 06단계의 별도 확장 예제로 유지하며 PostgreSQL 2차보다 먼저 적용하지 않습니다.
+PostgreSQL/MyBatis는 [18단계](18-mybatis-and-sql-queries.md)에 선택형으로 추가했습니다. Oracle·JPA/MyBatis 혼합 쓰기는 기존 06단계의 별도 후속 범위입니다.
 모든 라이브러리를 넣었다는 이유로 단계 완료로 표시하지 않고 실제 사용 코드와 검증 결과를 기록합니다.
 
 ## 검증과 단계 체크

@@ -4,6 +4,7 @@ cloud = "2025.1.3"
 mapstruct = "1.6.3"
 springdoc = "3.0.3"
 archunit = "1.5.1"
+mybatis = "4.0.0"
 [libraries]
 boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "boot" }
 cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "cloud" }
@@ -12,5 +13,6 @@ mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
 mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
 springdoc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit" }
+mybatis-starter = { module = "org.mybatis.spring.boot:mybatis-spring-boot-starter", version.ref = "mybatis" }
 [plugins]
 boot = { id = "org.springframework.boot", version.ref = "boot" }

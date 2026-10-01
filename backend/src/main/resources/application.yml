@@ -113,23 +113,24 @@ springdoc:
 
 
 ---
-# local/test 메모리 저장소 모드만 DB 구성을 제외한다. dev/staging/prod는 기본 JPA이다.
+# local/test 메모리 저장소 모드만 DB 구성을 제외한다. mybatis는 별도 SQL 구현을 선택한다.
 spring:
   config:
     activate:
-      on-profile: "(local | test) & !persistence"
+      on-profile: "(local | test) & !persistence & !mybatis"
   autoconfigure:
     exclude:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
       - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
       - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+      - org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration
 
 ---
-# JPA는 운영 기본값이다. local/test는 persistence를 추가해 같은 adapter를 학습한다.
+# DB 연결과 Flyway는 JPA/MyBatis가 공유한다. 운영 기본값은 JPA이다.
 spring:
   config:
     activate:
-      on-profile: "(!local & !test) | persistence"
+      on-profile: "(!local & !test) | persistence | mybatis"
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -158,3 +159,13 @@ management:
         readiness:
           include: readinessState,db,redis
 # liveness에는 DB를 넣지 않는다. DB 장애로 앱 재시작이 반복되는 것을 방지한다.
+
+---
+# JPA 구성에서는 MyBatis 자동 구성과 Mapper 스캔을 활성화하지 않는다.
+spring:
+  config:
+    activate:
+      on-profile: "((!local & !test) | persistence) & !mybatis"
+  autoconfigure:
+    exclude:
+      - org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration

@@ -93,7 +93,7 @@ Redis 오류의 요청 단위 차단과 pool 고갈 검증을 보완합니다. �
 ## 6-3. Oracle + JPA + MyBatis 선택 확장
 
 현재 기본 DB는 [12단계](12-postgresql-jpa-flyway.md)의 PostgreSQL + JPA/Flyway/Testcontainers입니다.
-[11단계 로드맵](11-features-and-library-roadmap.md)을 먼저 진행하고, 아래 Oracle/MyBatis는 별도 선택 학습으로 유지합니다.
+[11단계 로드맵](11-features-and-library-roadmap.md)과 [12단계 PostgreSQL/JPA](12-postgresql-jpa-flyway.md)를 먼저 진행합니다. PostgreSQL/MyBatis 저장소 교체·SQL 조회는 [18단계](18-mybatis-and-sql-queries.md)에 구현했으며 아래 Oracle·혼합 트랜잭션은 별도 선택 학습입니다.
 
 현재 이 세 구성은 **아직 연결/구현되지 않았습니다.** Kubernetes 기초보다 먼저
 추가하지 않습니다. Oracle 버전과 기존 schema 사용 여부부터 결정합니다.

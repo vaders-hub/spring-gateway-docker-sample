@@ -6,7 +6,7 @@
 |---|---|---|
 | Gateway API + Envoy Proxy (선택) | HTTP listener, `/api`와 `/auth/token` 라우팅 | JWT/CORS/Redis Rate Limit 중복 구현 |
 | Spring Cloud Gateway | JWT 검증, scope, CORS, 요청 ID/사용자 헤더, Redis Rate Limit, `/api` prefix 제거 | Oracle 접근, 업무 처리 |
-| Backend | JWT 재검증, 업무 API, 향후 Oracle/JPA/MyBatis | 외부 네트워크 진입점 |
+| Backend | JWT 재검증, 업무 API, PostgreSQL JPA/MyBatis, 향후 Oracle | 외부 네트워크 진입점 |
 
 기본 `k8s`는 NodePort로 Spring에 직접 연결합니다. `k8s/gateway-api`는 별도 선택 경로이며
 기본 Kustomization에 포함하지 않아 CRD가 없어도 기존 학습 흐름을 유지합니다.

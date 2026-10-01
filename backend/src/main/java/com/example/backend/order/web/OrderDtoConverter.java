@@ -14,4 +14,7 @@ public interface OrderDtoConverter {
 
     // 내부 인가용 ownerSubject는 응답 DTO에 노출하지 않는다. 중첩 quote에도 위 매핑이 적용된다.
     OrderResponse toResponse(StoredOrder source);
+
+    com.example.backend.order.web.dto.response.OrderSearchItemResponse toResponse(com.example.backend.order.model.OrderSummary source);
+    com.example.backend.order.web.dto.response.OrderSearchResponse toResponse(com.example.backend.order.model.OrderSearchResult source);
 }
