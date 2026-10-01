@@ -33,37 +33,20 @@
 [ArchUnit releases](https://github.com/TNG/ArchUnit/releases).
 의존성은 버전을 고정했으며 최신 minor로 Spring Boot를 함께 올리지 않습니다.
 
-## 1차: 현재 구현
+## 현재 코드 배치
 
-```text
-Backend
-├── common/config/MappingConfig       MapStruct 공통 정책
-├── common/config/OpenApiConfig       JWT 인증 스키마 문서
-├── common/config/runtime/LearningProfileGuard
-├── member
-│   ├── api/dto                       응답 계약 (Controller/Mapper는 api)
-│   ├── application                   MemberService / port/MemberRepository 조회 계약
-│   ├── contract                      MemberLookup 공개 계약
-│   ├── domain                        Member
-│   └── infrastructure/fixture        FixtureMemberRepository (DB 구현은 persistence)
-├── product                           같은 경계, Product와 불변 상품 데이터
-└── order
-    ├── api/dto                       OrderPreviewRequest/Response + Mapper
-    ├── application                   application/OrderQuoteService / port/OrderCatalog
-    ├── domain                        OrderQuote 금액 계산
-    └── infrastructure/integration    LocalOrderCatalog: 회원/상품 공개 계약 연결
-```
+2026-10-01 구조 전환으로 Backend는 기능별 web/service/repository/model/error를 사용합니다.
+Controller와 `*DtoConverter`·DTO는 web, 업무 인터페이스는 service, 구현은 service/impl에 있습니다.
+JPA Entity와 Spring Data 인터페이스·저장소 구현은 repository/jpa, 메모리 저장소는 repository/fixture입니다.
+MapStruct 생성 코드는 build/generated에 두며 편집하거나 Git에 추가하지 않습니다. unmappedTargetPolicy=ERROR로 응답 필드 누락을 검사합니다.
 
-Mapper 인터페이스는 각 feature/api에 있으며 구현은 Gradle build/generated에 생성됩니다.
-생성 코드는 수정하거나 Git에 추가하지 않습니다. unmappedTargetPolicy=ERROR로 응답 필드 누락을 컴파일에서 발견합니다.
-ArchUnit은 main 클래스만 검사하고 domain의 프레임워크/외부 의존, application → api/infrastructure,
-common → feature, feature 간 순환과 infrastructure → api 의존을 검사합니다.
-OrderCatalog의 adapter는 현재 member/product의 공개 contract를 사용합니다. Controller·내부 Service·Repository를 직접 참조하지 않습니다. [13단계](13-feature-boundaries-and-growth.md)에서 경계와 하위 분류를 보강했습니다.
+OrderServiceImpl은 MemberService.exists와 ProductService.findProduct를 사용합니다.
+공개 ProductSnapshot은 product.service에 있으며 model·Entity·웹 DTO를 노출하지 않습니다.
+ArchUnit은 [현재 경계](../package-structure.md)의 공개 service·역방향 의존·순환·권한을 검사합니다.
 
-회원/상품은 고정된 샘플 2개씩이며, 주문은 **견적 계산만** 합니다.
-계정 가입·주문 저장·결제·재고 차감·사용자별 소유권 검사는 구현하지 않았습니다.
-금액은 서버 상품 가격으로 계산하고 요청에서 가격을 받지 않습니다. 수량은 1~100이며 BigDecimal을 사용합니다.
-Pod 메모리에 변경 가능한 주문 상태를 보관하지 않아 기존 stateless 실습을 유지합니다.
+초기 1차는 조회·견적만 제공했습니다. 현재는 fixture 메모리 주문 저장과 JPA 주문 저장·본인 조회도 제공합니다.
+금액은 서버 가격으로 계산하고 수량 1~100과 BigDecimal 불변식을 유지합니다. 결제·재고 차감은 미구현입니다.
+fixture 주문은 재시작하면 사라지므로 내구성 학습에는 [12단계](12-postgresql-jpa-flyway.md)의 JPA를 사용합니다.
 
 | Gateway 경로 | Backend 경로 | 권한 | 결과 |
 |---|---|---|---|
@@ -73,7 +56,7 @@ Pod 메모리에 변경 가능한 주문 상태를 보관하지 않아 기존 st
 | GET /api/products/1 | /products/1 | api.read | Keyboard, 50000 KRW |
 | POST /api/orders/preview | /orders/preview | api.write | 견적; 저장하지 않으므로 200 |
 
-현재는 모든 profile에서 API/application을 등록합니다. local/test 기본은 fixture, persistence 추가 또는 dev/staging/prod는 JPA입니다.
+현재는 모든 profile에서 Controller/Service을 등록합니다. local/test 기본은 fixture, persistence 추가 또는 dev/staging/prod는 JPA입니다.
 fixture에서도 주문 생성/본인 조회를 제공하지만 데이터는 메모리에만 남습니다. 아래 초기 1차 범위와 달라진 현재 구조는 [17단계](17-reference-architecture.md)를 따릅니다.
 Gateway의 Redis 제한은 그대로 적용됩니다. 연속 실행으로 429가 나면 토큰 버킷 충전 후 다시 확인합니다.
 

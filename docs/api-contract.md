@@ -108,7 +108,7 @@ Boot의 `JsonMapper`로 ProblemDetail 확장 필드를 최상위 JSON 속성으�
 | 발생 경로 | 처리 코드 | 결과 |
 |---|---|---|
 | Controller/DTO 검증/일반 Service 예외 | 각 모듈 `common/exception/GlobalExceptionHandler` | 공통 Problem Details, 안전한 메시지, 필드별 `errors` |
-| 데모 자격증명 오류 | Gateway `auth/api/AuthExceptionHandler` | 기존 INVALID_CREDENTIALS 401, Bearer/no-store 유지 |
+| 데모 자격증명 오류 | Gateway `auth/web/AuthExceptionHandler` | 기존 INVALID_CREDENTIALS 401, Bearer/no-store 유지 |
 | 인증/인가 거절 | 각 모듈 `common/security/SecurityProblemWriter` | 401/403과 인증 헤더 유지 |
 | Backend Servlet filter 예외 또는 `sendError` | [ApiErrorController](../backend/src/main/java/com/example/backend/common/exception/ApiErrorController.java) | 컨테이너 ERROR dispatch의 원래 상태·경로·requestId로 JSON 작성 |
 | Gateway WebFilter/라우팅 예외 | Advice 또는 [GatewayErrorHandler](../gateway/src/main/java/com/example/gateway/common/exception/GatewayErrorHandler.java) → `GatewayErrorResponses` | 미처리 오류 500, 연결 실패 502, 응답 timeout 504 등 |
@@ -173,12 +173,12 @@ committed 응답 보존은 단위 테스트로 확인하며 Compose/kind 재배�
 
 ## 계층 경계
 
-- `<feature>/api`: HTTP mapping, validation 시작, `ApiResponses.success` 호출
-- `<feature>/application`: use case와 업무 로직
-- `<feature>/api/dto`: 외부 요청/응답 계약
+- `<feature>/web`: HTTP mapping, validation 시작, `ApiResponses.success` 호출
+- `<feature>/service`: 업무 인터페이스·공개 값; service/impl에 업무 구현
+- `<feature>/web/dto`: 외부 요청/응답 계약
 - `common`: 요청 추적, 공통 응답과 오류 처리
-- `<feature>/domain`: 업무 모델·규칙이 필요할 때 생성하며 API DTO와 분리
-- `<feature>/infrastructure`: Repository·DB·외부 클라이언트 구현이 필요할 때 생성
+- `<feature>/model`: 업무 모델·규칙이 필요할 때 생성하며 API DTO와 분리
+- `<feature>/repository`: 저장소 인터페이스와 JPA/fixture 구현; service를 참조하지 않음
 
 Gateway와 Backend의 공통 응답/오류 계약은 libs/platform-core에 공유합니다. Servlet/WebFlux 처리기는 각 서비스가 소유합니다.
 

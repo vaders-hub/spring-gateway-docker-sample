@@ -26,14 +26,16 @@ Redis 등록/조회/삭제 장애는 503 `SERVICE_UNAVAILABLE`이며 성공으�
 
 ## 패키지와 요청 흐름
 
+AuthController와 AuthExceptionHandler는 auth.web에 함께 배치합니다. basePackageClasses는 Controller의 패키지를 선택하며 Advice 자신의 위치를 제한하지 않습니다. 인증 enum과 예외는 auth.error에 둡니다. Mono 흐름과 데모/OIDC 조건은 유지합니다.
+
 ```text
 gateway.auth
-  api/AuthController                HTTP DTO 검증, Principal 추출, 공통 응답
-  api/AuthExceptionHandler          계정 오류/저장소 장애 응답
-  application/LoginService          로그인 등록 / 현재 토큰 종료
-  application/TokenService          학습 계정 확인, 고유 jti를 가진 JWT 발급
-  application/port/LoginSessions    유스케이스가 요구하는 저장 계약
-  infrastructure/security/RedisLoginSessions
+  web/AuthController                HTTP DTO 검증, Principal 추출, 공통 응답
+  web/AuthExceptionHandler          계정 오류/저장소 장애 응답
+  service/LoginService          로그인 등록 / 현재 토큰 종료
+  service/TokenService          학습 계정 확인, 고유 jti를 가진 JWT 발급
+  repository/LoginSessions    유스케이스가 요구하는 저장 계약
+  repository/redis/RedisLoginSessions
                                     common.security.token 저장 구현에 연결
 ```
 

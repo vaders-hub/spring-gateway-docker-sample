@@ -1,130 +1,115 @@
-# Feature-based 구조와 확장 기준
+# 기능별 web / service / repository 구조
 
-현재 기준은 [17단계 AA 구조 보완](learning/17-reference-architecture.md)이다. 과거 단계의 테스트 수는 당시 기록이다.
+2026-10-01에 [구조 전환 설계](egov-style-restructure-review.md)를 적용했다. 국내 Service/ServiceImpl 관례를 사용하되 JPA, 불변 업무 모델, HTTP DTO와 공통 플랫폼 계약을 유지한다. 전자정부 프레임워크 라이브러리나 MyBatis를 도입한 것은 아니다.
 
-## 기본형과 확장형
-
-작은 CRUD는 `feature/api`, `feature/application`, `feature/infrastructure`부터 시작한다.
-Controller의 DTO/Mapper는 api에, Service는 application에, JPA/외부 클라이언트는 infrastructure에 둔다.
-실제 업무 규칙이 생기면 domain을 추가한다. 빈 패키지, 단순 전달용 인터페이스/Impl, 동일 모양 DTO를 의무적으로 만들지 않는다.
-
-현재 member/product/order는 저장소 교체와 기능 간 연동을 배우는 **확장형 예제**이다.
-`contract`는 다른 feature에 공개하는 조회 계약, `application/port`는 호출자가 요구하는 계약,
-`infrastructure/integration`은 상대 contract와 자기 port를 연결한다.
-단순 조회 하나를 추가할 때 이 모든 파일을 복제할 필요는 없다.
+## 현재 배치
 
 ```text
 backend / com.example.backend
-├── common
-│   ├── config         SecurityConfig, JwtConfig, TimeConfig, MappingConfig
-│   │   ├── properties JwtProperties, ObservabilityProperties
-│   │   └── runtime    lifecycle 및 공개 문서 설정 검증
-│   ├── exception      GlobalExceptionHandler, ApiErrorController (Servlet)
-│   ├── security       FeatureRoutes, SecurityProblemWriter, permission, token
-│   └── web            RequestContext, RequestIdFilter
+├── common                      앱별 설정·보안·MVC 오류 처리·요청 컨텍스트
 ├── hello
-│   ├── api            HelloController, HelloRoutes, dto
-│   └── application    HelloService
-├── member             product도 동일 경계
-│   ├── api            MemberController, MemberRoutes, MemberMapper, RequireMemberAdmin, dto
-│   ├── application    MemberService, error/MemberErrorCode, port/MemberRepository
-│   ├── contract       MemberLookup: boolean exists
-│   ├── domain         Member
-│   └── infrastructure fixture / persistence
+│   ├── web                     HelloController, HelloRoutes, dto/
+│   └── service                 HelloService, impl/HelloServiceImpl
+├── member                      product도 동일한 기본 배치
+│   ├── web                     MemberController, MemberRoutes, MemberDtoConverter,
+│   │                           RequireMemberAdmin, dto/
+│   ├── service                 MemberService, impl/MemberServiceImpl
+│   ├── repository              MemberRepository
+│   │   ├── jpa                 MemberRepositoryJpaImpl, MemberJpaRepository, MemberEntity
+│   │   └── fixture             FixtureMemberRepository
+│   ├── model                   Member
+│   └── error                   MemberErrorCode
+├── product
+│   └── service                 ProductService, ProductSnapshot, impl/ProductServiceImpl
 └── order
-    ├── api            OrderController (견적·생성·조회), OrderRoutes, OrderMapper, dto
-    ├── application    OrderQuoteService (카탈로그 조회·참조 검증)
-    │   ├── command    PlaceOrderService
-    │   ├── query      OrderQueryService
-    │   ├── error      OrderErrorCode
-    │   └── port       OrderCatalog, OrderRepository
-    ├── domain         OrderQuote (금액 계산·불변식), StoredOrder
-    └── infrastructure fixture / persistence / integration
+    ├── web                     OrderController, OrderRoutes, OrderDtoConverter, dto/
+    ├── service                 OrderService, impl/OrderServiceImpl
+    ├── repository              OrderRepository, jpa/, fixture/
+    ├── model                   OrderQuote, StoredOrder
+    └── error                   OrderErrorCode
 
 gateway / com.example.gateway
-├── common             WebFlux 보안·라우팅·오류 writer·JWT decoder·Redis 구현
-└── auth               api / application / infrastructure (데모 발급 전용)
+├── common                      WebFlux 설정·보안·오류 처리·JWT decoder·Redis I/O
+└── auth
+    ├── web                     AuthController, AuthExceptionHandler, dto/
+    ├── service                 LoginService, TokenService (Mono 흐름 유지)
+    ├── repository              LoginSessions, redis/RedisLoginSessions
+    └── error                   AuthErrorCode, InvalidCredentialsException
 
 libs/platform-core / com.example.platform
-├── code               ErrorCode 인터페이스, CommonErrorCode, SuccessCode
-├── response           ApiResponse, ApiResponses
-├── exception          BusinessException, ProblemDetails
-├── security           JwtAuthorities, token/TokenKey
-└── util               ErrorDiagnostics
+├── code                        ErrorCode, CommonErrorCode, SuccessCode
+├── response                    ApiResponse, ApiResponses
+├── exception                   BusinessException, ProblemDetails
+├── security                    JwtAuthorities, token/TokenKey
+└── util                        ErrorDiagnostics
 ```
 
-## 의존 방향과 책임
+## 역할과 명명
 
-- api → application → domain. application은 api/infrastructure를 참조하지 않는다.
-- domain은 Java와 **자기 feature의 domain**만 사용한다. HTTP 상태/응답은 application의 오류 코드가 소유한다.
-- 다른 feature는 공개 contract만 사용하며 연결은 호출자의 infrastructure/integration에 둔다. 순환 의존은 금지한다.
-- common과 platform-core는 feature에 의존하지 않는다. 공통 설정에 기능 URL 문자열도 넣지 않는다.
-- 플랫폼 모듈은 공통 응답과 프로토콜만 공유한다. MVC와 WebFlux 처리기, Redis I/O 구현은 각각 유지한다.
-- 업무 Controller는 `ApiResponses`, 오류 처리기는 `ProblemDetails`를 사용한다. Actuator/Prometheus를 envelope로 감싸지 않는다.
-- 새로운 업무 오류는 해당 feature의 `application/error` enum이 `ErrorCode`를 구현한다. `BusinessException`에 전달하면 공통 처리기가 Problem Details로 변환한다.
-- enum/util은 역할별로 묶는다. feature 전용 enum을 플랫폼이나 common에 이동하지 않는다.
-- 패키지는 단수 이름을 유지한다. 하위 책임이 생기면 query/command/persistence 등으로 세분화하고, 독립 업무가 생길 때 새 feature를 만든다.
+- Backend 업무 서비스는 `service/*Service` 인터페이스와 `service/impl/*ServiceImpl`로 나눈다. Controller는 인터페이스를 주입받는다.
+- HTTP DTO와 MapStruct `*DtoConverter`는 기능의 `web`에 둔다. 생성 구현은 build/generated에 있으며 편집하거나 Git에 넣지 않는다.
+- `model`은 불변 업무 객체와 금액 계산 등 규칙을 담는다. JPA Entity·HTTP DTO와 구별한다.
+- 저장소 인터페이스는 `repository`, 직접 작성한 JPA 구현은 `repository/jpa/*RepositoryJpaImpl`, Spring Data 인터페이스는 `*JpaRepository`이다. `*JpaRepositoryImpl`은 Spring Data 커스텀 구현 탐색과 혼동되므로 사용하지 않는다.
+- 기능 `error`의 오류 enum은 플랫폼 `ErrorCode`를 구현한다. `BusinessException`과 앱별 처리기가 Problem Details로 변환한다. 기존 공통 `exception` 패키지는 유지한다.
+- Gateway는 작은 인증 서비스의 클래스 배치를 정리했다. 형식만 맞추기 위한 Service/Impl·DAO·Entity는 추가하지 않는다. 실제 Redis 교체 경계인 `LoginSessions`는 유지한다.
 
-## 기능 로딩과 저장소 선택
+## 의존 방향과 공개 범위
 
-Controller/Service/기능 간 adapter는 항상 등록한다. 저장소 adapter만 프로필로 선택한다.
+`web → service 인터페이스 → service.impl → 자기 repository`를 기본으로 한다. 업무 모델과 오류는 자기 기능에서 사용한다.
 
-| lifecycle | 추가 profile | 저장소 | 업무 API |
+- Service와 Repository는 web을 참조하지 않는다. Repository 인터페이스·fixture·JPA 구현은 모든 기능의 service를 참조하지 않는다.
+- 다른 기능에서 사용할 수 있는 패키지는 **상대 기능의 service 직속 패키지**다. `service.impl`, repository, model, error, web은 내부이다. ArchUnit에서 `..service..` 전체를 공개하지 않는다.
+- `MemberService.exists`는 boolean, `ProductService.findProduct`는 `Optional<ProductSnapshot>`을 반환한다. `ProductSnapshot`은 `product.service`의 공개 record이며 내부 model·Entity를 노출하지 않는다. ProductServiceImpl이 내부 Product를 snapshot으로 변환한다.
+- 같은 기능의 web에서 사용하는 `list/get`의 model 반환을 다른 기능에서 사용하지 않는다. 주문은 부재를 자신의 422 오류로 처리하고 상품/회원 단건 조회의 404를 가져오지 않는다.
+- 기능 간 순환과 common/platform-core → 기능 의존은 금지한다. 공통에는 업무 URL·권한·오류 enum을 넣지 않는다.
+- 공통 계약만 플랫폼 모듈에서 공유한다. Gateway WebFlux와 Backend MVC 처리기·Redis I/O 구현은 각각 유지한다.
+
+## 주문과 트랜잭션
+
+OrderServiceImpl이 MemberService와 ProductService를 직접 주입받는다. 중복 조회 계약/adapter를 없애고 `preview`, `place`, `get`으로 통합했다.
+
+- `preview`: 서버 가격으로 견적을 계산하고 저장하지 않는다.
+- `place`: public 메서드의 `@Transactional` 안에서 회원·상품 검증부터 INSERT까지 처리한다. 소유자와 UTC Clock을 사용하며 자기 내부 preview 호출에 추가 트랜잭션을 기대하지 않는다.
+- `get`: `@Transactional(readOnly = true)`를 유지하고 `findByIdAndOwnerSubject`로 소유자 범위를 제한한다. 타인/부재 주문은 404다.
+- DB 테스트는 바깥 TransactionTemplate의 rollback 사례와, 호출자 트랜잭션 없이 서비스 Bean을 호출한 뒤 실제 INSERT/flush 후 실패하는 사례를 모두 검사한다.
+
+## 프로필과 기능 등록
+
+Backend Controller/Service는 항상 등록하고 저장소 구현만 프로필로 고른다.
+
+| lifecycle | 추가 profile | 저장소 | API |
 |---|---|---|---|
-| local / test | 없음 | fixture (주문은 메모리 저장) | 조회·견적·생성·본인 조회 모두 제공 |
+| local / test | 없음 | fixture, 주문 메모리 저장 | 조회·견적·생성·본인 조회 |
 | local / test | persistence | PostgreSQL/JPA | 동일 |
 | dev / staging / prod | 없음 | PostgreSQL/JPA | 동일 |
 
-JPA 환경에는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`가 필요하다. 누락 시 시작 실패가 올바른 동작이다.
-fixture는 재시작 시 주문이 사라지고 여러 인스턴스 간 공유되지 않는다. 실제 stateless/내구성 실습은 persistence로 수행한다.
-`app.learning.mock-enabled`, `persistence-enabled`, `ConditionalOnLearning*`는 제거했다.
-공개 Swagger/OpenAPI는 기존대로 local/test의 `app.learning.docs-enabled`로 제한한다.
+JPA는 DB_URL·DB_USERNAME·DB_PASSWORD가 필수다. fixture는 재시작 시 사라지며 수평 확장 내구성을 검증하지 못한다. Swagger/OpenAPI는 기존 local/test 공개 설정을 따른다.
+
+Gateway의 AuthController와 AuthExceptionHandler는 auth.web에 함께 있다. Advice의 basePackageClasses는 AuthController 패키지와 하위 Controller를 선택한다. Advice 자체의 같은 패키지 배치는 프레임워크 필수 조건이 아니다. 데모 발급 조건과 OIDC 분리, Mono와 비동기 Redis 흐름은 유지한다.
 
 ## 새 기능 추가
 
-1. 필요한 api/application 코드부터 추가한다. DTO는 HTTP 입력 형식을 검증한다.
-2. 기능 api 패키지의 Configuration에서 `FeatureRoutes` Bean으로 경로를 등록한다.
-3. 각 HTTP handler에 `@RequireRead`, `@RequireWrite` 또는 feature 소유 `@PreAuthorize`를 선언한다.
-4. Backend SecurityConfig는 등록 경로의 인증만 요구하고 나머지는 거부한다. 메서드 권한 누락은 ArchUnit 테스트로 차단한다.
-5. 소유권·재고·거래 상태 등 데이터 정책은 application/domain에 둔다. Repository 조회에서도 소유자 범위를 제한한다.
-6. 새 비표준 외부 API 영역을 공개하면 Gateway 라우트/상위 권한 정책도 검토한다. 기존 `/api/**` 아래 기능은 Gateway URI 목록 추가가 필요 없다.
+1. 기능의 web에 Controller/DTO를, service에 인터페이스와 impl 구현을 둔다. 필요한 model·repository만 추가한다.
+2. web의 Configuration에서 FeatureRoutes Bean으로 경로를 등록한다. 각 HTTP handler에 RequireRead/RequireWrite 또는 기능 소유 PreAuthorize를 선언한다.
+3. 소유권·수량·업무 상태는 service/model에서 검증한다. Repository 조회도 소유자 범위를 제한한다.
+4. 다른 기능에는 service의 최소 조회 값만 공개한다. 순환이 필요해지면 상위 업무 책임을 검토한다.
+5. 기본 `/api/**` 외 영역을 공개하면 Gateway 경로와 상위 권한 정책도 검토한다.
 
-JWT 인증 → MVC 인자 바인딩/DTO 검증 → 메서드 권한 → 업무 로직 순서다.
-Backend 직접 호출에서 잘못된 DTO는 scope 부족보다 먼저 400이 될 수 있다. Gateway는 여전히 HTTP 메서드별 coarse scope를 먼저 검사한다.
-`RequireMemberAdmin`은 Controller 전용이므로 member/api에 둔다.
+JWT 인증 → MVC DTO 바인딩/검증 → 메서드 권한 → 업무 로직 순서다. 잘못된 DTO와 권한 부족이 함께 있으면 Backend에서 400이 먼저 나올 수 있다. RequireMemberAdmin은 member.web의 Controller 전용이다.
 
-## 설정과 시간
+## 설정·빌드·검증
 
-환경변수 → application.yml 플레이스홀더 → Spring Environment → `@ConfigurationProperties`로 실제 record에 바인딩한다.
-Gateway는 `SecurityProperties`, Backend는 `JwtProperties`, 관측 설정은 `ObservabilityProperties`가 받는다.
-`@EnableConfigurationProperties`는 Bean 등록, 검증 애너테이션은 값 검증을 담당한다.
-`server.*`, `spring.*`는 프레임워크 설정이며 모두 위 record를 거치는 것은 아니다.
-상세 흐름은 [01단계](learning/01-setup-and-compose.md)를 참고한다.
+환경변수와 YAML은 Spring Environment를 거쳐 ConfigurationProperties에 바인딩된다. TimeConfig의 Clock은 HelloServiceImpl·OrderServiceImpl·TokenService에 주입한다. 응답 meta.timestamp는 응답 생성 시각이다.
 
-TimeConfig의 UTC Clock을 HelloService/TokenService/PlaceOrderService에 주입한다.
-업무 시각은 테스트에서 고정할 수 있다. 응답 meta.timestamp는 응답 생성 시각으로 Instant.now를 사용한다.
-
-## Gradle / Docker
-
-루트 settings.gradle 하나가 gateway/backend/libs:platform-core를 정의한다.
-버전은 gradle/libs.versions.toml에 모으고, 프레임워크 전이 의존성은 Boot/Cloud BOM이 정렬한다.
-모듈별 settings.gradle은 제거했다. 모든 명령은 저장소 루트에서 실행한다.
+루트 settings.gradle, Wrapper와 version catalog를 사용한다. Docker build context는 루트이고 앱별 Dockerfile은 플랫폼 계약과 대상 앱만 빌드한다.
 
 ```bash
-bash ./gradlew :libs:platform-core:test :gateway:test :backend:test
+bash ./gradlew :libs:platform-core:test :backend:test :gateway:test
 bash ./gradlew :backend:databaseTest
 bash ./gradlew :backend:bootJar :gateway:bootJar
-docker build -f backend/Dockerfile -t local-backend:dev .
-docker build -f gateway/Dockerfile -t local-gateway:dev .
+bash scripts/verify.sh
 ```
 
-Docker는 루트 context에서 공유 모듈과 대상 서비스만 컴파일한다. 실행 이미지는 서비스 JAR와 JRE만 포함한다.
-두 서비스는 따로 배포할 수 있지만 공통 계약 변경은 함께 검증해야 한다. 호환성이 깨지는 프로토콜 변경에는 버전 전환 계획이 필요하다.
+Backend ArchUnit은 web 의존·저장소의 service 의존·공개 service 내부 구현 노출·기능 간 공개 패키지·common/platform 경계·순환·HTTP 메서드 권한을 검사한다. 권한 검사 대상이 비어도 실패한다. Gateway는 service/web/Redis 구현 경계·repository 역방향 의존·common/기능 경계·순환을 검사한다. 전환 검증에는 skipArchitecture를 사용하지 않는다.
 
-## 검증 범위
-
-Backend ArchUnit은 핵심 규칙만 검사한다: application → api/infrastructure 참조 금지, feature 간 순환 금지,
-HTTP handler 권한 누락 금지. 그 밖의 경계(domain, contract/integration, common 의존)는 위 원칙과 코드 리뷰로 유지한다.
-구조 규칙을 임시로 끄려면 `bash ./gradlew test -PskipArchitecture`로 실행한다(`architecture` 태그 제외). 통합 테스트는 기능 api 및 infrastructure/persistence 패키지에 배치한다.
-DB 테스트는 **prod 프로필 + 일회용 PostgreSQL/Redis**로 운영 설정의 API 등록·저장·rollback을 검증한다. 실제 운영 배포 검증은 아니다.
-Spring Modulith 도입은 보류한다. 현재 경계를 검증하는 데 필요한 규칙이 이미 있으며, 추가 모듈 이벤트/문서화 요구가 생길 때 Boot 호환 버전을 확인한다.
+HTTP 테스트는 fixture와 인증 정책을, databaseTest는 일회용 PostgreSQL/Redis와 prod 프로필의 저장·소유권·rollback을 검증한다. 실제 운영 배포나 AWS/EKS 검증을 의미하지 않는다. 기존 Compose 재배포 시 scripts/reference-stack.sh와 기존 파일/profile 조합을 사용한다.

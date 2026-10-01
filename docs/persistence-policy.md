@@ -9,17 +9,15 @@ fixture는 영속성/transaction 검증을 대신하지 않습니다.
 
 ## 패키지와 계층
 
-- `<feature>/domain`: 업무 모델과 규칙
-- `<feature>/infrastructure/persistence`: 현재 JPA Entity (순수 domain record와 분리)
-- `<feature>/infrastructure/persistence`: 현재 Spring Data Repository와 application/port 구현
-- `<feature>/infrastructure/mybatis`: 향후 MyBatis 도입 시 SQL Mapper와 DB 조회 모델 (현재 미구현)
-- `<feature>/api/dto`: 외부 API 계약이며 Entity를 직접 참조하거나 반환하지 않음
-- `<feature>/application`: Service의 transaction 경계와 use case. API DTO에 의존하지 않음
-- `<feature>/api`: Controller의 HTTP mapping·검증·DTO 변환. `@Transactional` 사용 금지
+- `<feature>/model`: 불변 업무 모델과 규칙.
+- `<feature>/repository`: 저장소 인터페이스. service 타입을 참조하지 않음.
+- `<feature>/repository/jpa`: Entity, Spring Data `*JpaRepository`, 직접 작성한 `*RepositoryJpaImpl`.
+- `<feature>/repository/fixture`: local/test 메모리 구현.
+- `<feature>/web/dto`: 외부 요청/응답 계약. Entity를 반환하지 않음.
+- `<feature>/service`와 `service/impl`: 업무 계약과 구현·트랜잭션 경계.
+- `<feature>/web`: HTTP 매핑·검증·DtoConverter. 트랜잭션 시작 책임을 두지 않음.
 
-최상위 persistence에 모든 업무의 저장소를 모으지 않고 해당 기능의 infrastructure에 배치합니다.
-현재 application/port에 저장소 계약을 두고 infrastructure/fixture 또는 persistence가 구현합니다. 다른 feature는 이 내부 저장소 port가 아닌 공개 contract를 사용합니다.
-아직 구현할 코드가 없는 domain/infrastructure와 빈 인터페이스는 만들지 않습니다.
+다른 기능은 공개 service만 사용하며 저장소를 직접 참조하지 않습니다. ProductServiceImpl이 내부 model을 공개 ProductSnapshot으로 변환합니다. MyBatis와 빈 저장소 계층은 추가하지 않았습니다.
 
 ## Hikari 시작 기준
 
@@ -50,7 +48,7 @@ spring:
 
 ## Transaction 정책
 
-- 주문 transaction은 public Service use case에 선언. 독립 카탈로그 조회 adapter에는 짧은 readOnly transaction을 두어 domain 변환을 완료
+- 주문 transaction은 public Service use case에 선언. 회원·상품 JPA 저장소에는 짧은 readOnly transaction을 두어 model 변환을 완료
 - 쓰기 use case 기본 propagation은 `REQUIRED`
 - 조회 use case는 `@Transactional(readOnly = true)`
 - isolation은 DB 기본값을 확인한 뒤 `READ_COMMITTED`를 기본 후보로 명시

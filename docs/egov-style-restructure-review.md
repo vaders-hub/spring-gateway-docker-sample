@@ -2,7 +2,7 @@
 
 검토·갱신일: 2026-10-01
 대상: `C:\dev\personal\infra\spring-gateway-docker-sample` — Backend 중심, Gateway auth 일부
-상태: **구조 전환을 위한 검토·설계 문서만 갱신했다. 이 작업에서 프로젝트 코드는 변경하지 않았고 빌드·테스트도 실행하지 않았다.**
+상태: **2026-10-01 소스에 전환을 적용했다. 1~10절은 전환 전 검토·설계 기록이며, 현재 구현은 [패키지 구조](package-structure.md)와 아래 11절을 따른다.**
 
 ## 1. 결론과 전환 목적
 
@@ -78,7 +78,7 @@ libs/platform-core                기존 공통 응답·오류·인증 계약 �
 
 다른 기능에 공개하는 `ProductSnapshot`은 `product.service` 바로 아래에 둔다. `product.model.Product`는 기능 내부 업무 객체로 유지한다. 공개 snapshot은 내부 model·Entity·웹 DTO를 필드 타입으로 노출하지 않는다. Repository는 내부 model을 반환하고 `ProductServiceImpl`이 공개 snapshot으로 변환한다. 이로써 Repository가 service의 공개 값 타입을 참조하는 역방향 의존도 피한다.
 
-## 3. 현재 구조와 변경 대응
+## 3. 전환 전 구조와 변경 대응
 
 | 현재 | 변경 방향 | 보존·확인할 사항 |
 |---|---|---|
@@ -100,7 +100,7 @@ libs/platform-core                기존 공통 응답·오류·인증 계약 �
 
 ## 4. 기능 간 호출을 단순화할 때의 기준
 
-현재 주문은 `OrderCatalog → LocalOrderCatalog → MemberLookup/ProductLookup`을 거친다. 전환 후에는 `OrderServiceImpl`이 `MemberService`, `ProductService` 인터페이스를 주입받도록 줄일 수 있다.
+전환 전 주문은 `OrderCatalog → LocalOrderCatalog → MemberLookup/ProductLookup`을 거친다. 전환 후에는 `OrderServiceImpl`이 `MemberService`, `ProductService` 인터페이스를 주입받도록 줄일 수 있다.
 
 다만 조회 메서드와 오류 의미를 먼저 확정해야 한다.
 
@@ -114,7 +114,7 @@ libs/platform-core                기존 공통 응답·오류·인증 계약 �
 
 ## 5. 주문 서비스와 트랜잭션
 
-현재 주문 생성은 `PlaceOrderService.place()`의 `@Transactional`로 회원·상품 확인부터 저장까지 묶는다. 조회는 `OrderQueryService.get()`의 `@Transactional(readOnly = true)`로 처리한다.
+전환 전 주문 생성은 `PlaceOrderService.place()`의 `@Transactional`로 회원·상품 확인부터 저장까지 묶는다. 조회는 `OrderQueryService.get()`의 `@Transactional(readOnly = true)`로 처리한다.
 
 통합한 `OrderServiceImpl`에서도 외부에서 호출되는 public `place()`와 `get()`에 각각 이 경계를 유지한다. 견적 `preview()`는 저장하지 않는 동작으로 유지한다. 생성 메서드가 내부 견적 계산 메서드를 호출하는 것은 가능하지만, 내부 호출에 붙인 애너테이션으로 별도의 트랜잭션이 시작된다고 가정하지 않는다. Spring 기본 프록시 방식에서는 자기 내부 호출에 트랜잭션 advice가 새로 적용되지 않는다. [Spring 트랜잭션 공식 문서](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 
@@ -190,11 +190,11 @@ Gateway는 `auth/api → auth/web`, `auth/application → auth/service` 중심�
 - Gateway 비동기 인증·로그아웃 경로 및 기존 OIDC 구성이 유지됨. 이동한 AuthExceptionHandler가 데모 인증의 기존 401/503 오류를 처리하고, 적용 범위·프로필 조건이 유지됨.
 - 필요한 최종 런타임 확인은 현재 Compose 파일 조합을 유지하고 프로젝트 범위에서 수행함. 단순 상태 확인을 위해 정상 실행 중인 서비스를 불필요하게 재생성하지 않음.
 
-위 항목은 향후 구현의 완료 기준이다. **이번 문서 갱신에서 해당 테스트나 런타임 검증을 수행한 것은 아니다.**
+위 항목은 설계 당시 정한 구현 완료 기준이다. 실제 적용과 실행 결과는 11절에 별도로 기록한다.
 
 ## 10. 검토 근거
 
-현재 소스에서 다음 파일을 대조했다. 경로는 대상 저장소 기준이다.
+전환 전 소스에서 다음 파일을 대조했다. 아래 경로는 검토 당시 위치이며 현재 경로는 package-structure.md를 따른다.
 
 - `docs/package-structure.md`: 현재 기능·공통 모듈 경계와 검증 범위.
 - `backend/src/main/java/com/example/backend/order/application/OrderQuoteService.java`: 주문 참조 오류 처리.
@@ -206,3 +206,24 @@ Gateway는 `auth/api → auth/web`, `auth/application → auth/service` 중심�
 - Gateway auth 서비스·Advice, 프로필별 `application-*.yml`: 비동기 처리와 패키지 관련 설정.
 
 [전자정부 CRUD 생성 가이드](https://www.egovframe.go.kr/docs/5.0/egovframe-development/implementation-tool/code-generation/template-based-code-generation/eclipse-crud-code-generation/)는 Service/ServiceImpl·DAO·VO·Controller 구성의 참고 근거다. 이 문서의 repository 분리와 단계별 전환 범위는 해당 가이드를 현재 프로젝트 목적에 맞게 조정한 설계안이다.
+
+## 11. 적용 기록 — 2026-10-01
+
+- Backend hello/member/product/order를 web, service 인터페이스·impl, repository, model, error로 이동했다. 실제 코드가 있는 계층만 둔다.
+- Member/Product/Order의 직접 작성한 JPA 구현은 `*RepositoryJpaImpl`, Spring Data 인터페이스는 `*JpaRepository`로 구별한다. MapStruct는 `*DtoConverter`로 정리했다.
+- OrderServiceImpl에 preview/place/get을 통합하고 MemberService.exists·ProductService.findProduct를 사용한다. ProductSnapshot은 product.service에 두고 중복 contract/port/adapter를 제거했다.
+- 생성의 Transactional, 조회의 readOnly·소유자 조건, 서버 가격 계산·422/404 의미를 유지한다. 기존 회귀 사례를 통합 서비스 테스트로 옮겼다.
+- Gateway AuthController/Advice를 auth.web으로 함께 이동하고 auth.service·repository/redis·error로 정리했다. 데모/OIDC 조건과 Mono 흐름은 유지한다.
+- ArchUnit을 공개 service 직속 경계, 저장소의 역방향 의존 금지, 공통 모듈과 기능 분리, 순환·권한 검사에 맞춰 갱신했다. 검사 대상이 비어 있는 권한 검증도 실패한다.
+- 현재 소스 경로와 호출 흐름을 README·패키지/영속성/API 계약·학습 문서에 반영했다. 과거 날짜의 검증 기록은 당시 결과로 보존한다.
+
+검증 결과:
+
+- platform-core 4개, Backend 일반 61개, Gateway 63개, PostgreSQL/Redis DB 통합 8개: **136개 통과, 실패·건너뜀 0**. ArchUnit을 제외하지 않았다.
+- 서비스 경계의 실제 INSERT 후 rollback, readOnly 조회, 422 참조 오류·주문 소유권과 기존 인증 회귀 검증을 통과했다. Gateway 로그인 저장소 실패의 503 Advice 응답도 확인했다.
+- `:backend:bootJar :gateway:bootJar` 성공. 두 JAR에서 새 패키지를 확인하고 이전 기능 패키지 클래스가 남지 않았음을 검사했다.
+- `scripts/verify.sh`의 Bash·Kustomize·Compose·JSON 정적 검사, Java 130개 파일의 package/경로 일치 및 수정 Markdown의 로컬 링크 121개 검사를 통과했다.
+- 첫 DB 실행에서 테스트 예상 예외가 Spring Repository의 예외 변환과 달라 실패했다. 예상 타입과 원인 검사를 바로잡은 뒤 DB 8개를 재검증했다. 운영 코드를 바꿔 테스트를 우회하지 않았다.
+- 커밋 전 재검토에서도 일반 테스트 128개와 DB 통합 8개, 양쪽 JAR 및 정적 검사를 다시 통과했다. 재검증 중 Docker 엔진 종료로 DB 초기화가 실패한 실행은 성공으로 집계하지 않았으며, 엔진 기동 후 DB 테스트를 별도로 완료했다.
+
+Docker Desktop 엔진은 DB 테스트를 위해 기동했다. 기존 Compose 컨테이너는 중지 상태를 유지했고 DB 볼륨은 변경하지 않았다. Compose 이미지 재배포·실제 Keycloak 브라우저 로그인·Kubernetes/AWS 운영 검증은 수행하지 않았다. OIDC와 인증 모드 분리는 자동 테스트로 확인한 범위다.

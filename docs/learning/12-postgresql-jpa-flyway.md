@@ -11,9 +11,9 @@ dev/staging/prod는 기본 JPA이며 DB_URL/DB_USERNAME/DB_PASSWORD가 필수입
 flowchart LR
   Client -->|JWT| Gateway
   Gateway -->|JWT 재검증| Controller[OrderController]
-  Controller -->|DTO 검증 후 업무 값| Service[PlaceOrderService]
-  Service -->|서버 가격 조회| Quote[OrderQuoteService / OrderCatalog]
-  Service -->|application port| Adapter[JpaOrderRepository]
+  Controller -->|DTO 검증 후 업무 값| Service[OrderServiceImpl]
+  Service -->|서버 가격 조회| Catalog[MemberService / ProductService]
+  Service -->|OrderRepository| Adapter[OrderRepositoryJpaImpl]
   Adapter --> SpringData[Spring Data JPA]
   SpringData --> DB[(PostgreSQL)]
   Flyway -->|V1 DDL| DB
@@ -21,11 +21,11 @@ flowchart LR
 
 1. SecurityFilterChain은 JWT 인증, Controller 메서드 보안은 api.write/api.read 권한을 검사합니다.
 2. Controller가 입력 DTO를 검증합니다. 소유자는 요청 JSON 대신 검증된 JWT의 subject를 사용합니다.
-3. PlaceOrderService의 `@Transactional`이 회원·상품 조회, 견적 계산, 저장을 묶습니다.
-4. Repository adapter가 domain record를 JPA Entity로 변환합니다. `saveAndFlush` 후에도 commit 전 실패하면 rollback됩니다.
-5. MapStruct가 domain → 응답 DTO를 변환합니다. requestId는 응답 추적용이며 업무 Service로 전달하지 않습니다.
+3. OrderServiceImpl.place의 `@Transactional`이 회원·상품 조회, 견적 계산, 저장을 묶습니다.
+4. Repository adapter가 model record를 JPA Entity로 변환합니다. `saveAndFlush` 후에도 commit 전 실패하면 rollback됩니다.
+5. MapStruct가 model → 응답 DTO를 변환합니다. requestId는 응답 추적용이며 업무 Service로 전달하지 않습니다.
 
-Entity와 Spring Data Repository는 각 feature의 infrastructure/persistence에 있습니다. application은 port와 domain을 사용합니다.
+Entity와 Spring Data Repository는 각 feature의 repository/jpa에 있습니다. ServiceImpl은 저장소 인터페이스와 model을 사용합니다.
 회원/상품 Entity 간 lazy 연관관계를 추가하지 않고 주문에는 참조 ID와 상품명/가격 snapshot을 저장합니다.
 FK는 존재하지 않는 회원/상품을 참조한 주문과 참조 중인 부모의 삭제를 차단합니다.
 총액은 저장된 단가 × 수량으로 계산하므로 상품 가격이 바뀌어도 기존 주문 금액이 유지됩니다.
@@ -39,7 +39,7 @@ FK는 존재하지 않는 회원/상품을 참조한 주문과 참조 중인 부
 | DB_URL/DB_USERNAME/DB_PASSWORD | Compose environment → Spring DataSource; `.env` 자체를 Spring이 읽지 않음 |
 | Flyway V1 | 테이블·CHECK·FK·인덱스 생성, schema history에 버전/checksum 기록 |
 | ddl-auto=validate | Hibernate는 일치 여부만 검사; DDL 변경은 Flyway 담당 |
-| open-in-view=false | HTTP 응답을 만들 때 추가 SQL이 발생하지 않도록 transaction 안에서 domain 변환 완료 |
+| open-in-view=false | HTTP 응답을 만들 때 추가 SQL이 발생하지 않도록 transaction 안에서 model 변환 완료 |
 | Hikari max=5, min=1, timeout=3000ms | 로컬 시작값; 실제 운영은 DB 한도와 Pod 수에 맞춰 조정 |
 | readiness=readinessState,db,redis | DB 접근 불가 시 트래픽 수신을 멈추도록 설계 |
 | liveness=livenessState | DB 장애를 앱 재시작 폭주로 전파하지 않음 |
@@ -152,12 +152,12 @@ flush 후 실제 rollback, DB CHECK/FK, 상품 변경 후 주문 snapshot 유지
 
 코드는 아래 순서로 읽습니다. 주요 진입점 주석은 동작을 반복 설명하기보다 경계와 설정 이유를 설명합니다.
 
-1. 기존 단계: MemberController/MemberMapper → MemberService → FixtureMemberRepository.
-2. 저장소 교체: infrastructure의 @Profile → JpaMemberRepository → MemberEntity.
-3. 주문: OrderController → command/PlaceOrderService → application/OrderQuoteService → integration/LocalOrderCatalog → JpaOrderRepository. 본인 조회는 query/OrderQueryService가 담당합니다.
-   [13단계](13-feature-boundaries-and-growth.md)에 contract/port와 전체 하위 패키지 분류가 정리돼 있습니다.
+1. 조회: MemberController/MemberDtoConverter → MemberService → MemberServiceImpl → MemberRepository.
+2. 저장소 교체: repository의 @Profile → MemberRepositoryJpaImpl 또는 FixtureMemberRepository.
+3. 주문: OrderController → OrderService → OrderServiceImpl → MemberService/ProductService 및 OrderRepository.
+   public place의 쓰기 트랜잭션과 get의 readOnly·소유자 조건을 유지합니다. [13단계](13-feature-boundaries-and-growth.md)에 공개 경계를 설명합니다.
 4. 데이터: V1 migration → application-persistence.yml → scripts/sql/learning-catalog.sql.
-5. 검증: ArchitectureTest → order/infrastructure/persistence/OrderPersistenceIntegrationTest의 rollback/소유권/snapshot 테스트.
+5. 검증: ArchitectureTest → order/repository/jpa/OrderPersistenceIntegrationTest의 rollback/소유권/snapshot 테스트.
 
 공식 참고: [Boot DB 초기화](https://docs.spring.io/spring-boot/how-to/data-initialization.html),
 [Testcontainers PostgreSQL](https://java.testcontainers.org/modules/databases/postgres/),
@@ -167,7 +167,7 @@ Boot 4.0.8 BOM으로 JPA/Flyway/JDBC/Testcontainers 버전을 맞추며 PostgreS
 ## 단계 체크
 
 - [ ] mock/persistence profile을 바꿔 같은 회원/상품 API의 저장소만 교체됨을 확인했다.
-- [ ] Entity, 순수 domain, 외부 DTO와 각 Mapper의 책임을 구분했다.
+- [ ] Entity, 순수 model, 외부 DTO와 DtoConverter와 저장소 변환의 책임을 구분했다.
 - [ ] Flyway migration과 학습 seed의 목적/실행 시점이 다름을 설명했다.
 - [ ] 200 견적과 201 주문 저장을 구분하고 소유권 조회 조건을 확인했다.
 - [ ] flush와 commit 차이, 예외 발생 시 rollback을 테스트에서 추적했다.

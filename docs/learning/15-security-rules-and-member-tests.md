@@ -27,7 +27,7 @@ return http.build();
 Gateway는 `/api/**`의 읽기/쓰기 메서드를 묶습니다. Backend는 feature가 등록한 경로의 인증만 요구하며 scope는 메서드에서 검사합니다.
 두 서비스의 Security API를 하나의 추상 부모 클래스나 util로 감싸지 않습니다.
 규칙이 더 커질 때 `GatewayAuthorization`/`BackendAuthorization`으로 이동할 수 있으며, 현재는 private 메서드로 충분합니다.
-회원/주문 소유권 같은 업무 권한은 각 feature의 application에서 검사하는 기존 원칙을 유지합니다.
+회원/주문 소유권 같은 업무 권한은 각 feature의 service에서 검사하는 기존 원칙을 유지합니다.
 
 ## member API
 
@@ -87,7 +87,7 @@ lab_logout
 | 일반 토큰으로 관리 목록 접근 | 403 ACCESS_DENIED | Gateway의 api.read 통과 후 Backend의 member.admin 검사 |
 | api.read 없는 토큰으로 회원 조회 | 403 ACCESS_DENIED | Gateway 또는 Backend scope 검사 |
 | 형식이 잘못됐거나 0·음수인 ID | 400 INVALID_REQUEST | 인증 후 Backend 입력 바인딩/검증 |
-| 존재하지 않는 양수 ID | 404 MEMBER_NOT_FOUND | Backend member application 조회 |
+| 존재하지 않는 양수 ID | 404 MEMBER_NOT_FOUND | Backend member service 조회 |
 | 빠른 반복 호출 | 429 TOO_MANY_REQUESTS | 기존 Gateway Redis rate limit |
 | 활성 토큰 저장소 장애 | 503 SERVICE_UNAVAILABLE | JWT 활성 상태 검사 |
 

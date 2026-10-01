@@ -144,7 +144,8 @@ PostgreSQL + JPA/Flyway/Testcontainers는 12단계에 구현되어 있으며, �
 
 ## 주요 구현 위치
 
-기능별 구조를 사용합니다. Backend는 hello/member/product/order, Gateway는 auth 안에 api/application/infrastructure를 두고,
+기능별 구조를 사용합니다. Backend는 hello/member/product/order에 web·service/impl·repository·model·error를 필요한 만큼 두고,
+Gateway auth는 web·service·repository·error로 구분합니다.
 앱별 설정·보안·HTTP 예외 처리와 요청 컨텍스트는 각 앱의 `common` 아래에 둡니다.
 응답·오류 계약과 JWT authority/토큰 키·진단 유틸은 `libs/platform-core`에서 공유합니다.
 업무 경로·권한·오류는 각 기능이 소유합니다. [기능 경계와 확장 기준](docs/package-structure.md)을 참고하세요.
@@ -158,16 +159,16 @@ gateway/src/main/java/com/example/gateway/common/config/
 gateway/src/main/java/com/example/gateway/common/config/AuthIssuerConfig.java
   데모 토큰 발급 encoder Bean (local/dev/test + enabled)
 
-gateway/src/main/java/com/example/gateway/auth/api/AuthExceptionHandler.java
+gateway/src/main/java/com/example/gateway/auth/web/AuthExceptionHandler.java
   인증 기능 전용 예외 처리
 
-gateway/src/main/java/com/example/gateway/auth/api/AuthController.java
+gateway/src/main/java/com/example/gateway/auth/web/AuthController.java
   HTTP 요청/응답 경계
 
-gateway/src/main/java/com/example/gateway/auth/application/TokenService.java
+gateway/src/main/java/com/example/gateway/auth/service/TokenService.java
   자격증명 확인과 로컬 학습용 JWT 발급
 
-gateway/src/main/java/com/example/gateway/auth/api/dto/
+gateway/src/main/java/com/example/gateway/auth/web/dto/
   인증 요청/응답 계약
 
 gateway/src/main/java/com/example/gateway/common/web/RequestHeadersFilter.java
@@ -185,13 +186,13 @@ gateway/src/main/java/com/example/gateway/common/config/properties/SecurityPrope
 gateway/src/main/resources/application.yml
   Route, Redis, RequestRateLimiter 설정
 
-backend/src/main/java/com/example/backend/hello/api/
+backend/src/main/java/com/example/backend/hello/web/
   Backend HTTP 요청/응답 경계
 
-backend/src/main/java/com/example/backend/hello/application/
+backend/src/main/java/com/example/backend/hello/service/
   Backend 업무 로직
 
-backend/src/main/java/com/example/backend/hello/api/dto/
+backend/src/main/java/com/example/backend/hello/web/dto/
   Backend 요청/응답 계약
 
 libs/platform-core/src/main/java/com/example/platform/
@@ -277,7 +278,7 @@ ControllerAdvice 밖에서 발생하는 Spring Security 401/403도 동일한 오
 반환합니다. 상세 계약은 [API contract](docs/api-contract.md)를 참고합니다.
 
 PostgreSQL/JPA Entity와 저장소, HikariCP, Flyway migration 및 Service 계층 `@Transactional`을 구현했습니다.
-Entity는 API DTO·domain과 분리하고 `open-in-view=false`, `ddl-auto=validate`,
+Entity는 API DTO·model과 분리하고 `open-in-view=false`, `ddl-auto=validate`,
 Flyway `clean-disabled=true`를 사용합니다. 현재 pool 상한은 5, 최소 idle은 1, 연결 대기는 3초입니다.
 환경별 저장소 선택과 확장 기준은 [Persistence 정책](docs/persistence-policy.md)을 참고하세요.
 

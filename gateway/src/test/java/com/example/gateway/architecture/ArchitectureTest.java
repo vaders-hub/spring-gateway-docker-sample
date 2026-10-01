@@ -15,9 +15,9 @@ class ArchitectureTest {
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages("com.example.gateway");
     @Test
-    void applicationDoesNotDependOnApiOrInfrastructure() {
-        noClasses().that().resideInAPackage("..application..")
-                .should().dependOnClassesThat().resideInAnyPackage("..api..", "..infrastructure..")
+    void servicesDoNotDependOnWebOrRedisImplementations() {
+        noClasses().that().resideInAPackage("..auth.service..")
+                .should().dependOnClassesThat().resideInAnyPackage("..auth.web..", "..auth.repository.redis..")
                 .check(classes);
     }
     @Test
@@ -31,10 +31,9 @@ class ArchitectureTest {
         slices().matching("com.example.gateway.(*)..").should().beFreeOfCycles().check(classes);
     }
     @Test
-    void domainAndInfrastructureKeepTheirBoundaries() {
-
-        noClasses().that().resideInAPackage("..infrastructure..")
-                .should().dependOnClassesThat().resideInAPackage("..api..")
-                .allowEmptyShould(true).check(classes);
+    void repositoriesDoNotDependOnWebOrServices() {
+        noClasses().that().resideInAPackage("..auth.repository..")
+                .should().dependOnClassesThat().resideInAnyPackage("..auth.web..", "..auth.service..")
+                .check(classes);
     }
 }

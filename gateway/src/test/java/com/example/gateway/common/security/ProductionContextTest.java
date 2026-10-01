@@ -1,7 +1,7 @@
 package com.example.gateway.common.security;
 
-import com.example.gateway.auth.api.AuthController;
-import com.example.gateway.auth.application.TokenService;
+import com.example.gateway.auth.web.AuthController;
+import com.example.gateway.auth.service.TokenService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

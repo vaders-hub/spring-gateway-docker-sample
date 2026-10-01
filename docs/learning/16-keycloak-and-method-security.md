@@ -118,9 +118,9 @@ JWT의 `sub`는 Keycloak 사용자의 불변 ID/서비스 계정 ID이다. 기�
 `@EnableMethodSecurity`로 메서드 보안을 활성화했다. `@RequireMemberAdmin`은 api.read와 member.admin을 함께 요구한다.
 일반 목록과 관리자 목록의 Controller 진입점은 나누고 Service/응답 매핑을 공유한다.
 권한 어노테이션은 Spring proxy를 통해 호출될 때 적용된다. 같은 객체의 self-invocation으로 추가 권한을 검사하려 하지 않는다.
-application의 주문 소유권 필터는 그대로 유지하며 URL/권한 검사로 대체하지 않는다.
+service의 주문 소유권 필터는 그대로 유지하며 URL/권한 검사로 대체하지 않는다.
 권한이 있지만 해당 HTTP handler가 없는 경우에는 405(METHOD_NOT_ALLOWED)가 반환될 수 있다. 권한 부족 403과 구분한다.
-현재 어노테이션은 HTTP 진입점 중심이다. 향후 batch/message 등 새 진입점을 만들면 application 유스케이스의 권한 경계도 별도로 정한다.
+현재 어노테이션은 HTTP 진입점 중심이다. 향후 batch/message 등 새 진입점을 만들면 service 유스케이스의 권한 경계도 별도로 정한다.
 
 브라우저 CORS는 정확한 Origin만 허용한다. Gateway 허용 메서드는 GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS이다.
 CORS는 인증이나 서버 간 접근 제어가 아니다. 외부 공개에는 DNS·HTTPS·Ingress/LB·방화벽 구성이 함께 필요하다.

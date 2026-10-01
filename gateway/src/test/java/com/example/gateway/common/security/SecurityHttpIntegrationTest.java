@@ -197,6 +197,17 @@ class SecurityHttpIntegrationTest {
         assertThat(response.body()).doesNotContain("wrong-password");
     }
 
+    @Test
+    void loginStoreFailureIsHandledByTheMovedAuthAdvice() throws Exception {
+        org.mockito.Mockito.when(activeTokenStore.activate(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(reactor.core.publisher.Mono.error(
+                        new com.example.gateway.common.security.token.TokenStoreUnavailableException()));
+        var response = request("POST", "/auth/login", null,
+                jsonMapper.writeValueAsString(Map.of("username", "demo", "password", DEMO_PASSWORD)));
+        assertProblem(response, 503, "SERVICE_UNAVAILABLE");
+        assertThat(response.body()).doesNotContain("accessToken");
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class ProbeConfiguration {
         @Bean

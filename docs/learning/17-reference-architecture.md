@@ -1,6 +1,8 @@
 # 17. 실무 레퍼런스 구조 보완
 
-## 반영한 판단
+## 이전 판단 기록 — 2026-09-30
+
+아래 표는 당시 이름을 포함한 기록입니다. 현재 패키지와 호출 구조는 [구조 문서](../package-structure.md)를 따릅니다. 2026-10-01에는 Service/Impl과 repository로 전환하고 중복 contract/port 연결을 통합했습니다.
 
 2026-09-30 AA 검토를 반영했다. API 계약이 저장소나 학습 flag에 따라 달라지는 문제를 제거하고, 기술 공통 코드와 기능 소유 정책을 분리했다.
 
@@ -49,8 +51,8 @@ Gateway의 coarse api.read/api.write 검사, 관리 경로 차단, JWT 발급 �
 
 ## 확장 시 선택
 
-작은 기능은 api/application/infrastructure로 시작한다. domain, contract, port, integration은 각각 업무 규칙·외부 소비자·교체 경계가 생길 때 추가한다.
-현재 member/product는 다른 기능의 조회 계약과 fixture/JPA 교체를 보여주는 확장형 예제다.
+Backend 기능은 web과 service 인터페이스/impl로 시작하고 실제 필요에 따라 model·repository·error를 추가한다.
+다른 기능은 공개 service 직속 패키지만 참조한다. ProductSnapshot도 그곳에 둔다. repository는 service를 참조하지 않는다.
 Spring Modulith는 이번에 도입하지 않았다. 검증 프레임워크 교체를 구조 보완의 필수 조건으로 만들지 않는다.
 
 ## 검증 명령
@@ -71,7 +73,7 @@ DB 테스트는 일회용 PostgreSQL/Redis와 prod 프로필을 사용한다. �
 ## 단계 체크
 
 - [ ] local fixture와 JPA에서 같은 Controller/API가 등록되는 이유를 설명한다.
-- [ ] FeatureRoutes는 경로, 메서드 어노테이션은 권한, application은 업무 소유권을 담당함을 추적한다.
+- [ ] FeatureRoutes는 경로, 메서드 어노테이션은 권한, service는 업무 소유권을 담당함을 추적한다.
 - [ ] 404 리소스 부재와 422 본문 참조 오류를 실제 응답으로 구분한다.
 - [ ] TokenKey 구현이 공유 모듈 한 곳에 있으며 Servlet/WebFlux I/O 구현은 분리됨을 확인한다.
 - [ ] 기본형과 확장형 중 필요한 경계를 선택하고 불필요한 전달 계층을 만들지 않는다.
@@ -91,3 +93,12 @@ DB 테스트는 일회용 PostgreSQL/Redis와 prod 프로필을 사용한다. �
 - 실제 Keycloak Client Credentials 11개: 200/401/403, 회원 404 코드, 주문 견적·생성의 잘못된 참조 422 확인. 오류 요청은 저장하지 않음.
 - 실제 Chromium으로 demo/lab-admin PKCE 로그인, 일반/관리 권한, 로그아웃 후 refresh 거부 확인. 기존 Access Token은 만료까지 유효한 정책 유지.
 - local-backend/local-gateway healthy. Kubernetes 재배포와 실제 운영 배포는 수행하지 않음.
+
+## 구조 전환 검증 기록 — 2026-10-01
+
+- [전환 설계](../egov-style-restructure-review.md)의 Backend Service/Impl·repository 및 Gateway auth 패키지 정리를 적용했다. 현재 배치는 [패키지 구조](../package-structure.md)를 따른다.
+- platform-core 4, Backend 일반 61, Gateway 63, 일회용 PostgreSQL/Redis 통합 8: **136개 통과, 실패·skip 0**. 이전 기록과 총합은 같지만 테스트 구성은 다르다.
+- 호출자 트랜잭션 없이 주문 저장 서비스가 실제 INSERT 후 예외를 만나 rollback하는 경계와 readOnly 조회·소유자 조건을 검증했다.
+- 새 AuthAdvice 위치에서 자격증명 오류 401·로그인 저장소 실패 503, 데모/OIDC 프로필 및 기존 HTTP 회귀를 확인했다.
+- 양쪽 bootJar 생성과 새 패키지 포함·이전 패키지 잔존 없음, Bash/Compose/Kustomize/JSON 정적 검사 및 문서 로컬 링크 검사를 완료했다.
+- Docker 엔진만 기동하고 기존 Compose 컨테이너·볼륨은 보존했다. Compose 이미지 재배포, 실제 Keycloak 브라우저 로그인, Kubernetes/AWS 운영 검증은 이번 실행 범위가 아니다.
