@@ -1,11 +1,12 @@
 package com.example.backend.order.repository.mybatis;
 
 import com.example.backend.member.repository.MemberRepository;
-import com.example.backend.member.repository.mybatis.MemberSqlMapper;
+import com.example.backend.member.repository.mybatis.MemberMapper;
 import com.example.backend.order.model.OrderSearchCriteria;
 import com.example.backend.order.repository.OrderPersistenceContractTest;
 import com.example.backend.order.service.OrderSearchService;
 import com.example.backend.product.repository.ProductRepository;
+import com.example.backend.product.repository.mybatis.ProductMapper;
 import java.math.BigDecimal;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,9 @@ class MyBatisOrderPersistenceIntegrationTest extends OrderPersistenceContractTes
     void selectsOnlyMyBatisRepositoriesAndJdbcTransactions() {
         assertThat(context.getBeansOfType(MemberRepository.class)).hasSize(1);
         assertThat(context.getBeansOfType(ProductRepository.class)).hasSize(1);
-        assertThat(context.getBean(MemberSqlMapper.class)).isNotNull();
+        assertThat(context.getBeansOfType(MemberMapper.class)).hasSize(1);
+        assertThat(context.getBeansOfType(ProductMapper.class)).hasSize(1);
+        assertThat(context.getBeansOfType(OrderMapper.class)).hasSize(1);
         assertThat(context.getBean(org.apache.ibatis.session.SqlSessionFactory.class)).isNotNull();
         assertThat(context.getBeansOfType(jakarta.persistence.EntityManagerFactory.class)).isEmpty();
         assertThat(transactionManager).isInstanceOf(org.springframework.jdbc.support.JdbcTransactionManager.class);

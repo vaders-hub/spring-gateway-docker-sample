@@ -113,7 +113,7 @@ Redis 오류의 요청 단위 차단과 pool 고갈 검증을 보완합니다. �
 | 6 | Service 트랜잭션 경계 | JPA+MyBatis 혼합 작업 실패 시 둘 다 rollback |
 | 7 | 같은 이미지를 kind에 배포, DB 연결 주소 분리 | Pod의 localhost가 호스트 DB가 아님을 반영 |
 
-추천 이름은 `CustomerEntity`, `CustomerJpaRepository`, `CustomerRepositoryJpaImpl`, `CustomerSqlMapper`,
+추천 이름은 `CustomerEntity`, `CustomerJpaRepository`, `CustomerRepositoryJpaImpl`, `CustomerMapper`,
 `CustomerRow`, `CreateCustomerRequest`, `CustomerResponse`입니다. 둘 다 사용 가능하게
 한다는 것이 모든 작업을 양쪽으로 중복 구현한다는 뜻은 아닙니다.
 

@@ -5,8 +5,10 @@ import com.example.backend.order.model.OrderSummary;
 import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Mapper;
 
-public interface OrderSqlMapper {
+@Mapper
+public interface OrderMapper {
     int insert(OrderRow row);
     OrderRow findByIdAndOwnerSubject(@Param("id") UUID id, @Param("ownerSubject") String ownerSubject);
     List<OrderSummary> search(@Param("criteria") OrderSearchCriteria criteria, @Param("ownerSubject") String ownerSubject);

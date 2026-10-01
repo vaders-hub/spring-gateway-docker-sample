@@ -16,7 +16,7 @@ backend / com.example.backend
 │   ├── service                 MemberService, impl/MemberServiceImpl
 │   ├── repository              MemberRepository
 │   │   ├── jpa                 MemberRepositoryJpaImpl, MemberJpaRepository, MemberEntity
-│   │   ├── mybatis             MemberRepositoryMyBatisImpl, MemberSqlMapper, MemberMyBatisConfig
+│   │   ├── mybatis             MemberRepositoryMyBatisImpl, MemberMapper
 │   │   └── MemoryMemberRepository
 │   ├── model                   Member
 │   └── error                   MemberErrorCode
@@ -53,7 +53,8 @@ libs/platform-core / com.example.platform
 - 저장소 인터페이스는 `repository`, 직접 작성한 JPA 구현은 `repository/jpa/*RepositoryJpaImpl`, Spring Data 인터페이스는 `*JpaRepository`이다. `*JpaRepositoryImpl`은 Spring Data 커스텀 구현 탐색과 혼동되므로 사용하지 않는다.
 - 메모리 구현체는 `repository/Memory*Repository`에 직접 둔다. `fixture`나 `memory` 하위 패키지는 만들지 않는다. 회원·상품은 고정 샘플 목록을 조회하고, 주문은 메모리에 저장한다.
 - 기능 `error`의 오류 enum은 플랫폼 `ErrorCode`를 구현한다. `BusinessException`과 앱별 처리기가 Problem Details로 변환한다. 기존 공통 `exception` 패키지는 유지한다.
-- MyBatis 구현은 `repository/mybatis/*RepositoryMyBatisImpl`, SQL 인터페이스는 `*SqlMapper`, XML은 `resources/mapper/<feature>`에 둔다. SQL Mapper와 MapStruct DTO Converter를 구분한다.
+- MyBatis 구현은 `repository/mybatis/*RepositoryMyBatisImpl`, SQL 인터페이스는 `*Mapper`, XML은 `resources/mapper/<feature>/*Mapper.xml`에 둔다. SQL Mapper와 MapStruct DTO Converter를 구분한다.
+- `common/config/MyBatisConfig` 하나에서 `mybatis` 프로필일 때만 Backend 전체를 스캔한다. MyBatis `@Mapper`가 붙은 인터페이스만 등록하므로 Service·Repository 인터페이스와 MapStruct DTO Converter는 SQL 매퍼로 등록되지 않는다. 새 기능은 매퍼에 `@Mapper`를 붙이며 기능별 설정 클래스를 만들지 않는다.
 - Gateway는 작은 인증 서비스의 클래스 배치를 정리했다. 형식만 맞추기 위한 Service/Impl·DAO·Entity는 추가하지 않는다. 실제 Redis 교체 경계인 `LoginSessions`는 유지한다.
 
 ## 의존 방향과 공개 범위

@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Profile("mybatis")
 @Transactional(readOnly = true)
 class MemberRepositoryMyBatisImpl implements MemberRepository {
-    private final MemberSqlMapper mapper;
-    MemberRepositoryMyBatisImpl(MemberSqlMapper mapper) { this.mapper = mapper; }
+    private final MemberMapper mapper;
+    MemberRepositoryMyBatisImpl(MemberMapper mapper) { this.mapper = mapper; }
     public List<Member> findAll() { return mapper.findAll(); }
     public Optional<Member> findById(long id) { return Optional.ofNullable(mapper.findById(id)); }
 }

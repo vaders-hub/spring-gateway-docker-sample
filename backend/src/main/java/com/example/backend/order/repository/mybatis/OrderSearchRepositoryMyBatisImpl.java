@@ -10,8 +10,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 @Profile("mybatis")
 class OrderSearchRepositoryMyBatisImpl implements OrderSearchRepository {
-    private final OrderSqlMapper mapper;
-    OrderSearchRepositoryMyBatisImpl(OrderSqlMapper mapper) { this.mapper = mapper; }
+    private final OrderMapper mapper;
+    OrderSearchRepositoryMyBatisImpl(OrderMapper mapper) { this.mapper = mapper; }
     public List<OrderSummary> search(OrderSearchCriteria criteria, String ownerSubject) { return mapper.search(criteria, ownerSubject); }
     public long count(OrderSearchCriteria criteria, String ownerSubject) { return mapper.count(criteria, ownerSubject); }
 }

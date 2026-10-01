@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Profile("mybatis")
 @Transactional(readOnly = true)
 class ProductRepositoryMyBatisImpl implements ProductRepository {
-    private final ProductSqlMapper mapper;
-    ProductRepositoryMyBatisImpl(ProductSqlMapper mapper) { this.mapper = mapper; }
+    private final ProductMapper mapper;
+    ProductRepositoryMyBatisImpl(ProductMapper mapper) { this.mapper = mapper; }
     public List<Product> findAll() { return mapper.findAll(); }
     public Optional<Product> findById(long id) { return Optional.ofNullable(mapper.findById(id)); }
 }

@@ -13,20 +13,23 @@ Java 25·Spring Boot 4.0.8을 유지하고 MyBatis Starter 4.0.0을 추가했습
 ├── MemberRepository / ProductRepository / OrderRepository
 ├── Memory*Repository
 ├── jpa/                  *RepositoryJpaImpl, *JpaRepository, *Entity
-└── mybatis/              *RepositoryMyBatisImpl, *SqlMapper, *MyBatisConfig
+└── mybatis/              *RepositoryMyBatisImpl, *Mapper
 
 order/model/              OrderSearchCriteria, OrderSummary, OrderSearchResult
 order/service/            OrderSearchService, impl/OrderSearchServiceImpl
 order/web/                OrderSearchController, OrderDtoConverter, dto/
 resources/mapper/         member/, product/, order/의 SQL XML
+common/config/            MyBatisConfig
 common/persistence/mybatis/UuidTypeHandler
 ```
 
 1. 기존 Controller → ServiceImpl → Repository 인터페이스 흐름부터 읽습니다.
 2. `repository/mybatis/*RepositoryMyBatisImpl`은 SQL 매퍼를 호출하고 업무 모델을 반환합니다.
-3. `*SqlMapper`의 메서드와 XML `namespace`·statement `id`를 대응시킵니다. MapStruct `*DtoConverter`와는 역할이 다릅니다.
+3. `*Mapper`의 메서드와 같은 이름의 XML 파일(`ProductMapper.xml` 등)의 `namespace`·statement `id`를 대응시킵니다. MapStruct `*DtoConverter`와는 역할이 다릅니다.
 4. 주문 저장은 평평한 `OrderRow`와 중첩 `StoredOrder`/`OrderQuote`를 변환합니다. UUID는 PostgreSQL UUID 타입으로, 시간은 Instant로 매핑합니다.
-5. 검색은 `OrderSearchServiceImpl` → `OrderSearchRepository` → `OrderSqlMapper.xml` 순서로 읽습니다.
+5. 검색은 `OrderSearchServiceImpl` → `OrderSearchRepository` → `OrderMapper.xml` 순서로 읽습니다.
+
+`common/config/MyBatisConfig` 하나가 `mybatis` 프로필에서 `com.example.backend` 아래의 MyBatis `@Mapper` 인터페이스만 스캔합니다. 새 기능의 매퍼에도 `org.apache.ibatis.annotations.Mapper`를 붙이면 되므로 기능별 설정 클래스를 추가할 필요가 없습니다. MapStruct의 `org.mapstruct.Mapper`와 애너테이션 타입이 다르며 Service·Repository 인터페이스도 SQL 매퍼로 등록되지 않습니다. [MyBatis 매퍼 스캔 공식 문서](https://mybatis.org/spring/mappers.html)
 
 SQL 결과와 Entity·HTTP DTO는 구분합니다. 다른 기능의 Java Repository·model을 직접 참조하지 않으며, JOIN은 같은 DB의 조회 projection에 한정합니다. 회원 표시명과 현재 상품명은 조회 시점 값이고, `productName`·금액은 주문 당시 snapshot입니다.
 
@@ -106,7 +109,7 @@ lab_api GET '/api/orders?memberId=1&productName=keyBOARD&minimumTotal=100000&pag
 
 ## 18-5. SQL과 트랜잭션 확인
 
-`OrderSqlMapper.xml`의 `<if>`로 선택 조건을 구성하고 `<sql>`/`<include>`로 JOIN·필터를 목록과 count가 공유합니다. 값은 모두 `#{...}`로 바인딩하며 SQL 문자열 치환은 사용하지 않습니다. 상품명은 LIKE 대신 문자열 위치 검색을 사용해 `%`, `_`도 일반 문자로 취급합니다. [MyBatis 동적 SQL](https://mybatis.org/mybatis-3/dynamic-sql.html)
+`OrderMapper.xml`의 `<if>`로 선택 조건을 구성하고 `<sql>`/`<include>`로 JOIN·필터를 목록과 count가 공유합니다. 값은 모두 `#{...}`로 바인딩하며 SQL 문자열 치환은 사용하지 않습니다. 상품명은 LIKE 대신 문자열 위치 검색을 사용해 `%`, `_`도 일반 문자로 취급합니다. [MyBatis 동적 SQL](https://mybatis.org/mybatis-3/dynamic-sql.html)
 
 기존 `OrderServiceImpl.place`의 트랜잭션 안에서 검증·가격 계산·INSERT를 실행합니다. Mapper에서 commit/rollback을 직접 호출하지 않습니다. INSERT 뒤 실패하면 주문이 rollback되는지 공통 DB 계약 테스트로 확인합니다. 검색의 total과 items는 하나의 readOnly·REPEATABLE_READ 트랜잭션으로 같은 PostgreSQL snapshot을 읽습니다. [MyBatis Spring 트랜잭션](https://mybatis.org/spring/transactions.html)
 

@@ -12,7 +12,8 @@ DataSource/Hikari/Flyway와 선택한 JPA 또는 MyBatis가 활성화되며 `DB_
 - `<feature>/model`: 불변 업무 모델과 규칙.
 - `<feature>/repository`: 저장소 인터페이스. service 타입을 참조하지 않음.
 - `<feature>/repository/jpa`: Entity, Spring Data `*JpaRepository`, 직접 작성한 `*RepositoryJpaImpl`.
-- `<feature>/repository/mybatis`: `*RepositoryMyBatisImpl`, `*SqlMapper`, 조건부 MapperScan. XML은 `resources/mapper/<feature>`.
+- `<feature>/repository/mybatis`: `*RepositoryMyBatisImpl`, MyBatis `@Mapper`가 붙은 `*Mapper`. XML은 `resources/mapper/<feature>/*Mapper.xml`.
+- `common/config/MyBatisConfig`: `mybatis` 프로필에서만 활성화하는 공통 MapperScan. Backend 전체에서 MyBatis `@Mapper` 인터페이스만 스캔한다.
 - `<feature>/repository/Memory*Repository`: local/test 메모리 구현. 별도 하위 패키지는 두지 않음.
 - `<feature>/web/dto`: 외부 요청/응답 계약. Entity를 반환하지 않음.
 - `<feature>/service`와 `service/impl`: 업무 계약과 구현·트랜잭션 경계.
