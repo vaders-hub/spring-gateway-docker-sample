@@ -3,7 +3,7 @@ package com.example.backend.member.repository.jpa;
 import com.example.backend.member.model.Member;
 import jakarta.persistence.*;
 
-// DB 매핑 전용 Entity다. JPA 객체를 Controller로 노출하지 않고 domain으로 변환한다.
+// DB 매핑 전용 Entity다. JPA 객체를 Controller로 노출하지 않고 model의 업무 객체로 변환한다.
 @Entity
 @Table(name = "members")
 class MemberEntity {

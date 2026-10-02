@@ -12,8 +12,14 @@ class OrderRepositoryJpaImpl implements OrderRepository {
     private final OrderJpaRepository repository;
     OrderRepositoryJpaImpl(OrderJpaRepository repository) { this.repository = repository; }
     public StoredOrder save(StoredOrder order) {
-        // UUID는 application에서 이미 생성했다. flush가 SQL을 실행해도 최종 commit은 서비스가 담당한다.
+        // UUID는 OrderServiceImpl에서 이미 생성했다. flush가 SQL을 실행해도 최종 commit은 서비스가 담당한다.
         return repository.saveAndFlush(OrderEntity.from(order)).toDomain();
+    }
+    public boolean updateQuantityByIdAndOwnerSubject(UUID id, String ownerSubject, int quantity) {
+        return repository.updateQuantityByIdAndOwnerSubject(id, ownerSubject, quantity) == 1;
+    }
+    public boolean deleteByIdAndOwnerSubject(UUID id, String ownerSubject) {
+        return repository.deleteByIdAndOwnerSubject(id, ownerSubject) == 1;
     }
     public Optional<StoredOrder> findByIdAndOwnerSubject(UUID id, String ownerSubject) {
         return repository.findByIdAndOwnerSubject(id, ownerSubject).map(OrderEntity::toDomain);

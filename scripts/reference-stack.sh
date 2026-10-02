@@ -17,6 +17,19 @@ case "${BACKEND_STORAGE:-jpa}" in
     ;;
   *) printf '%s\n' 'BACKEND_STORAGE must be jpa or mybatis.' >&2; exit 2 ;;
 esac
+# Kafka는 저장 방식과 독립된 선택이다. 마지막 overlay에서 기존 인증/저장 프로필을 보존한다.
+case "${BACKEND_MESSAGING:-none}" in
+  none) ;;
+  kafka)
+    args+=(-f docker-compose.kafka.yml)
+    if [[ "${BACKEND_STORAGE:-jpa}" == mybatis ]]; then
+      export KAFKA_BACKEND_PROFILES=local,mybatis,oidc,kafka
+    else
+      export KAFKA_BACKEND_PROFILES=local,persistence,oidc,kafka
+    fi
+    ;;
+  *) printf '%s\n' 'BACKEND_MESSAGING must be none or kafka.' >&2; exit 2 ;;
+esac
 case "${1:-status}" in
   prepare)
     bash scripts/new-local-env.sh

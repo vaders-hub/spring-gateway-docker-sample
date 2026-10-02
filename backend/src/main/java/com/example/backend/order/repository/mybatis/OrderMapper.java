@@ -10,6 +10,9 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface OrderMapper {
     int insert(OrderRow row);
+    int updateQuantityByIdAndOwnerSubject(@Param("id") UUID id, @Param("ownerSubject") String ownerSubject,
+            @Param("quantity") int quantity);
+    int deleteByIdAndOwnerSubject(@Param("id") UUID id, @Param("ownerSubject") String ownerSubject);
     OrderRow findByIdAndOwnerSubject(@Param("id") UUID id, @Param("ownerSubject") String ownerSubject);
     List<OrderSummary> search(@Param("criteria") OrderSearchCriteria criteria, @Param("ownerSubject") String ownerSubject);
     long count(@Param("criteria") OrderSearchCriteria criteria, @Param("ownerSubject") String ownerSubject);

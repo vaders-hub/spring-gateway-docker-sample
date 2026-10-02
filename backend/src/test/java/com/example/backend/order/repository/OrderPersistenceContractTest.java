@@ -192,6 +192,100 @@ public abstract class OrderPersistenceContractTest {
         assertThat(request("GET", "/actuator/health/readiness", "alice", null, null).statusCode()).isEqualTo(200);
     }
 
+    @Test
+    protected void quantityUpdateKeepsPurchasedSnapshotAndCreationTime() throws Exception {
+        var created = request("POST", "/orders", "alice", "api.write", input(2));
+        String path = "/orders/" + data(created).get("id");
+        // PostgreSQL timestamp 정밀도로 저장된 값을 기준으로 수정 전후를 비교한다.
+        var initial = data(request("GET", path, "alice", "api.read", null));
+        jdbc.update("update products set unit_price=90000, name='Changed Keyboard' where id=1");
+        var response = request("PATCH", path, "alice", "api.write",
+                "{\"quantity\":3,\"ownerSubject\":\"bob\",\"unitPrice\":1,\"productId\":2}");
+        assertThat(response.statusCode()).isEqualTo(200);
+        var updated = data(response);
+        var quote = (Map<?,?>) updated.get("quote");
+        assertThat(new java.math.BigDecimal(quote.get("totalPrice").toString())).isEqualByComparingTo("150000");
+        assertThat(quote.get("productName")).isEqualTo("Keyboard");
+        assertThat(quote.get("productId").toString()).isEqualTo("1");
+        assertThat(quote.get("quantity").toString()).isEqualTo("3");
+        assertThat(updated.get("createdAt")).isEqualTo(initial.get("createdAt"));
+        assertThat(orders.get(UUID.fromString(initial.get("id").toString()), "alice").quote().quantity()).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from purchase_orders", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    protected void updateAndDeleteEnforceOwnerScopeAndInputValidation() throws Exception {
+        var order = orders.place(1, 1, 2, "alice");
+        String path = "/orders/" + order.id();
+        for (String method : List.of("PATCH", "DELETE")) {
+            String body = method.equals("PATCH") ? "{\"quantity\":3}" : null;
+            assertProblem(request(method, path, "alice", null, body), 401, "UNAUTHORIZED");
+            assertProblem(request(method, path, "alice", "api.read", body), 403, "ACCESS_DENIED");
+            assertProblem(request(method, path, "bob", "api.write", body), 404, "ORDER_NOT_FOUND");
+            assertProblem(request(method, "/orders/" + UUID.randomUUID(), "alice", "api.write", body), 404, "ORDER_NOT_FOUND");
+        }
+        for (String body : List.of("{}", "{\"quantity\":null}", "{\"quantity\":0}", "{\"quantity\":101}")) {
+            assertProblem(request("PATCH", path, "alice", "api.write", body), 400, "INVALID_REQUEST");
+        }
+        assertThat(orders.get(order.id(), "alice").quote().quantity()).isEqualTo(2);
+    }
+
+    @Test
+    protected void deletionRemovesOnlyTheRequestedOrderAndCannotBeUpdatedBackIntoExistence() throws Exception {
+        var target = orders.place(1, 1, 2, "alice");
+        var retained = orders.place(1, 1, 1, "bob");
+        String path = "/orders/" + target.id();
+        var response = request("DELETE", path, "alice", "api.write", null);
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(data(response).get("id").toString()).isEqualTo(target.id().toString());
+        assertThat(data(response).get("deleted")).isEqualTo(true);
+        assertProblem(request("GET", path, "alice", "api.read", null), 404, "ORDER_NOT_FOUND");
+        assertProblem(request("DELETE", path, "alice", "api.write", null), 404, "ORDER_NOT_FOUND");
+        assertProblem(request("PATCH", path, "alice", "api.write", "{\"quantity\":3}"), 404, "ORDER_NOT_FOUND");
+        assertThat(jdbc.queryForObject("select count(*) from purchase_orders", Long.class)).isEqualTo(1);
+        assertThat(orders.get(retained.id(), "bob").quote().quantity()).isEqualTo(1);
+    }
+
+    @Test
+    protected void mutationSqlAlwaysIncludesOwnerAndDoesNotInsertMissingRows() {
+        var order = orders.place(1, 1, 2, "alice");
+        var tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> {
+            assertThat(orderRepository.updateQuantityByIdAndOwnerSubject(order.id(), "bob", 3)).isFalse();
+            assertThat(orderRepository.deleteByIdAndOwnerSubject(order.id(), "bob")).isFalse();
+            assertThat(orderRepository.updateQuantityByIdAndOwnerSubject(UUID.randomUUID(), "alice", 3)).isFalse();
+            assertThat(orderRepository.deleteByIdAndOwnerSubject(UUID.randomUUID(), "alice")).isFalse();
+        });
+        assertThat(orders.get(order.id(), "alice").quote().quantity()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from purchase_orders", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    protected void serviceMutationsRollBackIfRepositoryFailsAfterExecutingSql() {
+        var order = orders.place(1, 1, 2, "alice");
+        org.mockito.Mockito.doAnswer(call -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            call.callRealMethod();
+            assertThat(jdbc.queryForObject("select quantity from purchase_orders where id=?", Integer.class, order.id())).isEqualTo(3);
+            throw new IllegalStateException("Failure after actual update");
+        }).when(orderRepository).updateQuantityByIdAndOwnerSubject(order.id(), "alice", 3);
+        assertThatThrownBy(() -> orders.updateQuantity(order.id(), 3, "alice"))
+                .isInstanceOfAny(IllegalStateException.class, org.springframework.dao.InvalidDataAccessApiUsageException.class)
+                .hasMessage("Failure after actual update");
+        assertThat(orders.get(order.id(), "alice").quote().quantity()).isEqualTo(2);
+
+        org.mockito.Mockito.doAnswer(call -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            call.callRealMethod();
+            assertThat(jdbc.queryForObject("select count(*) from purchase_orders", Long.class)).isZero();
+            throw new IllegalStateException("Failure after actual delete");
+        }).when(orderRepository).deleteByIdAndOwnerSubject(order.id(), "alice");
+        assertThatThrownBy(() -> orders.delete(order.id(), "alice"))
+                .isInstanceOfAny(IllegalStateException.class, org.springframework.dao.InvalidDataAccessApiUsageException.class)
+                .hasMessage("Failure after actual delete");
+        assertThat(orders.get(order.id(), "alice").quote().quantity()).isEqualTo(2);
+    }
+
     private String input(int quantity) {
         return "{\"memberId\":1,\"productId\":1,\"quantity\":"+quantity+"}";
     }

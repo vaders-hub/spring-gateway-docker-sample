@@ -63,7 +63,7 @@ class SecurityConfig {
                     else {
                         authorize.requestMatchers("/actuator/prometheus").authenticated();
                     }
-                    // 새 기능은 자신의 api 패키지에서 경로를 등록한다. scope는 메서드 어노테이션 한 곳에만 둔다.
+                    // 새 기능은 자신의 web 패키지에서 FeatureRoutes Bean으로 경로를 등록한다. scope는 Controller 메서드의 권한 애너테이션으로 지정한다.
                     for (var feature : routes) {
                         authorize.requestMatchers(feature.paths().toArray(String[]::new)).authenticated();
                     }

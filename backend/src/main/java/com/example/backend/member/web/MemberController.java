@@ -24,7 +24,7 @@ public class MemberController {
     }
     // HTTP 입력/권한은 웹 계층, 업무 조회는 Service, 응답 형태 변환은 MapStruct가 담당한다.
     // 일반/관리 진입점은 나누고 아래 응답 매핑과 Service를 공유한다.
-    // 관리자 전용 반환 항목/업무가 생기면 별도 DTO와 application 유스케이스로 분리한다.
+    // 관리자 전용 반환 항목/업무가 생기면 별도 DTO와 service의 업무 처리로 분리한다.
     @RequireRead
     @GetMapping
     @Operation(summary = "회원 목록 조회 (관리 경로는 api.read와 member.admin 모두 필요)")

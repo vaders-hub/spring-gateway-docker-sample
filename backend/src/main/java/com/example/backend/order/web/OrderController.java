@@ -42,6 +42,25 @@ public class OrderController {
         var order = service.place(request.memberId(), request.productId(), request.quantity(), principal.getName());
         return ApiResponses.success(SuccessCode.CREATED, mapper.toResponse(order), requestId);
     }
+    @RequireWrite
+    @PatchMapping("/{id}")
+    @Operation(summary = "본인 주문 수량 수정 (주문 당시 단가 유지)")
+    public ResponseEntity<ApiResponse<OrderResponse>> update(@PathVariable UUID id,
+            @Valid @RequestBody OrderUpdateRequest request, Principal principal,
+            @RequestAttribute(RequestContext.REQUEST_ID_ATTRIBUTE) String requestId) {
+        var order = service.updateQuantity(id, request.quantity(), principal.getName());
+        return ApiResponses.success(SuccessCode.OK, mapper.toResponse(order), requestId);
+    }
+
+    @RequireWrite
+    @DeleteMapping("/{id}")
+    @Operation(summary = "본인 주문 삭제 (학습용 실제 행 삭제)")
+    public ResponseEntity<ApiResponse<OrderDeleteResponse>> delete(@PathVariable UUID id, Principal principal,
+            @RequestAttribute(RequestContext.REQUEST_ID_ATTRIBUTE) String requestId) {
+        service.delete(id, principal.getName());
+        return ApiResponses.success(SuccessCode.OK, new OrderDeleteResponse(id, true), requestId);
+    }
+
     @RequireRead
     @GetMapping("/{id}")
     @Operation(summary = "본인 주문 조회")

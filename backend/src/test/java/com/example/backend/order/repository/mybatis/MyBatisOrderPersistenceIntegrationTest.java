@@ -89,6 +89,22 @@ class MyBatisOrderPersistenceIntegrationTest extends OrderPersistenceContractTes
     }
 
     @Test
+    void searchReflectsQuantityChangesAndDeletion() {
+        var order = orders.place(1, 1, 1, "alice");
+        var criteria = new OrderSearchCriteria(null, null, new BigDecimal("60000"), 0, 20);
+        assertThat(search.search(criteria, "alice").total()).isZero();
+        orders.updateQuantity(order.id(), 2, "alice");
+        var result = search.search(criteria, "alice");
+        assertThat(result.total()).isEqualTo(1);
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().getFirst().totalPrice()).isEqualByComparingTo("100000");
+        orders.delete(order.id(), "alice");
+        var deleted = search.search(criteria, "alice");
+        assertThat(deleted.total()).isZero();
+        assertThat(deleted.items()).isEmpty();
+    }
+
+    @Test
     void textSearchTreatsSqlAndWildcardCharactersAsLiteralText() {
         orders.place(1, 1, 1, "alice");
         for (String input : List.of("' OR 1=1 --", "%", "_")) {

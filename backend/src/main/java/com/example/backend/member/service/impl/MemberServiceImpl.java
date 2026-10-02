@@ -15,7 +15,7 @@ public class MemberServiceImpl implements MemberService {
     private final MemberRepository repository;
     public MemberServiceImpl(MemberRepository repository) { this.repository = repository; }
     public List<Member> list() { return repository.findAll(); }
-    // 다른 feature에는 존재 검증만 공개한다. 전체 회원 정보나 내부 domain 객체를 전달할 필요가 없다.
+    // 다른 기능에는 존재 검증만 공개한다. 전체 회원 정보나 내부 model 객체를 전달할 필요가 없다.
     @Override
     public boolean exists(long memberId) { return repository.findById(memberId).isPresent(); }
     public Member get(long id) {

@@ -27,6 +27,7 @@ backend / com.example.backend
     ├── service                 OrderService, OrderSearchService, impl/
     ├── repository              OrderRepository, MemoryOrderRepository, jpa/, mybatis/
     ├── model                   OrderQuote, StoredOrder, OrderSearchCriteria, OrderSummary, OrderSearchResult
+    ├── messaging               OrderEvent, OrderEventProducer, OrderEventConsumer
     └── error                   OrderErrorCode
 
 gateway / com.example.gateway
@@ -55,6 +56,7 @@ libs/platform-core / com.example.platform
 - 기능 `error`의 오류 enum은 플랫폼 `ErrorCode`를 구현한다. `BusinessException`과 앱별 처리기가 Problem Details로 변환한다. 기존 공통 `exception` 패키지는 유지한다.
 - MyBatis 구현은 `repository/mybatis/*RepositoryMyBatisImpl`, SQL 인터페이스는 `*Mapper`, XML은 `resources/mapper/<feature>/*Mapper.xml`에 둔다. SQL Mapper와 MapStruct DTO Converter를 구분한다.
 - `common/config/MyBatisConfig` 하나에서 `mybatis` 프로필일 때만 Backend 전체를 스캔한다. MyBatis `@Mapper`가 붙은 인터페이스만 등록하므로 Service·Repository 인터페이스와 MapStruct DTO Converter는 SQL 매퍼로 등록되지 않는다. 새 기능은 매퍼에 `@Mapper`를 붙이며 기능별 설정 클래스를 만들지 않는다.
+- 주문 이벤트 계약·발행·소비는 `order/messaging`에 둔다. ServiceImpl은 Spring 이벤트를 발행하고, `kafka` 프로필의 Producer가 DB commit 이후 Kafka에 전달한다. 공통 `KafkaConfig`는 기능 클래스를 참조하지 않는다. [19단계](learning/19-kafka-order-events.md)에 선택 프로필·재시도·DLT와 전달 보장 경계를 설명한다.
 - Gateway는 작은 인증 서비스의 클래스 배치를 정리했다. 형식만 맞추기 위한 Service/Impl·DAO·Entity는 추가하지 않는다. 실제 Redis 교체 경계인 `LoginSessions`는 유지한다.
 
 ## 의존 방향과 공개 범위
@@ -75,11 +77,14 @@ OrderServiceImpl이 MemberService와 ProductService를 직접 주입받는다. �
 - `preview`: 서버 가격으로 견적을 계산하고 저장하지 않는다.
 - `place`: public 메서드의 `@Transactional` 안에서 회원·상품 검증부터 INSERT까지 처리한다. 소유자와 UTC Clock을 사용하며 자기 내부 preview 호출에 추가 트랜잭션을 기대하지 않는다.
 - `get`: `@Transactional(readOnly = true)`를 유지하고 `findByIdAndOwnerSubject`로 소유자 범위를 제한한다. 타인/부재 주문은 404다.
+- `updateQuantity/delete`: 서비스 `@Transactional`에서 수량 수정·실제 행 삭제를 수행한다. Repository UPDATE·DELETE에도 ID와 JWT 소유자 조건을 적용하고 영향 행 수로 성공을 판정한다. 수정은 snapshot 단가·상품명·생성 시각을 유지하며 부재 주문을 INSERT하지 않는다. PATCH/DELETE는 api.write, 성공은 200, 타인·부재·재삭제는 404다. 메모리·JPA·MyBatis가 같은 계약을 사용한다.
 - DB 테스트는 바깥 TransactionTemplate의 rollback 사례와, 호출자 트랜잭션 없이 서비스 Bean을 호출한 뒤 실제 INSERT/flush 후 실패하는 사례를 모두 검사한다.
 
 ## 프로필과 기능 등록
 
 Backend Controller/Service는 항상 등록하고 저장소 구현만 프로필로 고른다.
+
+`kafka`는 저장소/`oidc`와 독립된 추가 프로필이다. 지정하지 않으면 브로커 연결·토픽 생성·소비를 시작하지 않는다. 지정하면 주문 이벤트 producer/consumer와 Kafka 설정을 등록한다. `GET /orders` 검색은 계속 `mybatis` 전용이다.
 
 | lifecycle | 추가 profile | 저장소 | API |
 |---|---|---|---|

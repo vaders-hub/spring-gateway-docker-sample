@@ -8,6 +8,18 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 
 class RuntimeProfileGuardTest {
     @Test
+    void permitsKafkaAlongsideStorageAndAuthButRequiresLifecycle() {
+        var env = new MockEnvironment();
+        for (String[] profiles : new String[][]{{"local", "kafka"}, {"test", "persistence", "kafka"},
+                {"prod", "mybatis", "oidc", "kafka"}}) {
+            env.setActiveProfiles(profiles);
+            assertThatNoException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+        }
+        env.setActiveProfiles("kafka");
+        assertThatIllegalStateException().isThrownBy(() -> new RuntimeProfileGuard(env).validateActiveProfile());
+    }
+
+    @Test
     void permitsMyBatisWithOneLifecycleAndOidc() {
         var env = new MockEnvironment();
         for (String lifecycle : java.util.List.of("local", "test", "dev", "staging", "prod")) {

@@ -33,6 +33,14 @@
     INSERT INTO purchase_orders (id, owner_subject, member_id, product_id, product_name, quantity, unit_price, currency, created_at)
     VALUES (#{id}, #{ownerSubject}, #{memberId}, #{productId}, #{productName}, #{quantity}, #{unitPrice}, #{currency}, #{createdAt})
   </insert>
+  <update id="updateQuantityByIdAndOwnerSubject">
+    UPDATE purchase_orders SET quantity = #{quantity}
+    WHERE id = #{id} AND owner_subject = #{ownerSubject}
+  </update>
+  <delete id="deleteByIdAndOwnerSubject">
+    DELETE FROM purchase_orders
+    WHERE id = #{id} AND owner_subject = #{ownerSubject}
+  </delete>
   <select id="findByIdAndOwnerSubject" resultMap="order">
     SELECT id, owner_subject, member_id, product_id, product_name, quantity, unit_price, currency, created_at
     FROM purchase_orders WHERE id = #{id} AND owner_subject = #{ownerSubject}

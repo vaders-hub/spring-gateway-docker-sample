@@ -17,6 +17,12 @@ class OrderRepositoryMyBatisImpl implements OrderRepository {
         if (mapper.insert(OrderRow.from(order)) != 1) { throw new IllegalStateException("Order insert affected an unexpected row count"); }
         return order;
     }
+    public boolean updateQuantityByIdAndOwnerSubject(UUID id, String ownerSubject, int quantity) {
+        return mapper.updateQuantityByIdAndOwnerSubject(id, ownerSubject, quantity) == 1;
+    }
+    public boolean deleteByIdAndOwnerSubject(UUID id, String ownerSubject) {
+        return mapper.deleteByIdAndOwnerSubject(id, ownerSubject) == 1;
+    }
     public Optional<StoredOrder> findByIdAndOwnerSubject(UUID id, String ownerSubject) {
         return Optional.ofNullable(mapper.findByIdAndOwnerSubject(id, ownerSubject)).map(OrderRow::toDomain);
     }

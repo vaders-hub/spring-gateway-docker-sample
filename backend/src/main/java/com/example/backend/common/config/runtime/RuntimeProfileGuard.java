@@ -23,10 +23,10 @@ class RuntimeProfileGuard {
     @PostConstruct
     void validateActiveProfile() {
         String[] activeProfiles = environment.getActiveProfiles();
-        // lifecycle은 정확히 하나다. persistence(JPA), mybatis(SQL), oidc(인증)는 추가 선택이다.
+        // lifecycle은 정확히 하나다. persistence(JPA), mybatis(SQL), oidc(인증), kafka(메시징)는 추가 선택이다.
         var lifecycle = Arrays.stream(activeProfiles).filter(ALLOWED_PROFILES::contains).toList();
         boolean unsupported = Arrays.stream(activeProfiles)
-                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !Set.of("persistence", "mybatis", "oidc").contains(profile));
+                .anyMatch(profile -> !ALLOWED_PROFILES.contains(profile) && !Set.of("persistence", "mybatis", "oidc", "kafka").contains(profile));
         if (lifecycle.size() != 1 || unsupported
                 || (Arrays.asList(activeProfiles).contains("mybatis") && Arrays.asList(activeProfiles).contains("persistence"))
                 || (Arrays.asList(activeProfiles).contains("persistence")

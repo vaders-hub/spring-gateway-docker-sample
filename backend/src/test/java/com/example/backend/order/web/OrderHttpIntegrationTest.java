@@ -134,6 +134,60 @@ class OrderHttpIntegrationTest {
         assertThat(request("GET", "/orders/" + data.get("id"), "api.read", null).statusCode()).isEqualTo(200);
     }
 
+    @Test
+    void memoryOrdersCanUpdateQuantityAndBeDeleted() throws Exception {
+        var created = request("POST", "/orders", "api.write", "{\"memberId\":1,\"productId\":1,\"quantity\":2}");
+        var initial = (Map<?,?>) json.readValue(created.body(), Map.class).get("data");
+        String path = "/orders/" + initial.get("id");
+        var updated = request("PATCH", path, "api.write",
+                "{\"quantity\":3,\"ownerSubject\":\"bob\",\"unitPrice\":1,\"productId\":2}");
+        assertThat(updated.statusCode()).isEqualTo(200);
+        var changed = (Map<?,?>) json.readValue(updated.body(), Map.class).get("data");
+        var quote = (Map<?,?>) changed.get("quote");
+        assertThat(quote.get("quantity").toString()).isEqualTo("3");
+        assertThat(quote.get("totalPrice").toString()).isEqualTo("150000");
+        assertThat(quote.get("productName")).isEqualTo("Keyboard");
+        assertThat(quote.get("productId").toString()).isEqualTo("1");
+        assertThat(changed.get("createdAt")).isEqualTo(initial.get("createdAt"));
+        assertThat(request("GET", path, "api.read", null).body()).contains("\"quantity\":3");
+        var deleted = request("DELETE", path, "api.write", null);
+        assertThat(deleted.statusCode()).isEqualTo(200);
+        var result = (Map<?,?>) json.readValue(deleted.body(), Map.class).get("data");
+        assertThat(result.get("id")).isEqualTo(initial.get("id"));
+        assertThat(result.get("deleted")).isEqualTo(true);
+        assertProblem(request("GET", path, "api.read", null), 404, "ORDER_NOT_FOUND");
+        assertProblem(request("PATCH", path, "api.write", "{\"quantity\":1}"), 404, "ORDER_NOT_FOUND");
+        assertProblem(request("DELETE", path, "api.write", null), 404, "ORDER_NOT_FOUND");
+    }
+
+    @Test
+    void mutationRequiresWriteScopeAndValidQuantity() throws Exception {
+        var created = request("POST", "/orders", "api.write", "{\"memberId\":1,\"productId\":1,\"quantity\":2}");
+        String path = "/orders/" + ((Map<?,?>) json.readValue(created.body(), Map.class).get("data")).get("id");
+        for (String method : List.of("PATCH", "DELETE")) {
+            String body = method.equals("PATCH") ? "{\"quantity\":3}" : null;
+            assertProblem(request(method, path, null, body), 401, "UNAUTHORIZED");
+            assertProblem(request(method, path, "api.read", body), 403, "ACCESS_DENIED");
+        }
+        for (String body : List.of("{}", "{\"quantity\":null}", "{\"quantity\":0}", "{\"quantity\":101}")) {
+            assertProblem(request("PATCH", path, "api.write", body), 400, "INVALID_REQUEST");
+        }
+        assertThat(request("GET", path, "api.read", null).body()).contains("\"quantity\":2");
+    }
+
+    @Test
+    void memoryMutationsHideOtherOwnersAndMissingOrders() throws Exception {
+        var created = request("POST", "/orders", "api.write", "{\"memberId\":1,\"productId\":1,\"quantity\":2}");
+        String path = "/orders/" + ((Map<?,?>) json.readValue(created.body(), Map.class).get("data")).get("id");
+        var otherToken = token("api.write", "learning-test", "learning-api", SECRET, 300, "bob");
+        assertProblem(requestWithToken("PATCH", path, otherToken, "{\"quantity\":3}"), 404, "ORDER_NOT_FOUND");
+        assertProblem(requestWithToken("DELETE", path, otherToken, null), 404, "ORDER_NOT_FOUND");
+        assertThat(request("GET", path, "api.read", null).body()).contains("\"quantity\":2");
+        var missing = "/orders/" + UUID.randomUUID();
+        assertProblem(request("PATCH", missing, "api.write", "{\"quantity\":3}"), 404, "ORDER_NOT_FOUND");
+        assertProblem(request("DELETE", missing, "api.write", null), 404, "ORDER_NOT_FOUND");
+    }
+
     private HttpResponse<String> request(String method, String path, String scope, String body) throws Exception {
         return requestWithToken(method, path, scope == null ? null : token(scope), body);
     }
@@ -160,7 +214,10 @@ class OrderHttpIntegrationTest {
         return token(scope, "learning-test", "learning-api", SECRET, 300);
     }
     private String token(String scope, String issuer, String audience, String secret, long ttl) {
-        var claims = JwtClaimsSet.builder().issuer(issuer).subject("learner")
+        return token(scope, issuer, audience, secret, ttl, "learner");
+    }
+    private String token(String scope, String issuer, String audience, String secret, long ttl, String subject) {
+        var claims = JwtClaimsSet.builder().issuer(issuer).subject(subject)
                 .audience(List.of(audience)).issuedAt(Instant.now().minusSeconds(600))
                 .expiresAt(Instant.now().plusSeconds(ttl)).claim("scope", scope).build();
         var encoder = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256")));

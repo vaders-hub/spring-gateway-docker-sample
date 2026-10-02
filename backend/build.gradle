@@ -28,11 +28,13 @@ dependencies {
     // Boot BOM이 Hibernate/Flyway/JDBC/Testcontainers의 호환 버전을 함께 관리한다.
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation libs.mybatis.starter
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-kafka'
     implementation libs.mapstruct
     annotationProcessor libs.mapstruct.processor
     implementation libs.springdoc
@@ -53,7 +55,7 @@ springBoot {
 
 tasks.named('test') {
     useJUnitPlatform {
-        excludeTags 'database'
+        excludeTags 'database', 'kafka'
         // 구조 규칙을 임시로 끌 때: ./gradlew test -PskipArchitecture
         if (project.hasProperty('skipArchitecture')) excludeTags 'architecture'
     }
@@ -72,6 +74,15 @@ tasks.register('databaseTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform { includeTags 'database' }
+    shouldRunAfter tasks.named('test')
+}
+
+tasks.register('kafkaTest', Test) {
+    description = 'Runs Kafka integration tests using a disposable Kafka Testcontainer.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'kafka' }
     shouldRunAfter tasks.named('test')
 }
 

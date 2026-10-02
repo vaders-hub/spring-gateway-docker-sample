@@ -1,0 +1,34 @@
+# lifecycle 및 메모리/JPA/MyBatis 선택과 함께 켜는 선택형 메시징 프로필.
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    admin:
+      auto-create: true
+      fail-fast: true
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.block.ms: 2000
+        request.timeout.ms: 10000
+        delivery.timeout.ms: 30000
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:backend-order-learning}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      properties:
+        allow.auto.create.topics: false
+    listener:
+      auto-startup: true
+      ack-mode: record
+      concurrency: 1
+app:
+  messaging:
+    kafka:
+      order-topic: ${KAFKA_ORDER_TOPIC:backend.orders.v1}
+      partitions: ${KAFKA_TOPIC_PARTITIONS:1}
+      replicas: ${KAFKA_TOPIC_REPLICAS:1}

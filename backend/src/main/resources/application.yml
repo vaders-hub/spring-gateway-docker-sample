@@ -18,6 +18,12 @@ server:
 spring:
   application:
     name: backend
+  # kafka 프로필이 없으면 브로커 연결·토픽 생성·소비를 시작하지 않는다.
+  kafka:
+    admin:
+      auto-create: false
+    listener:
+      auto-startup: false
   # Gateway와 동일한 활성 토큰 목록을 조회한다. 저장소 장애 시 인증을 허용하지 않는다.
   data:
     redis:

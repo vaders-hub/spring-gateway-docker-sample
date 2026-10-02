@@ -83,7 +83,7 @@ return ApiResponses.fail(ErrorCode.INVALID_REQUEST, requestId);
 
 성공 코드는 내부 응답 정책 선택용이며 JSON에 새 `code`/`message` 필드를 추가하지 않습니다.
 문자열을 비교하는 대신 enum을 받아 성공 코드가 `fail`에 전달되는 실수를 컴파일 단계에서 막습니다.
-`CREATED`는 persistence 모드의 POST /orders에서 사용합니다. 응답 data.id를 GET /orders/{id}에 사용합니다.
+`CREATED`는 메모리·JPA·MyBatis 모든 모드의 POST /orders에서 사용합니다. 응답 data.id를 GET /orders/{id}에 사용합니다.
 이 예제는 Location 헤더를 추가하지 않으며, Gateway prefix까지 고려한 링크 정책은 별도입니다.
 
 `GlobalExceptionHandler`는 공통 오류에 요청 경로(`instance`), 필드별 검증 오류(`errors`),
@@ -185,8 +185,10 @@ Gateway와 Backend의 공통 응답/오류 계약은 libs/platform-core에 공�
 ## 기능 API와 저장소
 
 모든 프로필에서 member/product/order API를 제공합니다. local/test 기본은 메모리 저장소, persistence 추가 또는 dev/staging/prod는 JPA입니다. 추가 mybatis 프로필은 같은 기존 API를 SQL 저장소로 제공합니다.
-GET은 api.read, 주문 POST는 api.write, 회원 관리자 GET은 api.read와 member.admin을 요구합니다.
+GET은 api.read, 주문 POST/PATCH/DELETE는 api.write, 회원 관리자 GET은 api.read와 member.admin을 요구합니다.
 POST /orders/preview는 200 견적, POST /orders는 201 주문, GET /orders/{UUID}는 본인 주문만 반환합니다.
+PATCH /orders/{UUID}는 필수 quantity(1~100)만 수정하고 주문 당시 단가·상품명·생성 시각을 유지하며 200 OrderResponse를 반환합니다.
+DELETE /orders/{UUID}는 본인 주문 행을 실제 삭제하며 200 data={id,deleted:true}와 meta를 반환합니다. 두 변경 모두 JWT 소유자 조건을 사용하며 타인·부재·삭제된 주문은 404 ORDER_NOT_FOUND입니다. 수정·삭제 예제는 [18단계](learning/18-mybatis-and-sql-queries.md)를 참고합니다.
 mybatis 선택 시 GET /orders(api.read)에 본인 주문 검색을 추가합니다. memberId, productName, minimumTotal, page(0~10000), size(1~100)를 받으며 data={items,total,page,size}를 반환합니다. 기본 page=0,size=20이고 소유자는 JWT에서만 가져옵니다. 상세 계약은 [18단계](learning/18-mybatis-and-sql-queries.md)를 따릅니다.
 같은 POST 재전송은 별도 주문을 만듭니다. 결제·재고 차감은 구현하지 않았습니다.
 
